@@ -1,0 +1,12 @@
+[2026-06-19T08:36:15.422Z] [INFO] ========================================================================================================================
+[2026-06-19T08:36:15.423Z] [INFO] Initializing MAM Client.
+App: com.microsoft.edge 149.0.4022.69
+SDK: 2.1.367.0
+OS: windows 10.0.26200.8655
+DeviceType: Desktop
+Manufacturer: LENOVO
+Model: 21QBS1DN00
+Telemetry: yes
+Managed device support: enabled
+[2026-06-19T08:36:15.423Z] [INFO] Telemetry session fd3aff00-d41d-4803-aebc-39f313bbe3aa.
+[2026-06-19T08:36:15.423Z] [INFO] Initializing cache (v1).
