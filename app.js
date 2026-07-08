@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnImportDB: document.getElementById('btn-import-db'),
     dbFileInput: document.getElementById('db-file-input'),
     btnShareCrm: document.getElementById('btn-share-crm'),
+    btnSupabaseConfig: document.getElementById('btn-supabase-config'),
     
     // Reports Elements
     reportStartDate: document.getElementById('report-start-date'),
@@ -5569,6 +5570,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     els.btnShareCrm.addEventListener('click', () => openShareCrmModal());
+    els.btnSupabaseConfig.addEventListener('click', () => openSupabaseConfigModal());
 
     if (els.btnAddSector) {
       els.btnAddSector.addEventListener('click', () => openSectorModal());
@@ -5696,6 +5698,152 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {
       console.error(e);
       showToast('Failed to generate share link', 'error');
+    }
+  }
+
+  function openSupabaseConfigModal() {
+    let urlVal = '';
+    let keyVal = '';
+    try {
+      const configStr = localStorage.getItem('buckler_supabase_config');
+      if (configStr) {
+        const config = JSON.parse(configStr);
+        urlVal = config.url || '';
+        keyVal = config.key || '';
+      }
+    } catch (e) {}
+
+    const isConnected = window.BucklerDB.isSupabase;
+    const statusText = isConnected 
+      ? '<span style="color:#10B981; font-weight:700; font-size:0.85rem;">🟢 Connected to Supabase Cloud Database</span>' 
+      : '<span style="color:#64748B; font-weight:700; font-size:0.85rem;">🔴 Offline Mode (localStorage Fallback)</span>';
+
+    const html = `
+      <div style="display:flex; flex-direction:column; gap:1.2rem; max-width:550px; width:100%; color:var(--text-dark);">
+        <p style="font-size:0.85rem; color:var(--text-medium); margin:0; line-height:1.5;">
+          Connect the CRM portal to your Supabase project to synchronize users, schedules, and operations in real-time across your team.
+        </p>
+
+        <div style="background:#F8FAFC; border:1px solid var(--border-color); padding:1rem; border-radius:8px; display:flex; flex-direction:column; gap:0.4rem;">
+          <span style="font-size:0.75rem; font-weight:700; color:var(--text-medium); text-transform:uppercase; letter-spacing:0.05em;">Connection Status</span>
+          <div>${statusText}</div>
+        </div>
+
+        <form id="supabase-config-form" style="display:flex; flex-direction:column; gap:1rem;">
+          <div class="form-group" style="margin:0;">
+            <label for="sb-url-input" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block;">Supabase Project URL *</label>
+            <input type="url" id="sb-url-input" class="form-control" placeholder="https://your-project-id.supabase.co" value="${urlVal}" required />
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label for="sb-key-input" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block;">Supabase Anon API Key *</label>
+            <textarea id="sb-key-input" class="form-control" placeholder="eyJhbGciOi..." style="min-height:80px; font-family:monospace; font-size:0.75rem; resize:vertical;" required>${keyVal}</textarea>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+            <button type="button" class="btn btn-primary" id="btn-sb-save" style="flex:1; font-weight:700;">
+              🔌 Test & Connect
+            </button>
+            ${isConnected ? `
+              <button type="button" class="btn btn-danger" id="btn-sb-disconnect" style="font-weight:700; background:#EF4444; border:none; color:white;">
+                Disconnect
+              </button>
+            ` : ''}
+          </div>
+        </form>
+
+        ${isConnected ? `
+          <div style="border-top:1px dashed var(--border-color); padding-top:1rem; margin-top:0.5rem; display:flex; flex-direction:column; gap:0.8rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <span style="font-size:1.1rem;">📤</span>
+              <strong style="font-size:0.9rem; color:var(--text-dark);">First-Time Database Seeder</strong>
+            </div>
+            <p style="font-size:0.78rem; color:var(--text-medium); margin:0; line-height:1.4;">
+              If your Supabase database is currently empty, click below to push your local mock data (clients, users, and schedules) to populate the cloud tables.
+            </p>
+            <button class="btn btn-secondary" id="btn-sb-seed" style="width:100%; font-weight:700; border:1px solid #3B82F6; color:#2563EB; background:transparent;">
+              Seed Local Data to Supabase
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    showModal('Supabase Database Settings', html, false);
+
+    // 1. Connect / Save
+    const saveBtn = document.getElementById('btn-sb-save');
+    saveBtn.addEventListener('click', async () => {
+      let url = document.getElementById('sb-url-input').value.trim();
+      const key = document.getElementById('sb-key-input').value.trim();
+
+      // Automatically clean up trailing slashes and /rest/v1 suffixes
+      if (url.endsWith('/')) {
+        url = url.slice(0, -1);
+      }
+      if (url.endsWith('/rest/v1')) {
+        url = url.slice(0, -8);
+      }
+      if (url.endsWith('/')) {
+        url = url.slice(0, -1);
+      }
+
+      if (!url || !key) {
+        showToast('Please fill in both Supabase URL and Anon Key.', 'error');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = '⏳ Testing Connection...';
+
+      try {
+        await window.BucklerDB.connectSupabase(url, key);
+        showToast('Successfully connected and synced to Supabase!', 'success');
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } catch (err) {
+        console.error(err);
+        saveBtn.disabled = false;
+        saveBtn.textContent = '🔌 Test & Connect';
+        showToast('Connection failed: ' + err.message, 'error');
+      }
+    });
+
+    // 2. Disconnect
+    const discBtn = document.getElementById('btn-sb-disconnect');
+    if (discBtn) {
+      discBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to disconnect from Supabase and restore your offline database?')) {
+          window.BucklerDB.disconnectSupabase();
+          showToast('Disconnected. CRM reverted to offline LocalStorage mode.', 'success');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      });
+    }
+
+    // 3. Seed Local Data
+    const seedBtn = document.getElementById('btn-sb-seed');
+    if (seedBtn) {
+      seedBtn.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to push all your current local users, clients, vehicles, and schedules to Supabase? (Warning: This will overwrite duplicates)')) {
+          seedBtn.disabled = true;
+          seedBtn.textContent = '⏳ Uploading data rows...';
+          try {
+            await window.BucklerDB.pushLocalDataToSupabase();
+            showToast('All local data successfully synced to Supabase!', 'success');
+            seedBtn.textContent = 'Sync Complete';
+          } catch (err) {
+            console.error(err);
+            seedBtn.disabled = false;
+            seedBtn.textContent = 'Seed Local Data to Supabase';
+            showToast('Sync failed: ' + err.message, 'error');
+          }
+        }
+      });
     }
   }
 

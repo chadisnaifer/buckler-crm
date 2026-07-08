@@ -240,10 +240,191 @@ const DEFAULT_DATA = {
 };
 
 // Database class
+const ENTITY_TO_TABLE = {
+  users: 'users',
+  clients: 'clients',
+  items: 'items',
+  schedules: 'schedules',
+  operationLogs: 'operation_logs',
+  commuteLog: 'commute_logs',
+  complaints: 'complaints',
+  notifications: 'notifications',
+  messages: 'messages',
+  attendanceLog: 'attendance_logs',
+  vehicles: 'vehicles',
+  sectors: 'sectors',
+  sanitationNotes: 'sanitation_notes'
+};
+
 class Database {
   constructor() {
     this.importSharedState();
     this.init();
+    
+    this.isSupabase = false;
+    this.supabase = null;
+    this.realtimeChannel = null;
+    try {
+      const configStr = localStorage.getItem('buckler_supabase_config');
+      if (configStr) {
+        const config = JSON.parse(configStr);
+        if (config && config.url && config.key && window.supabase) {
+          this.supabase = window.supabase.createClient(config.url, config.key);
+          this.isSupabase = true;
+          console.log('Connected to Supabase database backend.');
+          
+          this.fetchSupabaseData();
+          this.setupRealtimeSubscriptions();
+        }
+      }
+    } catch (e) {
+      console.error('Error initializing Supabase client:', e);
+    }
+  }
+
+  async connectSupabase(url, key) {
+    if (!window.supabase) {
+      throw new Error('Supabase client SDK library not loaded.');
+    }
+    const client = window.supabase.createClient(url, key);
+    const { error } = await client.from('users').select('*').limit(1);
+    if (error) {
+      throw new Error('Connection failed: ' + error.message);
+    }
+    
+    localStorage.setItem('buckler_supabase_config', JSON.stringify({ url, key }));
+    this.supabase = client;
+    this.isSupabase = true;
+    
+    await this.fetchSupabaseData();
+    this.setupRealtimeSubscriptions();
+    return true;
+  }
+
+  disconnectSupabase() {
+    localStorage.removeItem('buckler_supabase_config');
+    if (this.realtimeChannel) {
+      this.realtimeChannel.unsubscribe();
+    }
+    this.isSupabase = false;
+    this.supabase = null;
+    this.reset();
+  }
+
+  async fetchSupabaseData() {
+    if (!this.isSupabase) return;
+    try {
+      console.log('Fetching database updates from Supabase...');
+      const localData = this.getData();
+      
+      const promises = Object.entries(ENTITY_TO_TABLE).map(async ([entity, table]) => {
+        const { data, error } = await this.supabase.from(table).select('*');
+        if (error) {
+          throw error;
+        }
+        if (data) {
+          if (entity === 'sanitationNotes') {
+            localData.sanitationNotes = {};
+            data.forEach(row => {
+              if (row.data) {
+                localData.sanitationNotes[row.id] = row.data.notes || '';
+              }
+            });
+          } else {
+            localData[entity] = data.map(row => row.data);
+          }
+        }
+      });
+      
+      await Promise.all(promises);
+      this.saveData(localData);
+      console.log('Database synced from Supabase successfully.');
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {
+      console.error('Failed to fetch data from Supabase:', e);
+    }
+  }
+
+  async pushLocalDataToSupabase() {
+    if (!this.isSupabase) throw new Error('Supabase is not connected.');
+    console.log('Pushing local data to Supabase...');
+    const localData = this.getData();
+    
+    for (const [entity, table] of Object.entries(ENTITY_TO_TABLE)) {
+      if (entity === 'sanitationNotes') {
+        const notesObj = localData.sanitationNotes || {};
+        for (const [key, notes] of Object.entries(notesObj)) {
+          const { error } = await this.supabase.from('sanitation_notes').upsert({ id: key, data: { notes } });
+          if (error) {
+            console.error(`Error uploading sanitation note ${key} to Supabase:`, error);
+          }
+        }
+      } else {
+        const records = localData[entity] || [];
+        if (records.length === 0) continue;
+        
+        for (const rec of records) {
+          const { error } = await this.supabase.from(table).upsert({ id: rec.id, data: rec });
+          if (error) {
+            console.error(`Error uploading record ${rec.id} to table ${table}:`, error);
+          }
+        }
+      }
+    }
+    console.log('Successfully pushed local data to Supabase.');
+  }
+
+  setupRealtimeSubscriptions() {
+    if (!this.isSupabase) return;
+    
+    this.realtimeChannel = this.supabase.channel('buckler-realtime-changes')
+      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+        this.handleServerChange(payload);
+      })
+      .subscribe((status) => {
+        console.log('Supabase Realtime subscription status:', status);
+      });
+  }
+
+  handleServerChange(payload) {
+    const entity = Object.keys(ENTITY_TO_TABLE).find(k => ENTITY_TO_TABLE[k] === payload.table);
+    if (!entity) return;
+
+    const localData = this.getData();
+    if (!localData[entity] && entity !== 'sanitationNotes') localData[entity] = [];
+
+    const recordId = payload.new ? payload.new.id : (payload.old ? payload.old.id : null);
+    if (!recordId) return;
+
+    const recordData = payload.new ? payload.new.data : null;
+
+    if (entity === 'sanitationNotes') {
+      if (!localData.sanitationNotes) localData.sanitationNotes = {};
+      if (payload.eventType === 'DELETE') {
+        delete localData.sanitationNotes[recordId];
+      } else if (recordData) {
+        localData.sanitationNotes[recordId] = recordData.notes || '';
+      }
+    } else {
+      if (payload.eventType === 'INSERT') {
+        const exists = localData[entity].some(item => String(item.id) === String(recordId));
+        if (!exists && recordData) {
+          localData[entity].push(recordData);
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        const idx = localData[entity].findIndex(item => String(item.id) === String(recordId));
+        if (idx !== -1 && recordData) {
+          localData[entity][idx] = recordData;
+        } else if (recordData) {
+          localData[entity].push(recordData);
+        }
+      } else if (payload.eventType === 'DELETE') {
+        localData[entity] = localData[entity].filter(item => String(item.id) !== String(recordId));
+      }
+    }
+
+    this.saveData(localData);
+    window.dispatchEvent(new Event('storage'));
   }
 
   async importSharedState() {
@@ -514,7 +695,12 @@ class Database {
     data[entity].push(record);
     this.saveData(data);
 
-    // Dynamic Notifications Trigger on insert
+    if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
+      this.supabase.from(ENTITY_TO_TABLE[entity]).insert({ id: record.id, data: record }).then(({ error }) => {
+        if (error) console.error(`Error inserting to Supabase table ${ENTITY_TO_TABLE[entity]}:`, error);
+      });
+    }
+
     if (entity === 'schedules') {
       this.triggerScheduleAlert(record);
     } else if (entity === 'complaints') {
@@ -533,9 +719,17 @@ class Database {
     const idx = data[entity].findIndex(item => String(item.id) === String(id));
     if (idx === -1) return false;
     
-    data[entity][idx] = { ...data[entity][idx], ...updatedFields };
+    const updatedRecord = { ...data[entity][idx], ...updatedFields };
+    data[entity][idx] = updatedRecord;
     this.saveData(data);
-    return data[entity][idx];
+
+    if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
+      this.supabase.from(ENTITY_TO_TABLE[entity]).update({ data: updatedRecord }).eq('id', id).then(({ error }) => {
+        if (error) console.error(`Error updating Supabase table ${ENTITY_TO_TABLE[entity]}:`, error);
+      });
+    }
+
+    return updatedRecord;
   }
 
   delete(entity, id) {
@@ -547,6 +741,12 @@ class Database {
     const success = data[entity].length < initialLen;
     if (success) {
       this.saveData(data);
+
+      if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
+        this.supabase.from(ENTITY_TO_TABLE[entity]).delete().eq('id', id).then(({ error }) => {
+          if (error) console.error(`Error deleting from Supabase table ${ENTITY_TO_TABLE[entity]}:`, error);
+        });
+      }
     }
     return success;
   }
@@ -762,10 +962,17 @@ class Database {
   }
 
   saveSanitationNotes(clientId, periodKey, notes) {
+    const key = `${clientId}_${periodKey}`;
     const data = this.getData();
     if (!data.sanitationNotes) data.sanitationNotes = {};
-    data.sanitationNotes[`${clientId}_${periodKey}`] = notes;
+    data.sanitationNotes[key] = notes;
     this.saveData(data);
+
+    if (this.isSupabase) {
+      this.supabase.from('sanitation_notes').upsert({ id: key, data: { notes } }).then(({ error }) => {
+        if (error) console.error(`Error saving sanitation note to Supabase:`, error);
+      });
+    }
     return true;
   }
 
