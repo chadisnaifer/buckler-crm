@@ -256,26 +256,30 @@ const ENTITY_TO_TABLE = {
   sanitationNotes: 'sanitation_notes'
 };
 
+// ============================================================
+// Supabase Cloud Database Configuration
+// All users connecting via the website will automatically
+// use this shared cloud database — no manual setup needed.
+// ============================================================
+const SUPABASE_URL = 'https://fwbcqbahxgvafxgumjfd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3YmNxYmFoeGd2YWZ4Z3VtamZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0OTYyMzEsImV4cCI6MjA5OTA3MjIzMX0.tdFmfXyDObrgcOORmQ89LYhEoUVvyTrXa6R_PBhKFmg';
+
 class Database {
   constructor() {
     this.importSharedState();
     this.init();
-    
+
     this.isSupabase = false;
     this.supabase = null;
     this.realtimeChannel = null;
     try {
-      const configStr = localStorage.getItem('buckler_supabase_config');
-      if (configStr) {
-        const config = JSON.parse(configStr);
-        if (config && config.url && config.key && window.supabase) {
-          this.supabase = window.supabase.createClient(config.url, config.key);
-          this.isSupabase = true;
-          console.log('Connected to Supabase database backend.');
-          
-          this.fetchSupabaseData();
-          this.setupRealtimeSubscriptions();
-        }
+      if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+        this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        this.isSupabase = true;
+        console.log('Auto-connected to Supabase cloud database.');
+
+        this.fetchSupabaseData();
+        this.setupRealtimeSubscriptions();
       }
     } catch (e) {
       console.error('Error initializing Supabase client:', e);
