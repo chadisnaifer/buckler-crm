@@ -1,0 +1,7 @@
+edge_user_data/
+*.bat
+*.ps1
+*.py
+*.json
+search_app.js
+index.aspx
