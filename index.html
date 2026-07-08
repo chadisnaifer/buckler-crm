@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buckler - Iraq Operations CRM</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Leaflet CSS and JS for interactive mapping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand-section">
+      <img src="assets/logo-en.png" alt="Buckler Pest Control Logo" class="brand-logo">
+      <div class="brand-divider"></div>
+      <div class="brand-title">
+        <span>Buckler - Iraq</span>
+        <span class="brand-subtitle">Operations CRM Portal</span>
+      </div>
+    </div>
+    
+    <!-- Right side: Notifications & Profile Switcher -->
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <!-- Share State Button -->
+      <button class="btn btn-secondary btn-sm" id="btn-share-crm" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;">
+        🔗 Share CRM
+      </button>
+
+      <!-- Notification Alerts Bell -->
+      <div style="position: relative;">
+        <button class="btn btn-secondary btn-sm" id="btn-noti-bell" style="padding: 0.5rem; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; border: 1px solid var(--border-color); background: white;">
+          🔔
+          <span id="noti-badge" style="position: absolute; top: -5px; right: -5px; background: var(--primary-red); color: white; border-radius: 50%; font-size: 0.65rem; font-weight: 700; width: 18px; height: 18px; display: none; align-items: center; justify-content: center;">0</span>
+        </button>
+        
+        <!-- Notifications dropdown list -->
+        <div id="noti-dropdown" style="display: none; position: absolute; right: 0; top: 44px; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); width: 320px; max-height: 400px; overflow-y: auto; z-index: 1000; padding: 0.5rem 0;">
+          <div style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color); font-weight: 700; font-size: 0.85rem; color: var(--text-dark); display: flex; justify-content: space-between; align-items: center;">
+            <span>Notifications Center</span>
+            <a href="#" id="noti-clear-all" style="font-size: 0.75rem; color: var(--primary-red); text-decoration: none; font-weight: 600;">Mark all read</a>
+          </div>
+          <div id="noti-dropdown-list" style="display: flex; flex-direction: column; max-height: 320px; overflow-y: auto;">
+            <!-- Injected via app.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Role Switcher for demonstration testing -->
+      <div class="user-switcher">
+        <label for="role-selector">Active Session:</label>
+        <select id="role-selector">
+          <!-- Injected via database.js & app.js -->
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Wrapper -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="nav-links">
+        <a class="nav-link active" data-tab="dashboard">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          Operations Dashboard
+        </a>
+        <a class="nav-link" data-tab="schedules">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          Schedule
+        </a>
+        <a class="nav-link" data-tab="clients">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+          Clients List
+        </a>
+        <a class="nav-link" data-tab="items">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+          Products List
+        </a>
+        <a class="nav-link" data-tab="complaints">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          Complaints Tracker
+        </a>
+        <a class="nav-link" data-tab="messages">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+          Messages & Chat
+        </a>
+        <a class="nav-link" data-tab="uv-sales">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          UV Machine Sales
+        </a>
+        <a class="nav-link" data-tab="reports">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 2v-6m-9-9h12a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path></svg>
+          Sanitation IPM Reports
+        </a>
+        <a class="nav-link" data-tab="users">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          User & CRM Admin
+        </a>
+      </div>
+      
+      <!-- Current User Profile display at bottom -->
+      <div class="sidebar-footer">
+        <div class="current-user-badge">
+          <div class="avatar-circle" id="cur-user-avatar">GM</div>
+          <div class="user-info">
+            <span class="user-name" id="cur-user-name">Loading...</span>
+            <span class="user-role-tag" id="cur-user-role">Loading...</span>
+            <span class="user-region-tag" id="cur-user-region">All</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      
+      <!-- TAB 1: OPERATIONS DASHBOARD -->
+      <section class="tab-content active" id="dashboard-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Iraq Operations Dashboard</h1>
+            <p>Real-time analytics, metrics, and dispatch details across Buckler's regions.</p>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards (Fully Clickable and Actionable) -->
+        <div class="stats-grid">
+          <div class="stat-card" id="dash-card-scheduled" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Scheduled Visits</span>
+              <div class="stat-icon-wrapper">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-scheduled">0</div>
+            <div class="stat-desc">Click to view/plan visits</div>
+          </div>
+          <div class="stat-card" id="dash-card-conducted" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Conducted Visits</span>
+              <div class="stat-icon-wrapper" style="background-color: #ECFDF5; color: #10B981;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-conducted">0</div>
+            <div class="stat-desc">Click to inspect logs</div>
+          </div>
+          <div class="stat-card" id="dash-card-completion" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Completion Rate</span>
+              <div class="stat-icon-wrapper" style="background-color: #EFF6FF; color: #3B82F6;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-completion">0%</div>
+            <div class="stat-desc">Click for team metrics summary</div>
+          </div>
+          <div class="stat-card" id="dash-card-items" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Products Consumed</span>
+              <div class="stat-icon-wrapper" style="background-color: #FFFBEB; color: #F59E0B;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-items-used">0</div>
+            <div class="stat-desc">Click to inspect stocks</div>
+          </div>
+        </div>
+
+        <!-- Dashboard Charts Panel -->
+        <div class="dashboard-row full-width">
+          <!-- Charts Section -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Visits Analysis</h3>
+                <span class="card-subtitle">Performance breakdown by service type and schedule counts</span>
+              </div>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:1.5rem;">
+              <div class="chart-container">
+                <canvas id="visitsChart"></canvas>
+              </div>
+              <div class="dashboard-charts-row" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Service Types Share</h4>
+                  <canvas id="servicesChart"></canvas>
+                </div>
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Client Sectors Share</h4>
+                  <canvas id="sectorsChart"></canvas>
+                </div>
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Visit Types Share</h4>
+                  <canvas id="visitTypesChart"></canvas>
+                </div>
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Team Leader Performance (Rate)</h4>
+                  <canvas id="performanceChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transit, Commutes & Routing Panel (Shown to all roles except Team Leaders) -->
+        <div class="dashboard-row" id="staff-routing-panel" style="display: none;">
+          <!-- Staff Daily Commutes & Routing Tracker Card -->
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <h3 class="card-title">Staff Daily Commutes & Routing Tracker</h3>
+                <span class="card-subtitle">Detailed travel legs and distance calculation per Team Leader</span>
+              </div>
+              <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                <select id="routing-region-select" class="filter-select">
+                  <option value="All">All Regions</option>
+                  <option value="Central">Central</option>
+                  <option value="Kurdistan">Kurdistan</option>
+                  <option value="South">South</option>
+                </select>
+                <div id="routing-tl-pills-container" class="tl-pills-container" style="min-width: 150px;">
+                  <!-- Team Leader Pills dynamically generated in app.js -->
+                </div>
+                <input type="date" id="routing-start-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-01">
+                <span style="font-size:0.8rem; color:var(--text-muted);">to</span>
+                <input type="date" id="routing-end-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-07">
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:1.5rem;">
+                <div>
+                  <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); margin-bottom:0.75rem;">Daily Routing Details</h4>
+                  <div id="routing-details-list" style="display:flex; flex-direction:column; gap:0.5rem; max-height: 280px; overflow-y: auto;">
+                    <!-- Routing legs listed dynamically in app.js -->
+                  </div>
+                </div>
+                <div style="background:#F8FAFC; padding:1.25rem; border-radius:10px; border:1px solid var(--border-color); display:flex; flex-direction:column; justify-content:center; gap:0.5rem;">
+                  <span style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Calculated Daily Travel</span>
+                  <span style="font-size:2.25rem; font-weight:800; color:var(--primary-red);" id="routing-total-distance">0.0 km</span>
+                  <span style="font-size:0.75rem; color:var(--text-muted);" id="routing-summary-text">Commuting: Hub → Clients → Hub</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transit & Commutes Section -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Live Commute details</h3>
+                <span class="card-subtitle">Route transit tracking & fuel calculations</span>
+              </div>
+            </div>
+            <div class="card-body" style="overflow-y:auto; max-height: 380px; display:flex; flex-direction:column; gap:1rem;" id="commute-log-list">
+              <!-- Injected dynamically in app.js -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Driver Shifts & Workloads Tracker Section -->
+        <div class="dashboard-row full-width" id="driver-shifts-panel" style="display: none; margin-top: 1.5rem;">
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+              <div>
+                <h3 class="card-title">Driver Shifts & Workloads Tracker</h3>
+                <span class="card-subtitle">Monitor check-in/out times, commutes, and active working hours</span>
+              </div>
+              <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Regions</span>
+                  <div id="shifts-region-pills" class="tl-pills-container">
+                    <!-- Loaded dynamically -->
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Team Leaders</span>
+                  <div id="shifts-tl-pills" class="tl-pills-container">
+                    <!-- Loaded dynamically -->
+                  </div>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center; margin-top:10px;">
+                  <input type="date" id="shifts-start-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-01">
+                  <span style="font-size:0.8rem; color:var(--text-muted);">to</span>
+                  <input type="date" id="shifts-end-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-07">
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Total Shifts</span>
+                  <div class="stat-value" id="shifts-total-count" style="font-size: 1.5rem; margin-top: 4px;">0</div>
+                </div>
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Total Commute Time</span>
+                  <div class="stat-value" id="shifts-total-commute" style="font-size: 1.5rem; margin-top: 4px;">0 mins</div>
+                </div>
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Total Visits</span>
+                  <div class="stat-value" id="shifts-total-visits" style="font-size: 1.5rem; margin-top: 4px;">0</div>
+                </div>
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Avg Work Hours/Day</span>
+                  <div class="stat-value" id="shifts-avg-hours" style="font-size: 1.5rem; margin-top: 4px;">0.0 hrs</div>
+                </div>
+              </div>
+              <div class="table-wrapper">
+                <table class="data-table" style="font-size: 0.85rem;">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Team Leader</th>
+                      <th>Region</th>
+                      <th>Check-In</th>
+                      <th>Check-Out</th>
+                      <th>Commute Time</th>
+                      <th>Visits</th>
+                      <th>Working Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shifts-table-body">
+                    <!-- Injected dynamically in app.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>        <!-- Operational Deep Dives (Item Consumption & Complaints) -->
+        <div class="dashboard-row full-width" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <!-- Item Consumption Card -->
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <h3 class="card-title">Products Consumption Analysis</h3>
+                <span class="card-subtitle">Analyze inventory item usage across operations</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                <select id="dash-consume-region" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem;">
+                  <option value="All">All Regions</option>
+                  <option value="Central">Central</option>
+                  <option value="Kurdistan">Kurdistan</option>
+                  <option value="South">South</option>
+                </select>
+                <select id="dash-consume-client" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem; max-width: 140px;">
+                  <option value="All">All Clients</option>
+                </select>
+                <select id="dash-consume-item" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem; max-width: 140px;">
+                  <option value="All">All Items</option>
+                </select>
+              </div>
+              <div style="height:220px; position:relative; margin-bottom: 1rem;">
+                <canvas id="dashConsumeChart"></canvas>
+              </div>
+              <div id="dash-consume-total" style="font-size:0.8rem; font-weight:700; color:var(--text-dark); text-align:center; padding: 0.5rem; background:#F8FAFC; border-radius:6px; border:1px solid var(--border-color); cursor:pointer;">
+                Total Consumed: 0 Units
+              </div>
+            </div>
+          </div>
+
+          <!-- Complaints Analysis Card -->
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <h3 class="card-title">Complaints Analysis</h3>
+                <span class="card-subtitle">Monitor service quality issues and resolution states</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                <select id="dash-complaint-region" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem;">
+                  <option value="All">All Regions</option>
+                  <option value="Central">Central</option>
+                  <option value="Kurdistan">Kurdistan</option>
+                  <option value="South">South</option>
+                </select>
+                <select id="dash-complaint-client" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem; max-width: 140px;">
+                  <option value="All">All Clients</option>
+                </select>
+                <select id="dash-complaint-status" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem;">
+                  <option value="All">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+              </div>
+              <div style="height:220px; position:relative; margin-bottom: 1rem;">
+                <canvas id="dashComplaintChart"></canvas>
+              </div>
+              <div id="dash-complaint-total" style="font-size:0.8rem; font-weight:700; color:var(--text-dark); text-align:center; padding: 0.5rem; background:#F8FAFC; border-radius:6px; border:1px solid var(--border-color); cursor:pointer;">
+                Total Logged: 0 Issues
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Map & Geographical Analytics -->
+        <div class="dashboard-row full-width">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Buckler - Iraq Regional Map Hub</h3>
+                <span class="card-subtitle">Click regional zones (Central, South, Kurdistan) to filter and view active operations</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="map-visualizer-container">
+                
+                <!-- Real Google Maps Hub Container -->
+                <div class="map-svg-pane" style="padding:0; min-height:320px; border-radius:var(--radius-lg); overflow:hidden; border: 1px solid var(--border-color); display: block;">
+                  <div id="dashboard-real-map" style="width: 100%; height: 320px; background: #e5e3df; z-index: 1;"></div>
+                </div>
+
+                <!-- Info Cards -->
+                <div style="display:flex; flex-direction:column; gap:0.75rem; justify-content:center;">
+                  <div style="border-left:4px solid var(--primary-red); padding:0.75rem; background:#FAFAFA; border-radius:6px; cursor:pointer;" id="hub-card-central">
+                    <strong style="color:var(--primary-red);">Central Region (Baghdad Hub)</strong>
+                    <p style="font-size:0.8rem; color:var(--text-medium); margin-top:2px;">Servicing the central provinces including Baghdad, Anbar, Babylon and Diyala. Features main warehouse and technical training operations.</p>
+                  </div>
+                  <div style="border-left:4px solid var(--info-blue); padding:0.75rem; background:#FAFAFA; border-radius:6px; cursor:pointer;" id="hub-card-kurdistan">
+                    <strong style="color:var(--info-blue);">Kurdistan Region (Erbil Hub)</strong>
+                    <p style="font-size:0.8rem; color:var(--text-medium); margin-top:2px;">Covers Erbil, Sulaymaniyah, Duhok, and Halabja. High volume of commercial food outlets and residential compound treatments.</p>
+                  </div>
+                  <div style="border-left:4px solid var(--success-green); padding:0.75rem; background:#FAFAFA; border-radius:6px; cursor:pointer;" id="hub-card-south">
+                    <strong style="color:var(--success-green);">South Region (Basra Hub)</strong>
+                    <p style="font-size:0.8rem; color:var(--text-medium); margin-top:2px;">Covers Basra, Dhi Qar, Maysan and Muthanna. Primarily focuses on industrial oil camps, shipping terminals, and product sales.</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: SCHEDULES & VISITS -->
+      <section class="tab-content" id="schedules-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Operations Schedules</h1>
+            <p>Schedule client services, allocate regional team leaders, and log visit reports.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-schedule">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Schedule Service
+          </button>
+        </div>
+
+        <!-- Team Leader Shift Widget (Visible only to logged in team leaders) -->
+        <div id="tl-shift-widget" style="display: none; margin-bottom: 1.5rem;">
+          <!-- Injected dynamically in app.js -->
+        </div>
+
+        <!-- Filter bar -->
+        <div class="action-bar">
+          <div class="search-input-wrapper" style="min-width: 200px;">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-schedule" placeholder="Search client or service...">
+          </div>
+          <select id="filter-schedule-region" class="filter-select">
+            <option value="All">All Regions</option>
+            <option value="Central">Central</option>
+            <option value="Kurdistan">Kurdistan</option>
+            <option value="South">South</option>
+          </select>
+          <select id="filter-schedule-city" class="filter-select">
+            <option value="All">All Cities</option>
+          </select>
+          <select id="filter-schedule-client" class="filter-select">
+            <option value="All">All Clients</option>
+          </select>
+          <select id="filter-schedule-tl" class="filter-select" multiple style="min-width: 150px; height: 38px; padding: 4px;">
+            <option value="All">All Team Leaders</option>
+          </select>
+          <select id="filter-schedule-status" class="filter-select">
+            <option value="All">All Statuses</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Conducted">Conducted</option>
+          </select>
+          <input type="date" id="filter-schedule-date" class="filter-select" style="font-family: var(--font-family);">
+          <button class="btn btn-secondary btn-sm" id="btn-clear-schedule-filters">Clear</button>
+
+          <!-- List vs Calendar View Toggle -->
+          <div class="view-toggle" style="display:flex; border:1px solid var(--border-color); border-radius:var(--radius-md); overflow:hidden; background:white; margin-left:auto;">
+            <button class="btn-toggle active" id="btn-schedule-view-list" style="padding:0.6rem 1rem; font-size:0.8rem; font-weight:700; border:none; background:transparent; cursor:pointer; color:var(--text-medium); transition:var(--transition);">List</button>
+            <button class="btn-toggle" id="btn-schedule-view-cal" style="padding:0.6rem 1rem; font-size:0.8rem; font-weight:700; border:none; border-left:1px solid var(--border-color); background:transparent; cursor:pointer; color:var(--text-medium); transition:var(--transition);">Calendar</button>
+          </div>
+
+          <!-- Calendar Controls -->
+          <div id="calendar-view-controls" style="display:none; align-items:center; gap:0.5rem; flex-wrap:nowrap;">
+            <select id="calendar-period" class="filter-select" style="padding:0.5rem 0.75rem; font-size:0.8rem;">
+              <option value="Month">Month View</option>
+              <option value="Week">Week View</option>
+              <option value="Day">Day View</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" id="btn-cal-prev" style="padding:0.5rem 0.75rem; font-weight:700;">◀</button>
+            <span id="calendar-current-label" style="font-weight:700; font-size:0.8rem; min-width:100px; text-align:center; color:var(--text-dark);">June 2026</span>
+            <button class="btn btn-secondary btn-sm" id="btn-cal-next" style="padding:0.5rem 0.75rem; font-weight:700;">▶</button>
+          </div>
+        </div>
+
+        <!-- Schedules Strip Cards List -->
+        <div class="schedules-container" id="schedules-list">
+          <!-- Injected dynamically in app.js -->
+        </div>
+
+        <!-- Schedules Calendar Grid View -->
+        <div id="schedules-calendar" style="display:none; background:white; border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; box-shadow:var(--shadow-sm); overflow-x:auto;">
+          <!-- Injected dynamically in app.js -->
+        </div>
+      </section>
+
+      <!-- TAB 3: CLIENTS CRUD -->
+      <section class="tab-content" id="clients-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Client Registry</h1>
+            <p>Manage client relationships, addresses, and contacts across Iraq regions.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-client">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Add Client
+          </button>
+        </div>
+
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-client" placeholder="Search clients by name, contact, address...">
+          </div>
+          <select id="filter-client-region" class="filter-select">
+            <option value="All">All Regions</option>
+            <option value="Central">Central</option>
+            <option value="Kurdistan">Kurdistan</option>
+            <option value="South">South</option>
+          </select>
+          <select id="filter-client-city" class="filter-select">
+            <option value="All">All Cities</option>
+          </select>
+          
+          <div class="csv-upload-zone" id="upload-clients-zone">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <div>
+              <p class="primary-msg">Drag & Drop Clients CSV</p>
+              <p class="secondary-msg">or click to browse local files</p>
+            </div>
+            <input type="file" id="clients-file-input" class="hidden-file-input" accept=".csv">
+          </div>
+
+          <button class="btn btn-secondary" id="btn-dl-client-tmpl">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Template
+          </button>
+        </div>
+
+        <!-- Clients Geographic Map Visualizer Card -->
+        <div class="card" id="client-map-card" style="margin-bottom: 1.5rem;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 class="card-title">Client Geographic Map Visualizer</h3>
+              <span class="card-subtitle">Interactive plotting of client coordinates based on multi-select filters</span>
+            </div>
+            <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Regions</span>
+                <div id="map-client-region-pills" class="tl-pills-container"></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Team Leaders</span>
+                <div id="map-client-tl-pills" class="tl-pills-container"></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Clients</span>
+                <div id="map-client-cli-pills" class="tl-pills-container"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="map-visualizer-container" style="display: grid; grid-template-columns: 2fr 1fr; border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden;">
+              <!-- Left: Map pane -->
+              <!-- Left: Map pane -->
+              <div class="map-svg-pane" style="padding:0; min-height:340px; position:relative; border-right:1px solid var(--border-color); display:block;">
+                <div id="client-real-map" style="width: 100%; height: 340px; background: #e5e3df; z-index: 1;"></div>
+              </div>
+              <!-- Right: Selected Client Panel -->
+              <div style="padding: 1.25rem; background: #F8FAFC; max-height: 340px; overflow-y: auto;">
+                <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">Mapped Client Sites</h4>
+                <div id="mapped-client-registry-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Client Code</th>
+                <th>Client Name</th>
+                <th>Sector</th>
+                <th>Contact Name</th>
+                <th>Region</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Geo Location</th>
+                <th>Full Address</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clients-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Clients Visit Analysis Panel -->
+        <div class="card" style="margin-top: 1.5rem;" id="clients-visit-analysis-panel">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 class="card-title">Clients Visit Frequencies & Types Breakdown</h3>
+              <span class="card-subtitle">Aggregated analysis of visit types across business sectors and team allocations.</span>
+            </div>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <select id="client-analysis-region" class="filter-select" style="margin:0;">
+                <option value="All">All Regions</option>
+                <option value="Central">Central</option>
+                <option value="Kurdistan">Kurdistan</option>
+                <option value="South">South</option>
+              </select>
+              <select id="client-analysis-sector" class="filter-select" style="margin:0;">
+                <option value="All">All Sectors</option>
+              </select>
+              <select id="client-analysis-tl" class="filter-select" style="margin:0;">
+                <option value="All">All Team Leaders</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body" style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem;">
+            <div style="height:250px; position:relative;">
+              <canvas id="clientAnalysisChart"></canvas>
+            </div>
+            <div style="height:250px; position:relative;">
+              <canvas id="clientAnalysisPieChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Business Sectors Card -->
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 class="card-title">Business Sectors Registry</h3>
+              <span class="card-subtitle">Manage client industries for scheduling metrics and dynamic categorization.</span>
+            </div>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <button class="btn btn-secondary" id="btn-dl-sector-tmpl">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Template
+              </button>
+              <button class="btn btn-primary" id="btn-add-sector">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M12 4v16m8-8H4"></path></svg>
+                Add Sector
+              </button>
+            </div>
+          </div>
+          <div class="card-body" style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; align-items:start;">
+            <!-- Table Wrapper -->
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Sector ID</th>
+                    <th>Sector Name</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sectors-table-body">
+                  <!-- Dynamic Sector List -->
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Drag and Drop Import Zone -->
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+              <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); margin-bottom:-0.25rem;">Bulk Import Sectors</h4>
+              <div class="csv-upload-zone" id="upload-sectors-zone" style="height:120px; min-height:120px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:0.5rem; border:2px dashed var(--border-color); border-radius:8px; cursor:pointer;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:28px; height:28px; color:var(--text-muted);"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                <div style="text-align:center;">
+                  <p class="primary-msg" style="font-size:0.8rem; font-weight:600; color:var(--text-dark); margin:0;">Drag & Drop Sectors CSV</p>
+                  <p class="secondary-msg" style="font-size:0.7rem; color:var(--text-muted); margin:0;">or click to browse</p>
+                </div>
+                <input type="file" id="sectors-file-input" class="hidden-file-input" style="display:none;" accept=".csv">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: PRODUCTS & INVENTORY CRUD -->
+      <section class="tab-content" id="items-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Products List</h1>
+            <p>Control chemical compounds, equipment, landscaping resources, and sales products.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-item">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Add Product
+          </button>
+        </div>
+
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-item" placeholder="Search inventory products by name...">
+          </div>
+
+
+          <div class="csv-upload-zone" id="upload-items-zone">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <div>
+              <p class="primary-msg">Drag & Drop Inventory CSV</p>
+              <p class="secondary-msg">or click to browse local files</p>
+            </div>
+            <input type="file" id="items-file-input" class="hidden-file-input" accept=".csv">
+          </div>
+
+          <button class="btn btn-secondary" id="btn-dl-item-tmpl">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Template
+          </button>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Item Code</th>
+                <th>Category</th>
+                <th>Unit of Measurement</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="items-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 5: COMPLAINTS CRUD -->
+      <section class="tab-content" id="complaints-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Customer Complaints Registry</h1>
+            <p>Log, assign, and resolve customer feedback and service quality issues.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-complaint">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Log Complaint
+          </button>
+        </div>
+
+        <!-- Action / Filter bar -->
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-complaint" placeholder="Search complaints details or complainant...">
+          </div>
+          <select id="filter-complaint-region" class="filter-select">
+            <option value="All">All Regions</option>
+            <option value="Central">Central</option>
+            <option value="Kurdistan">Kurdistan</option>
+            <option value="South">South</option>
+          </select>
+          <select id="filter-complaint-city" class="filter-select">
+            <option value="All">All Cities</option>
+          </select>
+          <select id="filter-complaint-severity" class="filter-select">
+            <option value="All">All Severities</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <select id="filter-complaint-status" class="filter-select">
+            <option value="All">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+
+        <!-- Complaints Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Complainant Name</th>
+                <th>Client / Hotel</th>
+                <th>Region</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Issue Details</th>
+                <th>Assigned To</th>
+                <th>Date Logged</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="complaints-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 6: MESSAGES & CHAT COMMUNICATION PANEL -->
+      <section class="tab-content" id="messages-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Staff Internal Messenger</h1>
+            <p>Exchange live direct messages or broadcast warnings on regional broadcast channels.</p>
+          </div>
+        </div>
+
+        <!-- Chat Split Panel -->
+        <div style="display:grid; grid-template-columns: 260px 1fr; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-lg); height: 500px; overflow: hidden; box-shadow: var(--shadow-sm);">
+          <!-- Chat sidebar -->
+          <div style="border-right:1px solid var(--border-color); background:#F8FAFC; display:flex; flex-direction:column; overflow-y:auto;">
+            <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); font-weight:700; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">
+              Region Channels
+            </div>
+            <div id="chat-channels-list" style="display:flex; flex-direction:column; padding:0.25rem 0.5rem; gap:2px;">
+              <!-- Injected dynamically -->
+            </div>
+            <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); border-top:1px solid var(--border-color); font-weight:700; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">
+              Staff Direct DMs
+            </div>
+            <div id="chat-users-list" style="display:flex; flex-direction:column; padding:0.25rem 0.5rem; gap:2px; flex:1; overflow-y:auto;">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Chat active conversation box -->
+          <div style="display:flex; flex-direction:column;">
+            <div style="padding:0.85rem 1.25rem; background:#FAFAFA; border-bottom:1px solid var(--border-color);">
+              <h4 id="active-chat-title" style="font-size:0.95rem; font-weight:700; color:var(--text-dark);">No Conversation Selected</h4>
+              <span id="active-chat-status" style="font-size:0.75rem; color:var(--text-muted);">Pick a contact from the panel to start</span>
+            </div>
+            <div id="chat-messages-container" style="flex:1; overflow-y:auto; padding:1.25rem; background:#F1F5F9; display:flex; flex-direction:column; gap:0.75rem;">
+              <!-- Injected dynamically -->
+            </div>
+            <div style="padding:0.75rem; border-top:1px solid var(--border-color); display:flex; gap:0.5rem; background:white;">
+              <input type="text" id="chat-input" class="form-control" placeholder="Type a message..." disabled>
+              <button class="btn btn-primary" id="chat-send-btn" disabled>Send</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: USERS & CRM ADMIN SETTINGS -->
+      <section class="tab-content" id="users-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>System Profiles & Settings</h1>
+            <p>Add staff accounts, adjust roles, and manage access parameters.</p>
+          </div>
+          <div style="display:flex; gap:0.75rem; align-items:center;">
+            <button type="button" class="btn btn-secondary" id="btn-export-db">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              Save Backup (JSON)
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-import-db">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L4 8m4-4v12"></path></svg>
+              Restore Backup (JSON)
+            </button>
+            <input type="file" id="db-file-input" accept=".json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" />
+            <button type="button" class="btn btn-danger" id="btn-reset-db">Reset CRM Database</button>
+            <button type="button" class="btn btn-primary" id="btn-add-user">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+              Create Account
+            </button>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-user" placeholder="Search staff profiles by name or role...">
+          </div>
+          <select id="filter-user-region" class="filter-select">
+            <option value="All">All Regions</option>
+            <option value="Central">Central</option>
+            <option value="Kurdistan">Kurdistan</option>
+            <option value="South">South</option>
+          </select>
+          <select id="filter-user-city" class="filter-select">
+            <option value="All">All Cities</option>
+          </select>
+          <select id="filter-user-role" class="filter-select">
+            <option value="All">All Roles</option>
+            <option value="GM">GM</option>
+            <option value="tech manager">Tech Manager</option>
+            <option value="admin coordinator">Admin Coordinator</option>
+            <option value="operations manager">Operations Manager</option>
+            <option value="tech supervisor">Tech Supervisor</option>
+            <option value="team leader">Team Leader</option>
+          </select>
+        </div>
+
+        <!-- Users Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Staff Name</th>
+                <th>Access Role</th>
+                <th>Region Access</th>
+                <th>Email Address</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Vehicle Fleet Registry Section -->
+        <div style="margin-top: 3rem; border-top: 2px solid var(--border-color); padding-top: 2rem;">
+          <div class="view-header" style="margin-bottom: 1rem;">
+            <div class="view-title">
+              <h2>Vehicle Fleet Registry</h2>
+              <p>Manage and allocate company vehicles to team leaders.</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="btn-add-vehicle">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+                Log Vehicle
+              </button>
+            </div>
+          </div>
+
+          <div class="action-bar" style="margin-bottom: 1rem;">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <input type="text" id="search-vehicle" placeholder="Search vehicles by model, plate, or type...">
+            </div>
+            <select id="filter-vehicle-region" class="filter-select">
+              <option value="All">All Regions</option>
+              <option value="Central">Central</option>
+              <option value="Kurdistan">Kurdistan</option>
+              <option value="South">South</option>
+            </select>
+            <select id="filter-vehicle-tl" class="filter-select">
+              <option value="All">All Team Leaders</option>
+            </select>
+          </div>
+
+          <!-- Vehicles Table View -->
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Vehicle Type</th>
+                  <th>Model</th>
+                  <th>Plate No.</th>
+                  <th>Region</th>
+                  <th>Allocated Team Leader</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="vehicles-table-body">
+                <!-- Injected dynamically in app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- TAB 8: UV MACHINE SALES REGISTRY -->
+      <section class="tab-content" id="uv-sales-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>UV Machine Sales Tracker</h1>
+            <p>Track UV equipment installations, client sales, machine types, and technical allocations across regions.</p>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <select id="filter-uv-region" class="filter-select">
+            <option value="All">All Regions</option>
+            <option value="Central">Central</option>
+            <option value="Kurdistan">Kurdistan</option>
+            <option value="South">South</option>
+          </select>
+          <select id="filter-uv-city" class="filter-select">
+            <option value="All">All Cities</option>
+          </select>
+          <select id="filter-uv-client" class="filter-select">
+            <option value="All">All Clients</option>
+          </select>
+          <select id="filter-uv-type" class="filter-select">
+            <option value="All">All Machine Types</option>
+          </select>
+          <select id="filter-uv-tl" class="filter-select">
+            <option value="All">All Team Leaders</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="btn-clear-uv-filters">Clear</button>
+        </div>
+
+        <!-- UV Sales Visual Container -->
+        <div id="uv-sales-visual-container" style="display: none; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+            <!-- Bar Chart: Chronological Sales -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title" id="uv-chart-title">UV Machines Sales Analysis</h3>
+                <span class="card-subtitle" id="uv-chart-subtitle">Machines sold per day, by model type</span>
+              </div>
+              <div class="card-body" style="height: 280px; position: relative;">
+                <canvas id="uvSalesChart"></canvas>
+              </div>
+            </div>
+            <!-- Doughnut Chart: Regional Distribution -->
+            <div class="card" id="uv-regional-sales-card">
+              <div class="card-header">
+                <h3 class="card-title">Sales by Region</h3>
+                <span class="card-subtitle">Distribution of UV sales by region</span>
+              </div>
+              <div class="card-body" style="height: 280px; position: relative;">
+                <canvas id="uvSalesRegionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- UV Sales Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Client Name</th>
+                <th>Region / City</th>
+                <th>UV Machine Model / Type</th>
+                <th>Date of Installation</th>
+                <th>Installed By (TL)</th>
+                <th>Quantity Sold</th>
+              </tr>
+            </thead>
+            <tbody id="uv-sales-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 9: REPORTS TAB -->
+      <section class="tab-content" id="reports-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Sanitation IPM Reports</h1>
+            <p>Generate regular, detailed, or individual visit audits and customer reports.</p>
+          </div>
+        </div>
+
+        <div class="action-bar" style="flex-wrap: wrap; gap: 1rem; padding: 1.25rem; background: var(--bg-light); border-radius: var(--radius-md); border: 1px solid var(--border-color); align-items: center;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label for="report-type" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Report Type:</label>
+            <select id="report-type" class="filter-select" style="margin:0; min-width:160px;">
+              <option value="regular">1. Regular IPM Report</option>
+              <option value="detailed">2. Detailed IPM Report</option>
+              <option value="visit">3. Visit Audit Report</option>
+            </select>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label for="report-client-select" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Client:</label>
+            <select id="report-client-select" class="filter-select" style="margin:0; min-width:180px;">
+              <!-- Dynamically populated in app.js -->
+            </select>
+          </div>
+
+          <!-- Date Range Container -->
+          <div id="report-date-range-fields" style="display:flex; align-items:center; gap:1rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <label for="report-start-date" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Start:</label>
+              <input type="date" id="report-start-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-01">
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <label for="report-end-date" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">End:</label>
+              <input type="date" id="report-end-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-30">
+            </div>
+          </div>
+
+          <!-- Visit Select Container (Only for Visit Report) -->
+          <div id="report-visit-select-field" style="display:none; align-items:center; gap:0.5rem;">
+            <label for="report-visit-select" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Select Visit:</label>
+            <select id="report-visit-select" class="filter-select" style="margin:0; min-width:200px;">
+              <!-- Dynamically populated completed logs for client -->
+            </select>
+          </div>
+          
+          <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+            <button class="btn btn-primary" id="btn-generate-report">Generate Report</button>
+            <button class="btn btn-secondary" id="btn-print-report" style="display: none; align-items: center; gap: 0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+              Print Report
+            </button>
+            <button class="btn btn-secondary" id="btn-export-report-csv" style="display: none; align-items: center; gap: 0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Visit Audit Observations / Recommendations Entry (Only for Visit Report) -->
+        <div id="visit-report-fields" style="display:none; width: 100%; margin-top: 1rem; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm); flex-direction: column; gap: 1rem;">
+          <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-dark); border-bottom:1px dashed var(--border-color); padding-bottom:0.5rem; margin-bottom:0.25rem;">Visit Report Parameters</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="report-visit-observations" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block; color:var(--text-medium);">Observations *</label>
+              <textarea id="report-visit-observations" class="form-control" placeholder="Enter custom biological or structural audit observations..." style="min-height:90px; resize:vertical;"></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="report-visit-recommendations" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block; color:var(--text-medium);">Recommendations *</label>
+              <textarea id="report-visit-recommendations" class="form-control" placeholder="Enter compliance recommendations (e.g. hygiene improvements, sealing gaps)..." style="min-height:90px; resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="report-visit-generated-by" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block; color:var(--text-medium);">Report Generated By *</label>
+              <input type="text" id="report-visit-generated-by" class="form-control" value="" placeholder="Prepared By (e.g. Yasmin Kassim - Admin Coordinator)" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Sibling Output Display Area -->
+        <div id="reports-output-container" style="display: none; margin-top: 1.5rem; margin-bottom: 2rem;">
+          <!-- Content Injected dynamically in app.js -->
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Shared Modal Backdrop (CRUD / Log Forms popup) -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Form Modal</h3>
+        <button class="modal-close" id="modal-close-btn">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Form injected dynamically in app.js -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="modal-save-btn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Database Chatbot Assistant Widget -->
+  <div id="chatbot-widget" style="position:fixed; bottom:1.5rem; right:1.5rem; z-index:1000; display:flex; flex-direction:column; align-items:flex-end;">
+    <!-- Expanded Chat window -->
+    <div id="chatbot-window" style="display:none; width:340px; height:450px; background:white; border:1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); overflow:hidden; flex-direction:column; margin-bottom:0.75rem; animation: slideInModal 0.2s ease;">
+      <!-- Chatbot Header -->
+      <div style="background:var(--primary-red); color:white; padding:0.85rem 1rem; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <div class="avatar-circle" style="width:28px; height:28px; background:white; color:var(--primary-red); font-size:0.85rem; font-weight:800;">B</div>
+          <div>
+            <h4 style="font-size:0.85rem; font-weight:700; margin:0; line-height:1.2;">Buckler Assistant</h4>
+            <span style="font-size:0.65rem; opacity:0.85; display:flex; align-items:center; gap:3px;">🟢 Live Database Connected</span>
+          </div>
+        </div>
+        <button id="chatbot-close-btn" style="background:none; border:none; color:white; font-size:1.1rem; cursor:pointer; line-height:1;">✕</button>
+      </div>
+      
+      <!-- Messages list -->
+      <div id="chatbot-messages" style="flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:0.75rem; background:#F8FAFC; font-size:0.8rem; line-height:1.4;">
+        <div style="background:#E2E8F0; padding:0.75rem; border-radius:10px 10px 10px 0; color:var(--text-dark); max-width:85%; align-self:flex-start;">
+          Marhaban! I am your Buckler Iraq Assistant. Ask me anything about our clients, inventory stocks, daily schedules, or regional issues.
+          <br/><br/>
+          <strong>Or click these quick search queries:</strong>
+          <ul style="padding-left:1rem; margin-top:0.4rem; list-style-type:square; font-size:0.75rem; display:flex; flex-direction:column; gap:3px;">
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">How many clients do we have?</a></li>
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">List team leaders in Central</a></li>
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">Low stock items?</a></li>
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">How do we treat termites?</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Input box -->
+      <div style="padding:0.65rem; border-top:1px solid var(--border-color); display:flex; gap:0.5rem; background:white;">
+        <input type="text" id="chatbot-input" class="form-control" style="font-size:0.8rem; padding:0.45rem 0.65rem;" placeholder="Ask about clients, stock, schedule, FAQs...">
+        <button class="btn btn-primary" id="chatbot-send-btn" style="font-size:0.8rem; padding:0.45rem 0.85rem; font-weight:600;">Send</button>
+      </div>
+    </div>
+
+    <!-- Bubble toggle button -->
+    <button id="chatbot-bubble-btn" style="background:var(--primary-red); color:white; width:50px; height:50px; border-radius:50%; border:none; box-shadow: var(--shadow-lg); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.3rem; transition:var(--transition);">
+      💬
+    </button>
+  </div>
+
+  <!-- Javascript Core and DB Engine -->
+  <script src="database.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
