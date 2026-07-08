@@ -343,6 +343,17 @@ class Database {
       await Promise.all(promises);
       this.saveData(localData);
       console.log('Database synced from Supabase successfully.');
+
+      // On first sync for this browser, reload the page so the UI
+      // renders fresh cloud data instead of old local data.
+      const syncKey = 'buckler_supabase_synced';
+      if (!sessionStorage.getItem(syncKey)) {
+        sessionStorage.setItem(syncKey, '1');
+        console.log('First Supabase sync detected — reloading page to apply cloud data...');
+        window.location.reload();
+        return;
+      }
+
       window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.error('Failed to fetch data from Supabase:', e);
