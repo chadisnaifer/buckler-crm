@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buckler Visit Report</title>
+  <link rel="icon" href="assets/logo-en.png" type="image/png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F4F6F8;
+      color: #1E293B;
+      min-height: 100vh;
+    }
+
+    .report-wrapper {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Top action bar (hidden on print) */
+    .action-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .btn-primary { background: #C62828; color: white; }
+    .btn-secondary { background: white; border: 1px solid #E2E8F0; color: #1E293B; }
+
+    /* REPORT CARD */
+    .report-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+
+    .report-header {
+      background: linear-gradient(135deg, #C62828 0%, #8B0000 100%);
+      color: white;
+      padding: 2rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .report-header-logo {
+      height: 50px;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+
+    .report-header-title h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+
+    .report-header-title p {
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    .report-meta {
+      background: #FAFAFA;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 1.25rem 2.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meta-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748B;
+    }
+
+    .meta-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #1E293B;
+    }
+
+    .report-body {
+      padding: 2rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #C62828;
+      border-bottom: 2px solid #FFEBEE;
+      padding-bottom: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Products table */
+    .products-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .products-table th {
+      background: #F8FAFC;
+      padding: 0.6rem 0.85rem;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748B;
+      border-bottom: 2px solid #E2E8F0;
+    }
+    .products-table td {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid #F1F5F9;
+      color: #334155;
+    }
+
+    /* Bait station grid */
+    .bait-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.5rem;
+    }
+    .bait-cell {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      padding: 0.5rem;
+      font-size: 0.75rem;
+    }
+    .bait-cell-num {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #C62828;
+    }
+    .bait-cell-loc { color: #64748B; margin: 2px 0; }
+    .bait-cell-act {
+      font-weight: 700;
+      font-size: 0.7rem;
+    }
+    .bait-cell-act.active { color: #C62828; }
+    .bait-cell-act.clear { color: #10B981; }
+
+    /* Signature area */
+    .signature-area {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    .signature-box {
+      flex: 1;
+      min-width: 200px;
+    }
+    .sig-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748B;
+      margin-bottom: 0.5rem;
+    }
+    .sig-image {
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      padding: 0.5rem;
+      background: #FAFAFA;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sig-image img {
+      max-height: 80px;
+      max-width: 100%;
+    }
+
+    /* Photos gallery */
+    .photos-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+    .photos-gallery img {
+      width: 100%;
+      height: 130px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #E2E8F0;
+    }
+
+    /* Report footer */
+    .report-footer {
+      background: #F8FAFC;
+      border-top: 1px solid #E2E8F0;
+      padding: 1.25rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+      color: #64748B;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .status-conducted { background: #ECFDF5; color: #10B981; }
+
+    .info-box {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 0.85rem;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    /* Loading and error states */
+    .loading-screen {
+      min-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      color: #64748B;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #E2E8F0;
+      border-top-color: #C62828;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media print {
+      body { background: white; }
+      .action-bar, .report-footer .print-hide { display: none !important; }
+      .report-wrapper { padding: 0; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-wrapper">
+    <div class="action-bar" id="action-bar">
+      <button class="btn btn-secondary" onclick="window.close()">✕ Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    </div>
+    <div id="report-output">
+      <div class="loading-screen">
+        <div class="spinner"></div>
+        <p>Loading report data...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="database.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const logId = params.get('logId');
+      const schedId = params.get('schedId');
+
+      // Wait for BucklerDB to initialize
+      setTimeout(() => {
+        renderReport(logId, schedId);
+      }, 300);
+    });
+
+    function renderReport(logId, schedId) {
+      const output = document.getElementById('report-output');
+
+      // Load data
+      const schedules = window.BucklerDB.get('schedules');
+      const logs = window.BucklerDB.get('operationLogs');
+      const clients = window.BucklerDB.get('clients');
+      const users = window.BucklerDB.get('users');
+      const items = window.BucklerDB.get('items');
+
+      let log = null;
+      let sch = null;
+
+      if (logId) {
+        log = logs.find(l => l.id === logId);
+        if (log) sch = schedules.find(s => s.id === log.scheduleId);
+      } else if (schedId) {
+        sch = schedules.find(s => s.id === schedId);
+        if (sch) log = logs.find(l => l.scheduleId === schedId);
+      }
+
+      if (!sch && !log) {
+        output.innerHTML = `
+          <div class="loading-screen">
+            <div style="font-size:3rem;">⚠️</div>
+            <h2 style="color:#1E293B; font-size:1.1rem; font-weight:700;">Report Not Found</h2>
+            <p>The requested visit log or schedule could not be found. Please check the link and try again.</p>
+          </div>`;
+        return;
+      }
+
+      const client = clients.find(c => c.id === (sch ? sch.clientId : log.clientId));
+      const clientName = client ? client.name : 'Unknown Client';
+
+      const tlIds = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(x => x.trim()) : [];
+      const tlNames = tlIds.map(id => {
+        const u = users.find(x => x.id === id);
+        return u ? u.name : 'Unknown';
+      }).join(', ') || 'Unassigned';
+
+      const dateStr = (log && log.dateConducted) || (sch && sch.date) || 'N/A';
+      const service = sch ? sch.service : 'N/A';
+      const region = sch ? sch.region : (client ? client.region : 'N/A');
+      const city = sch ? sch.city : (client ? client.city : 'N/A');
+
+      // Products consumed
+      let productsHTML = '<p style="color:#94A3B8; font-style:italic; font-size:0.85rem;">No products recorded.</p>';
+      if (log && log.itemsConsumed && log.itemsConsumed.length) {
+        productsHTML = `
+          <table class="products-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Item Code</th>
+                <th>Category</th>
+                <th style="text-align:right;">Qty Used</th>
+                <th>Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${log.itemsConsumed.map(consumed => {
+                const item = items.find(i => i.id === consumed.itemId);
+                return `<tr>
+                  <td><strong>${item ? item.name : 'Unknown'}</strong></td>
+                  <td><code>${item ? (item.itemCode || item.id) : '-'}</code></td>
+                  <td><span style="background:#F1F5F9; padding:1px 6px; border-radius:4px; font-size:0.72rem;">${item ? (item.category || '-') : '-'}</span></td>
+                  <td style="text-align:right; font-weight:700; color:#C62828;">${consumed.qty}</td>
+                  <td style="color:#64748B;">${item ? item.unit : '-'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+      }
+
+      // Bait stations
+      let baitHTML = '<p style="color:#94A3B8; font-style:italic; font-size:0.85rem;">No bait station audit recorded.</p>';
+      if (log && log.baitStationsAudit && log.baitStationsAudit.length) {
+        baitHTML = `<div class="bait-grid">
+          ${log.baitStationsAudit.map(b => {
+            const isActive = b.activity !== 'No Activity';
+            return `<div class="bait-cell">
+              <div class="bait-cell-num">#${b.number}</div>
+              <div class="bait-cell-loc">${b.location || 'N/A'}</div>
+              <div class="bait-cell-act ${isActive ? 'active' : 'clear'}">${b.activity}</div>
+              ${b.comments ? `<div style="font-size:0.65rem; color:#94A3B8; margin-top:2px;">${b.comments}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+
+      // Signature
+      let signatureHTML = '<div style="color:#94A3B8; font-style:italic; font-size:0.82rem;">No signature recorded.</div>';
+      if (log && log.clientSignature) {
+        signatureHTML = `<img src="${log.clientSignature}" style="max-height:80px; max-width:100%;" alt="Client Signature" />`;
+      }
+
+      // Photos
+      let photosHTML = '<p style="color:#94A3B8; font-style:italic; font-size:0.85rem;">No photos attached.</p>';
+      if (log && log.pictures && log.pictures.length) {
+        photosHTML = `<div class="photos-gallery">${log.pictures.map(p => `<img src="${p}" alt="Visit Photo" />`).join('')}</div>`;
+      }
+
+      const reportDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      output.innerHTML = `
+        <div class="report-card">
+          <!-- Header -->
+          <div class="report-header">
+            <div>
+              <img src="assets/logo-en.png" class="report-header-logo" alt="Buckler" />
+            </div>
+            <div class="report-header-title" style="text-align:right;">
+              <h1>Operation Visit Report</h1>
+              <p>${service.charAt(0).toUpperCase() + service.slice(1)} — ${dateStr}</p>
+              <span class="status-badge status-conducted" style="margin-top:0.4rem; display:inline-block;">✓ Conducted</span>
+            </div>
+          </div>
+
+          <!-- Meta grid -->
+          <div class="report-meta">
+            <div class="meta-item">
+              <span class="meta-label">Client</span>
+              <span class="meta-value">${clientName}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Service</span>
+              <span class="meta-value" style="text-transform:capitalize;">${service}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Date Conducted</span>
+              <span class="meta-value">${dateStr}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Team Leader</span>
+              <span class="meta-value">${tlNames}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Region / City</span>
+              <span class="meta-value">${region} — ${city}</span>
+            </div>
+            ${log && log.timeIn ? `
+            <div class="meta-item">
+              <span class="meta-label">Time In / Out</span>
+              <span class="meta-value">${log.timeIn} – ${log.timeOut || 'N/A'} (${log.timeSpent || 'N/A'})</span>
+            </div>` : ''}
+            ${log && log.geoLocation ? `
+            <div class="meta-item">
+              <span class="meta-label">GPS Location</span>
+              <span class="meta-value"><a href="https://www.google.com/maps?q=${encodeURIComponent(log.geoLocation)}" target="_blank" style="color:#C62828;">${log.geoLocation}</a></span>
+            </div>` : ''}
+          </div>
+
+          <!-- Body -->
+          <div class="report-body">
+
+            <!-- Comments / Observations -->
+            ${log && log.comments ? `
+            <div>
+              <div class="section-title">Field Observations & Comments</div>
+              <div class="info-box">${log.comments}</div>
+            </div>` : ''}
+
+            <!-- Products Consumed -->
+            <div>
+              <div class="section-title">Products & Materials Used</div>
+              ${productsHTML}
+            </div>
+
+            <!-- Bait Station Audit -->
+            <div>
+              <div class="section-title">Bait Station Audit</div>
+              ${baitHTML}
+            </div>
+
+            <!-- Visit Photos -->
+            <div>
+              <div class="section-title">Visit Photos</div>
+              ${photosHTML}
+            </div>
+
+            <!-- Client Review -->
+            <div>
+              <div class="section-title">Client Review & Sign-Off</div>
+              <div class="signature-area">
+                ${log && log.clientComments ? `
+                <div class="signature-box">
+                  <div class="sig-label">Client Feedback</div>
+                  <div class="info-box">${log.clientComments}</div>
+                </div>` : ''}
+                <div class="signature-box">
+                  <div class="sig-label">Client Signature</div>
+                  <div class="sig-image">${signatureHTML}</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div class="report-footer">
+            <div>
+              <strong>Buckler Pest Control — Iraq Operations</strong><br/>
+              Generated: ${reportDate}
+            </div>
+            <div class="print-hide" style="display:flex; gap:0.5rem;">
+              <a href="mailto:?subject=Visit Report - ${clientName}&body=Please find the visit report at: ${encodeURIComponent(window.location.href)}" style="font-size:0.75rem; color:#C62828; text-decoration:none; font-weight:700;">📧 Share via Email</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

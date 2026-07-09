@@ -4292,7 +4292,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Operation Log Modal
+  // Helper: check if the current TL has checked in today
+  function isTLCheckedIn() {
+    if (!state.currentUser || state.currentUser.role.toLowerCase() !== 'team leader') return true;
+    const todayStr = formatDateLocal(new Date());
+    const attendance = window.BucklerDB.get('attendanceLog');
+    const todayRecord = attendance.find(a => a.teamLeaderId === state.currentUser.id && a.date === todayStr);
+    return !!(todayRecord && !todayRecord.checkOut);
+  }
+
   function openOperationLogModal(scheduleId) {
+    // GATE: Team Leaders must check in before logging any visit
+    if (state.currentUser && state.currentUser.role.toLowerCase() === 'team leader') {
+      if (!isTLCheckedIn()) {
+        showToast('⛔ You must Check-In first before logging a visit. Click "Start Day (Check-In)" above.', 'error');
+        // Scroll shift widget into view
+        const widget = document.getElementById('tl-shift-widget');
+        if (widget) widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
     state.editingRecord = { entity: 'operationLogsSubmit', id: scheduleId };
     const sch = window.BucklerDB.get('schedules').find(s => s.id === scheduleId);
     const client = window.BucklerDB.get('clients').find(c => c.id === sch.clientId);
@@ -4838,6 +4858,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showModal('Operation Visit Log Details', html, false);
     bindEntityClicks(document.getElementById('log-details-modal'));
+
+    // Inject "Share Report" button into the modal footer
+    const cancelBtn = document.getElementById('modal-cancel-btn');
+    if (cancelBtn && log) {
+      const reportUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client-report.html?logId=${log.id}`;
+      const shareBtn = document.createElement('button');
+      shareBtn.className = 'btn btn-secondary';
+      shareBtn.style.marginRight = 'auto';
+      shareBtn.innerHTML = '📤 Full Report';
+      shareBtn.title = 'Open shareable visit report in a new tab';
+      shareBtn.onclick = () => window.open(reportUrl, '_blank');
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn btn-secondary';
+      copyBtn.innerHTML = '🔗 Copy Link';
+      copyBtn.title = 'Copy report link to clipboard';
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(reportUrl).then(() => showToast('Report link copied to clipboard', 'success'));
+      };
+      const footer = cancelBtn.parentElement;
+      if (footer) {
+        footer.insertBefore(shareBtn, cancelBtn);
+        footer.insertBefore(copyBtn, cancelBtn);
+      }
+    }
   }
 
   // Handle forms submit
@@ -7503,7 +7547,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let actionHTML = '';
 
     if (!todayRecord) {
-      statusHTML = `<span class="shift-status-pill shift-status-inactive">🔴 Off Duty</span>`;
+      statusHTML = `<span class="shift-status-pill shift-status-inactive">🔴 Off Duty</span>
+                    <span style="font-size:0.75rem; color:#FCA5A5; font-weight:600;">⚠️ Check-In required before logging visits</span>`;
       actionHTML = `<button type="button" class="btn btn-shift-checkin" id="btn-shift-start">Start Day (Check-In)</button>`;
     } else if (!todayRecord.checkOut) {
       statusHTML = `<span class="shift-status-pill shift-status-active">🟢 Active Duty</span>
