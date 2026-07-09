@@ -4886,6 +4886,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Handle forms submit
   function handleModalSubmit(entity, id) {
+
+    // ── SUPPLIERS ─────────────────────────────────────────────
+    if (entity === 'suppliers') {
+      const nameEl    = document.getElementById('sup-modal-name');
+      const catEl     = document.getElementById('sup-modal-category');
+      if (!nameEl || !nameEl.value.trim()) {
+        showToast('Supplier name is required.', 'error');
+        return;
+      }
+      const checkedProducts = Array.from(
+        document.querySelectorAll('input[name="sup-product-cb"]:checked')
+      ).map(cb => cb.value);
+
+      const fields = {
+        name:          nameEl.value.trim(),
+        category:      catEl ? catEl.value : 'Local',
+        country:       (document.getElementById('sup-modal-country')  || {}).value?.trim() || '',
+        contactPerson: (document.getElementById('sup-modal-contact')  || {}).value?.trim() || '',
+        phone:         (document.getElementById('sup-modal-phone')    || {}).value?.trim() || '',
+        email:         (document.getElementById('sup-modal-email')    || {}).value?.trim() || '',
+        notes:         (document.getElementById('sup-modal-notes')    || {}).value?.trim() || '',
+        productIds:    checkedProducts
+      };
+
+      // Ensure array exists in storage
+      const data = window.BucklerDB.getData();
+      if (!data.suppliers) { data.suppliers = []; window.BucklerDB.saveData(data); }
+
+      if (id) {
+        window.BucklerDB.update('suppliers', id, fields);
+        showToast('Supplier updated ✓', 'success');
+      } else {
+        window.BucklerDB.insert('suppliers', fields);
+        showToast('Supplier added ✓', 'success');
+      }
+      els.modalBackdrop.style.display = 'none';
+      state.editingRecord = null;
+      renderSuppliers();
+      return;
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (entity === 'schedules') {
       const form = document.getElementById('schedule-form');
       if (!form.checkValidity()) { form.reportValidity(); return; }
@@ -8217,10 +8259,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // SUPPLIERS MANAGEMENT
   // ============================================================
   function renderSuppliers() {
-    // Initialize suppliers in DB if not present
-    if (!window.BucklerDB.get('suppliers')) {
-      window.BucklerDB.data.suppliers = [];
-      window.BucklerDB.save();
+    // Ensure suppliers array exists in storage
+    const _dbData = window.BucklerDB.getData();
+    if (!_dbData.suppliers) {
+      _dbData.suppliers = [];
+      window.BucklerDB.saveData(_dbData);
     }
 
     const suppliers = window.BucklerDB.get('suppliers') || [];
@@ -8242,7 +8285,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('suppliers-table-body');
     if (!tbody) return;
 
-    const canManage = hasEditPermission('items') || state.currentUser.role.toLowerCase() === 'gm';
+    const userRole = (state.currentUser.role || '').toLowerCase();
+    const canManage = ['gm', 'tech manager', 'admin coordinator', 'operations manager'].includes(userRole);
 
     tbody.innerHTML = filtered.length ? filtered.map(s => {
       const suppliedItems = (s.productIds || []).map(pid => {
