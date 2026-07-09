@@ -8618,17 +8618,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 2000);
   renderVisitTypeKPIs(); // initial call
 
-  // Also handle suppliers modal save via the save button override
-  const origSaveBtn = document.getElementById('modal-save-btn');
-  if (origSaveBtn) {
-    const originalSaveBtnClickHandlers = origSaveBtn.cloneNode(true);
-    origSaveBtn.addEventListener('click', (e) => {
-      if (state.editingRecord && state.editingRecord.entity === 'suppliers') {
-        e.stopImmediatePropagation();
-        handleModalSubmitWithSuppliers('suppliers', state.editingRecord.id);
-      }
-    }, true); // capture phase to intercept before existing handlers
-  }
+
+
 
 });
 
