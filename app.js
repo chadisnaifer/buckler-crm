@@ -8258,35 +8258,38 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   // SUPPLIERS MANAGEMENT
   // ============================================================
-  function renderSuppliers() {
-    // Ensure suppliers array exists in storage
-    const _dbData = window.BucklerDB.getData();
-    if (!_dbData.suppliers) {
-      _dbData.suppliers = [];
-      window.BucklerDB.saveData(_dbData);
+  function _ensureSuppliersArray() {
+    const d = window.BucklerDB.getData();
+    if (!Array.isArray(d.suppliers)) {
+      d.suppliers = [];
+      window.BucklerDB.saveData(d);
     }
+  }
+
+  function renderSuppliers() {
+    _ensureSuppliersArray();
 
     const suppliers = window.BucklerDB.get('suppliers') || [];
-    const items = window.BucklerDB.get('items') || [];
-    const searchQ = (document.getElementById('search-supplier') || {}).value?.toLowerCase() || '';
+    const items     = window.BucklerDB.get('items')     || [];
+    const searchQ   = (document.getElementById('search-supplier')          || {}).value?.toLowerCase() || '';
     const catFilter = (document.getElementById('filter-supplier-category') || {}).value || 'All';
 
-    let filtered = suppliers;
+    let filtered = suppliers.slice();
     if (catFilter !== 'All') filtered = filtered.filter(s => s.category === catFilter);
-    if (searchQ) filtered = filtered.filter(s => s.name.toLowerCase().includes(searchQ) || (s.country || '').toLowerCase().includes(searchQ) || (s.contactPerson || '').toLowerCase().includes(searchQ));
+    if (searchQ)             filtered = filtered.filter(s =>
+      s.name.toLowerCase().includes(searchQ) ||
+      (s.country       || '').toLowerCase().includes(searchQ) ||
+      (s.contactPerson || '').toLowerCase().includes(searchQ)
+    );
 
-    const localCount = suppliers.filter(s => s.category === 'Local').length;
-    const intlCount = suppliers.filter(s => s.category === 'International').length;
+    // Update stat counters
     const localEl = document.getElementById('stat-suppliers-local');
-    const intlEl = document.getElementById('stat-suppliers-intl');
-    if (localEl) localEl.textContent = localCount;
-    if (intlEl) intlEl.textContent = intlCount;
+    const intlEl  = document.getElementById('stat-suppliers-intl');
+    if (localEl) localEl.textContent = suppliers.filter(s => s.category === 'Local').length;
+    if (intlEl)  intlEl.textContent  = suppliers.filter(s => s.category === 'International').length;
 
     const tbody = document.getElementById('suppliers-table-body');
     if (!tbody) return;
-
-    const userRole = (state.currentUser.role || '').toLowerCase();
-    const canManage = ['gm', 'tech manager', 'admin coordinator', 'operations manager'].includes(userRole);
 
     tbody.innerHTML = filtered.length ? filtered.map(s => {
       const suppliedItems = (s.productIds || []).map(pid => {
@@ -8295,8 +8298,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }).filter(Boolean);
 
       const catBadge = s.category === 'Local'
-        ? `<span style="background:#EFF6FF; color:#3B82F6; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:4px; text-transform:uppercase;">🏢 Local</span>`
-        : `<span style="background:#ECFDF5; color:#10B981; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:4px; text-transform:uppercase;">🌍 Intl</span>`;
+        ? `<span style="background:#EFF6FF;color:#3B82F6;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">🏢 Local</span>`
+        : `<span style="background:#ECFDF5;color:#10B981;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">🌍 International</span>`;
+
+      const itemTags = suppliedItems.length
+        ? suppliedItems.map(n => `<span style="background:#F8FAFC;border:1px solid var(--border-color);padding:1px 6px;border-radius:3px;margin:1px;display:inline-block;font-size:0.75rem;">${n}</span>`).join('')
+        : `<span style="color:var(--text-muted);font-size:0.78rem;">None allocated</span>`;
 
       return `
         <tr>
@@ -8304,73 +8311,86 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${catBadge}</td>
           <td>${s.country || '-'}</td>
           <td>${s.contactPerson || '-'}</td>
-          <td style="font-size:0.8rem;">${s.phone || ''} ${s.email ? `<br/><span style="color:var(--text-muted);">${s.email}</span>` : ''}</td>
-          <td style="font-size:0.78rem; color:var(--text-medium);">
-            ${suppliedItems.length ? suppliedItems.map(n => `<span style="background:#F8FAFC; border:1px solid var(--border-color); padding:1px 5px; border-radius:3px; margin:1px; display:inline-block;">${n}</span>`).join('') : '<span style="color:var(--text-muted);">None</span>'}
-          </td>
+          <td style="font-size:0.8rem;">${s.phone || '-'}${s.email ? `<br/><span style="color:var(--text-muted);">${s.email}</span>` : ''}</td>
+          <td style="max-width:220px;">${itemTags}</td>
           <td>
             <div class="table-cell-actions">
-              ${canManage ? `
-                <button class="btn btn-secondary btn-sm edit-supplier-btn" data-id="${s.id}">Edit</button>
-                <button class="btn btn-danger btn-sm delete-supplier-btn" data-id="${s.id}">Delete</button>
-              ` : '-'}
+              <button class="btn btn-secondary btn-sm edit-supplier-btn" data-id="${s.id}">Edit</button>
+              <button class="btn btn-danger btn-sm delete-supplier-btn" data-id="${s.id}">Delete</button>
             </div>
           </td>
         </tr>
       `;
-    }).join('') : `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No suppliers found.</td></tr>`;
+    }).join('') : `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No suppliers found. Click "Add Supplier" to create one.</td></tr>`;
 
-    document.querySelectorAll('.edit-supplier-btn').forEach(b => {
+    // Bind Edit buttons
+    tbody.querySelectorAll('.edit-supplier-btn').forEach(b => {
       b.addEventListener('click', () => openSupplierModal(b.getAttribute('data-id')));
     });
-    document.querySelectorAll('.delete-supplier-btn').forEach(b => {
+
+    // Bind Delete buttons
+    tbody.querySelectorAll('.delete-supplier-btn').forEach(b => {
       b.addEventListener('click', () => {
-        if (confirm('Delete this supplier?')) {
-          window.BucklerDB.delete('suppliers', b.getAttribute('data-id'));
+        const sid = b.getAttribute('data-id');
+        const sup = (window.BucklerDB.get('suppliers') || []).find(s => s.id === sid);
+        if (confirm(`Delete supplier "${sup ? sup.name : ''}"?`)) {
+          window.BucklerDB.delete('suppliers', sid);
           showToast('Supplier deleted', 'success');
           renderSuppliers();
         }
       });
     });
 
-    // Wire up filters
+    // Wire filters (once)
     const searchEl = document.getElementById('search-supplier');
-    const catEl = document.getElementById('filter-supplier-category');
-    if (searchEl && !searchEl._bound) { searchEl._bound = true; searchEl.addEventListener('input', renderSuppliers); }
-    if (catEl && !catEl._bound) { catEl._bound = true; catEl.addEventListener('change', renderSuppliers); }
+    const catEl    = document.getElementById('filter-supplier-category');
+    if (searchEl && !searchEl._bound) { searchEl._bound = true; searchEl.addEventListener('input',  renderSuppliers); }
+    if (catEl    && !catEl._bound)    { catEl._bound    = true; catEl.addEventListener('change', renderSuppliers); }
 
-    // Wire Add Supplier button
+    // Wire Add button (once)
     const addBtn = document.getElementById('btn-add-supplier');
     if (addBtn && !addBtn._bound) { addBtn._bound = true; addBtn.addEventListener('click', () => openSupplierModal()); }
   }
 
   function openSupplierModal(id = null) {
-    const isEdit = !!id;
-    state.editingRecord = { entity: 'suppliers', id: id };
+    _ensureSuppliersArray();
+    const isEdit   = !!id;
     const supplier = isEdit ? (window.BucklerDB.get('suppliers') || []).find(s => s.id === id) : null;
-    const items = window.BucklerDB.get('items') || [];
+    const items    = (window.BucklerDB.get('items') || []).sort((a, b) => a.name.localeCompare(b.name));
+
+    state.editingRecord = { entity: 'suppliers', id: id };
 
     const currentProductIds = supplier ? (supplier.productIds || []) : [];
 
-    const itemsCheckboxes = items.map(item => `
-      <label style="display:flex; align-items:center; gap:0.5rem; padding:0.4rem; border-radius:4px; cursor:pointer; font-size:0.82rem; hover:background:#F8FAFC;">
-        <input type="checkbox" name="sup-product-cb" value="${item.id}" ${currentProductIds.includes(item.id) ? 'checked' : ''} style="width:15px; height:15px;">
-        ${item.name} <span style="color:var(--text-muted); font-size:0.73rem;">(${item.itemCode || item.id})</span>
-      </label>
-    `).join('');
+    // Group items by category for easier selection
+    const categories = [...new Set(items.map(i => i.category || 'Uncategorized'))].sort();
+    const itemsHTML = categories.map(cat => {
+      const catItems = items.filter(i => (i.category || 'Uncategorized') === cat);
+      return `
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;color:#94A3B8;letter-spacing:0.05em;padding:4px 6px;background:#F1F5F9;border-radius:4px;margin-bottom:4px;">${cat}</div>
+          ${catItems.map(item => `
+            <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.4rem;border-radius:4px;cursor:pointer;font-size:0.82rem;transition:background 0.15s;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" name="sup-product-cb" value="${item.id}" ${currentProductIds.includes(item.id) ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--primary-red);">
+              <span style="flex:1;color:var(--text-dark);">${item.name}</span>
+              <span style="color:var(--text-muted);font-size:0.72rem;">${item.itemCode || ''} · ${item.unit || ''}</span>
+            </label>
+          `).join('')}
+        </div>`;
+    }).join('') || '<p style="color:var(--text-muted);font-size:0.82rem;padding:0.5rem;">No products in the system yet.</p>';
 
     const html = `
-      <form id="supplier-form">
+      <form id="supplier-form" onsubmit="event.preventDefault();">
         <div class="form-group row-split">
           <div>
-            <label for="sup-modal-name">Supplier Name *</label>
+            <label for="sup-modal-name">Supplier Name <span style="color:var(--primary-red);">*</span></label>
             <input type="text" id="sup-modal-name" class="form-control" value="${supplier ? supplier.name : ''}" required placeholder="e.g. Al-Amin Trading Co.">
           </div>
           <div>
-            <label for="sup-modal-category">Category *</label>
+            <label for="sup-modal-category">Category <span style="color:var(--primary-red);">*</span></label>
             <select id="sup-modal-category" class="form-control" required>
-              <option value="Local" ${!supplier || supplier.category === 'Local' ? 'selected' : ''}>🏢 Local</option>
-              <option value="International" ${supplier && supplier.category === 'International' ? 'selected' : ''}>🌍 International</option>
+              <option value="Local"         ${!supplier || supplier.category === 'Local'          ? 'selected' : ''}>🏢 Local</option>
+              <option value="International" ${supplier  && supplier.category === 'International'  ? 'selected' : ''}>🌍 International</option>
             </select>
           </div>
         </div>
@@ -8381,7 +8401,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div>
             <label for="sup-modal-contact">Contact Person</label>
-            <input type="text" id="sup-modal-contact" class="form-control" value="${supplier ? (supplier.contactPerson || '') : ''}" placeholder="Contact name">
+            <input type="text" id="sup-modal-contact" class="form-control" value="${supplier ? (supplier.contactPerson || '') : ''}" placeholder="Full name">
           </div>
         </div>
         <div class="form-group row-split">
@@ -8396,60 +8416,34 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-group">
           <label for="sup-modal-notes">Notes</label>
-          <textarea id="sup-modal-notes" class="form-control" placeholder="Additional notes..." style="min-height:60px;">${supplier ? (supplier.notes || '') : ''}</textarea>
+          <textarea id="sup-modal-notes" class="form-control" placeholder="Additional notes, terms, delivery schedule..." style="min-height:60px;">${supplier ? (supplier.notes || '') : ''}</textarea>
         </div>
         <div class="form-group">
-          <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:block;">Allocated Products / Items</label>
-          <div style="max-height:180px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; padding:0.5rem; display:flex; flex-direction:column; gap:0.15rem; background:#FAFAFA;">
-            ${itemsCheckboxes || '<p style="font-size:0.8rem; color:var(--text-muted); padding:0.5rem;">No products registered yet.</p>'}
+          <label style="font-weight:700;font-size:0.82rem;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;">
+            <span>Allocated Items / Products</span>
+            <span id="sup-selected-count" style="font-size:0.72rem;background:var(--primary-red);color:white;padding:1px 8px;border-radius:10px;">${currentProductIds.length} selected</span>
+          </label>
+          <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;padding:0.5rem;background:#FAFAFA;">
+            ${itemsHTML}
           </div>
         </div>
-      </form>
-    `;
+      </form>`;
 
-    showModal(isEdit ? 'Edit Supplier Profile' : 'Add New Supplier', html);
+    showModal(isEdit ? 'Edit Supplier Profile' : 'Add New Supplier', html, true, 'modal-lg');
+
+    // Live counter for selected items
+    setTimeout(() => {
+      const cbs = document.querySelectorAll('input[name="sup-product-cb"]');
+      const counter = document.getElementById('sup-selected-count');
+      cbs.forEach(cb => {
+        cb.addEventListener('change', () => {
+          const cnt = document.querySelectorAll('input[name="sup-product-cb"]:checked').length;
+          if (counter) counter.textContent = `${cnt} selected`;
+        });
+      });
+    }, 50);
   }
 
-  // Handle supplier form submission
-  const _origHandleModalSubmit = handleModalSubmit;
-  function handleModalSubmitWithSuppliers(entity, id) {
-    if (entity === 'suppliers') {
-      const form = document.getElementById('supplier-form');
-      if (!form || !form.checkValidity()) { form && form.reportValidity(); return; }
-
-      const checkedProducts = Array.from(document.querySelectorAll('input[name="sup-product-cb"]:checked')).map(cb => cb.value);
-
-      const fields = {
-        name: document.getElementById('sup-modal-name').value.trim(),
-        category: document.getElementById('sup-modal-category').value,
-        country: document.getElementById('sup-modal-country').value.trim(),
-        contactPerson: document.getElementById('sup-modal-contact').value.trim(),
-        phone: document.getElementById('sup-modal-phone').value.trim(),
-        email: document.getElementById('sup-modal-email').value.trim(),
-        notes: document.getElementById('sup-modal-notes').value.trim(),
-        productIds: checkedProducts
-      };
-
-      if (!window.BucklerDB.get('suppliers')) {
-        window.BucklerDB.data.suppliers = [];
-      }
-
-      if (id) {
-        window.BucklerDB.update('suppliers', id, fields);
-        showToast('Supplier updated', 'success');
-      } else {
-        window.BucklerDB.insert('suppliers', fields);
-        showToast('Supplier added', 'success');
-      }
-      els.modalBackdrop.style.display = 'none';
-      renderSuppliers();
-      return;
-    }
-    _origHandleModalSubmit(entity, id);
-  }
-
-  // Override the modal save button to handle suppliers
-  const _origSetupModalEvents = setupModalEvents;
 
   // ============================================================
   // SIGN-OUT / SWITCH USER BUTTON
