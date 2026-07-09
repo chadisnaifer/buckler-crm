@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (role === 'team leader') {
-      return tabId === 'schedules' || tabId === 'complaints' || tabId === 'messages';
+      return ['schedules', 'complaints', 'messages', 'suppliers'].includes(tabId);
     }
     return true;
   }
@@ -599,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto-redirect if on a blocked tab
     if (!hasAccessPermission(state.activeTab)) {
-      const allTabs = ['dashboard', 'schedules', 'clients', 'items', 'complaints', 'messages', 'uv-sales', 'reports', 'users'];
+      const allTabs = ['dashboard', 'schedules', 'clients', 'items', 'suppliers', 'complaints', 'messages', 'uv-sales', 'reports', 'users'];
       const allowed = allTabs.find(t => hasAccessPermission(t));
       if (allowed) {
         switchTab(allowed);
@@ -614,12 +614,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Toggle main Add / Action buttons based on edit permissions
     const editButtons = {
-      'schedules': els.btnAddSchedule,
-      'clients': els.btnAddClient,
-      'items': els.btnAddItem,
+      'schedules':  els.btnAddSchedule,
+      'clients':    els.btnAddClient,
+      'items':      els.btnAddItem,
       'complaints': els.btnAddComplaint,
-      'users': els.btnAddUser
+      'users':      els.btnAddUser
     };
+
+    // Show/hide the Add Supplier button based on role
+    const btnAddSupplier = document.getElementById('btn-add-supplier');
+    if (btnAddSupplier) {
+      const role = state.currentUser.role.toLowerCase();
+      const canManageSuppliers = !['team leader', 'tech supervisor'].includes(role);
+      btnAddSupplier.style.display = canManageSuppliers ? 'inline-flex' : 'none';
+    }
 
     Object.keys(editButtons).forEach(tab => {
       const btn = editButtons[tab];
