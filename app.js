@@ -321,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state.currentUser) return true;
     const role = state.currentUser.role.toLowerCase();
     if (role === 'gm') return true;
+    if (tabId === 'suppliers') return true; // Allow all roles to manage suppliers
     
     if (state.currentUser.permissions && state.currentUser.permissions[tabId] !== undefined) {
       return state.currentUser.permissions[tabId] === 'edit';
@@ -687,8 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show/hide the Add Supplier button based on role
     const btnAddSupplier = document.getElementById('btn-add-supplier');
     if (btnAddSupplier) {
-      const role = state.currentUser.role.toLowerCase();
-      const canManageSuppliers = !['team leader', 'tech supervisor'].includes(role);
+      const canManageSuppliers = hasEditPermission('suppliers');
       btnAddSupplier.style.display = canManageSuppliers ? 'inline-flex' : 'none';
     }
 
@@ -1301,7 +1301,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const SERVICE_COLORS = {
     'pest control': '#EF4444', 'termite treatment': '#8B5CF6', 'weed removal': '#10B981',
     'animal control': '#F59E0B', 'bird control': '#3B82F6', 'poultry disinfection': '#EC4899',
-    'landscaping': '#14B8A6', 'cleaning': '#06B6D4', 'maintenance': '#F97316', 'products sales': '#6B7280'
+    'landscaping': '#14B8A6',
+    'landscaping (design)': '#14B8A6',
+    'landscaping (gardening)': '#059669',
+    'landscaping (maintenance)': '#0284C7',
+    'cleaning': '#06B6D4', 'maintenance': '#F97316', 'products sales': '#6B7280'
   };
 
   function renderActivityFeed(logs, schedules) {
@@ -3064,11 +3068,19 @@ document.addEventListener('DOMContentLoaded', () => {
         </select>
       ` : `<span style="font-size:0.75rem; font-weight:700; color:var(--text-medium); background:#F1F5F9; padding:2px 8px; border-radius:4px; text-transform:uppercase;">${c.sector || 'N/A'}</span>`;
 
+      const servicesInfo = (c.contractTypes || []).map(ct => {
+        const v = c.serviceVisits && c.serviceVisits[ct] !== undefined ? c.serviceVisits[ct] : '';
+        return `<span style="font-size:0.7rem; background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; padding:1px 5px; border-radius:3px; margin-right:3px; display:inline-block; white-space:nowrap; margin-top:2px;">${ct}${v !== '' ? ` (${v})` : ''}</span>`;
+      }).join('') || '<span style="color:var(--text-muted); font-size:0.72rem;">No services</span>';
+
       return `
         <tr>
           <td><code>${c.clientCode || c.id}</code></td>
           <!-- Make client name actionable -->
-          <td><strong><a href="#" class="client-click" data-id="${c.id}" style="color:var(--primary-red); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary-red);">${c.name}</a></strong></td>
+          <td>
+            <strong><a href="#" class="client-click" data-id="${c.id}" style="color:var(--primary-red); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary-red);">${c.name}</a></strong>
+            <div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:2px; max-width:300px;">${servicesInfo}</div>
+          </td>
           <td>${sectorCell}</td>
           <td>${c.contact}</td>
           <td>
@@ -4174,21 +4186,35 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-group">
           <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
-            <span>Contract Types / Services</span>
-            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">Select all that apply</span>
+            <span>Contract Types / Services &amp; Allocated Monthly Visits</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">Specify target visits per active service</span>
           </label>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:0.4rem;padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:#FAFAFA;">
-            ${['Pest Control','Weed Removal','Termite Treatment','Animal Control','Bird Control','Poultry Halls','Landscaping','Cleaning','Maintenance'].map(ct => `
-              <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;cursor:pointer;padding:0.3rem 0.4rem;border-radius:4px;">
-                <input type="checkbox" name="cli-contract-type-cb" value="${ct}" ${(client && (client.contractTypes||[]).includes(ct)) ? 'checked' : ''} style="accent-color:var(--primary-red);width:14px;height:14px;" ${!canEdit ? 'disabled' : ''}>
-                <span>${ct}</span>
-              </label>
-            `).join('')}
+          <div style="display:flex; flex-direction:column; gap:0.4rem; padding:0.75rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+            ${[
+              'Pest Control', 'Weed Removal', 'Termite Treatment', 'Animal Control', 'Bird Control', 
+              'Poultry Halls', 'Landscaping (Design)', 'Landscaping (Gardening)', 'Landscaping (Maintenance)', 
+              'Cleaning', 'Maintenance'
+            ].map(ct => {
+              const isChecked = client && (client.contractTypes || []).includes(ct);
+              const allocatedVal = client && client.serviceVisits && client.serviceVisits[ct] !== undefined ? client.serviceVisits[ct] : '';
+              return `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:0.3rem 0.5rem; border-radius:4px; transition:background 0.15s;" onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='transparent'">
+                  <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; cursor:pointer; margin:0; flex:1;">
+                    <input type="checkbox" name="cli-contract-type-cb" value="${ct}" ${isChecked ? 'checked' : ''} style="accent-color:var(--primary-red); width:14px; height:14px;" ${!canEdit ? 'disabled' : ''}>
+                    <span style="color:var(--text-dark); font-weight:600;">${ct}</span>
+                  </label>
+                  <div style="display:flex; align-items:center; gap:0.25rem;">
+                    <span style="font-size:0.75rem; color:var(--text-muted);">visits:</span>
+                    <input type="number" class="cli-service-visits-input form-control" data-service="${ct}" value="${allocatedVal}" placeholder="e.g. 2" style="width:70px; padding:0.2rem 0.4rem; height:28px; font-size:0.8rem; margin:0;" ${!isChecked || !canEdit ? 'disabled' : ''}>
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
         <div class="form-group">
-          <label for="cli-modal-monthly-visits">Monthly Visits Target</label>
-          <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || '') : ''}" placeholder="e.g. 4" ${!canEdit ? 'disabled' : ''}>
+          <label for="cli-modal-monthly-visits">Total Monthly Visits Target (Calculated)</label>
+          <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || 0) : 0}" readonly disabled style="background:#F1F5F9; color:var(--text-muted); font-weight:700;">
         </div>
         ${isEdit ? (() => {
           const logs = window.BucklerDB.get('operationLogs').filter(l => l.clientId === id);
@@ -4240,6 +4266,35 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     showModal(isEdit ? 'Edit Client Record' : 'Register New Client', html, canEdit);
+
+    // Setup real-time target visits summation and checkbox coupling
+    setTimeout(() => {
+      const visitInputs = document.querySelectorAll('.cli-service-visits-input');
+      const totalInput = document.getElementById('cli-modal-monthly-visits');
+      const updateClientTotalVisits = () => {
+        let sum = 0;
+        visitInputs.forEach(inp => {
+          if (!inp.disabled) {
+            sum += parseInt(inp.value) || 0;
+          }
+        });
+        if (totalInput) totalInput.value = sum;
+      };
+      visitInputs.forEach(inp => {
+        inp.addEventListener('input', updateClientTotalVisits);
+        inp.addEventListener('change', updateClientTotalVisits);
+      });
+      document.querySelectorAll('input[name="cli-contract-type-cb"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const inp = cb.closest('div').querySelector('.cli-service-visits-input');
+          if (inp) {
+            inp.disabled = !cb.checked;
+            if (!cb.checked) inp.value = '';
+          }
+          updateClientTotalVisits();
+        });
+      });
+    }, 50);
 
     const rSelect = document.getElementById('cli-modal-region');
     const cSelect = document.getElementById('cli-modal-city');
@@ -5246,6 +5301,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('client-form');
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
+      const selectedContracts = Array.from(document.querySelectorAll('input[name="cli-contract-type-cb"]:checked')).map(cb => cb.value);
+      const serviceVisits = {};
+      let totalMonthlyVisits = 0;
+      
+      selectedContracts.forEach(ct => {
+        const inputEl = document.querySelector(`.cli-service-visits-input[data-service="${ct}"]`);
+        const val = inputEl ? parseInt(inputEl.value) || 0 : 0;
+        serviceVisits[ct] = val;
+        totalMonthlyVisits += val;
+      });
+
       const fields = {
         clientCode: document.getElementById('cli-modal-code').value,
         name: document.getElementById('cli-modal-name').value,
@@ -5258,8 +5324,9 @@ document.addEventListener('DOMContentLoaded', () => {
         address: document.getElementById('cli-modal-address').value,
         lat: document.getElementById('cli-modal-lat').value !== '' ? parseFloat(document.getElementById('cli-modal-lat').value) : null,
         lng: document.getElementById('cli-modal-lng').value !== '' ? parseFloat(document.getElementById('cli-modal-lng').value) : null,
-        monthlyVisits: document.getElementById('cli-modal-monthly-visits') ? parseInt(document.getElementById('cli-modal-monthly-visits').value) || 0 : 0,
-        contractTypes: Array.from(document.querySelectorAll('input[name="cli-contract-type-cb"]:checked')).map(cb => cb.value)
+        monthlyVisits: totalMonthlyVisits,
+        contractTypes: selectedContracts,
+        serviceVisits: serviceVisits
       };
 
       if (id) {
@@ -7143,7 +7210,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <span><strong>Client Code:</strong> ${client.clientCode || client.id}</span>
           <span><strong>Business Sector:</strong> ${client.sector}</span>
           <span><strong>Region / City:</strong> ${client.region} / ${client.city}</span>
-          <span><strong>Contract Types:</strong> ${(client.contractTypes && client.contractTypes.length) ? client.contractTypes.join(', ') : 'N/A'}</span>
+          <span><strong>Contract Types:</strong> ${(client.contractTypes && client.contractTypes.length) ? client.contractTypes.map(ct => {
+            const v = client.serviceVisits && client.serviceVisits[ct] !== undefined ? client.serviceVisits[ct] : '';
+            return `${ct}${v !== '' ? ` (${v} visits/mo)` : ''}`;
+          }).join(', ') : 'N/A'}</span>
           <span><strong>Monthly Target Visits:</strong> ${client.monthlyVisits || 0} visits</span>
         </div>
         
@@ -7412,7 +7482,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>`;
         }).join('');
 
-        const cTypes = (c.contractTypes && c.contractTypes.length) ? c.contractTypes.join(', ') : 'N/A';
+        const cTypes = (c.contractTypes && c.contractTypes.length) ? c.contractTypes.map(ct => {
+          const v = c.serviceVisits && c.serviceVisits[ct] !== undefined ? c.serviceVisits[ct] : '';
+          return `${ct}${v !== '' ? ` (${v} visits/mo)` : ''}`;
+        }).join(', ') : 'N/A';
         const section = document.createElement('div');
         section.innerHTML = `
           <div style="margin-top:2rem;border-top:3px dashed var(--border-color);padding-top:2rem;">

@@ -23,7 +23,9 @@ const DEFAULT_DATA = {
     'animal control',
     'bird control',
     'poultry disinfection',
-    'landscaping',
+    'landscaping (design)',
+    'landscaping (gardening)',
+    'landscaping (maintenance)',
     'cleaning',
     'maintenance',
     'products sales'
@@ -518,6 +520,23 @@ class Database {
     try {
       const data = JSON.parse(localStorage.getItem(DB_KEY));
       let updated = false;
+      if (data.services) {
+        if (data.services.includes('landscaping') && !data.services.includes('landscaping (design)')) {
+          const idx = data.services.indexOf('landscaping');
+          if (idx !== -1) {
+            data.services.splice(idx, 1, 'landscaping (design)', 'landscaping (gardening)', 'landscaping (maintenance)');
+            updated = true;
+          }
+        }
+        if (!data.services.includes('cleaning')) {
+          data.services.push('cleaning');
+          updated = true;
+        }
+        if (!data.services.includes('maintenance')) {
+          data.services.push('maintenance');
+          updated = true;
+        }
+      }
       if (!data.sectors) {
         data.sectors = [
           { id: 'sec-1', name: 'Retail' },
