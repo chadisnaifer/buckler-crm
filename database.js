@@ -35,6 +35,12 @@ const DEFAULT_DATA = {
     { id: 'usr-gm', username: 'gm.hassan', name: 'Hassan Al-Sadi', role: 'GM', region: 'All', city: 'All', email: 'hassan.gm@buckler-iraq.com' },
     { id: 'usr-tm', username: 'tech.rami', name: 'Rami Hanna', role: 'tech manager', region: 'All', city: 'All', email: 'rami.tm@buckler-iraq.com' },
     
+    // Sales Department
+    { id: 'usr-sm', username: 'sales.manager', name: 'Omar Mansour', role: 'sales manager', region: 'All', city: 'All', email: 'omar.sm@buckler-iraq.com' },
+    { id: 'usr-sr-c', username: 'sales.ali', name: 'Ali Ridha', role: 'sales representative', region: 'Central', city: 'Baghdad', email: 'ali.sales.c@buckler-iraq.com' },
+    { id: 'usr-sr-k', username: 'sales.dilshad', name: 'Dilshad Hawleri', role: 'sales representative', region: 'Kurdistan', city: 'Erbil', email: 'dilshad.sales.k@buckler-iraq.com' },
+    { id: 'usr-sr-s', username: 'sales.hadi', name: 'Hadi Basrawi', role: 'sales representative', region: 'South', city: 'Basra', email: 'hadi.sales.s@buckler-iraq.com' },
+    
     // Admin Coordinators
     { id: 'usr-ac-c', username: 'admin.yasmin', name: 'Yasmin Kassim', role: 'admin coordinator', region: 'Central', city: 'Baghdad', email: 'yasmin.c@buckler-iraq.com' },
     { id: 'usr-ac-k', username: 'admin.avan', name: 'Avan Jalal', role: 'admin coordinator', region: 'Kurdistan', city: 'Erbil', email: 'avan.k@buckler-iraq.com' },
@@ -622,6 +628,12 @@ class Database {
               complaints: 'edit', messages: 'edit', 'uv-sales': 'see',
               reports: 'see', users: 'none', sales: 'see', forms: 'edit'
             };
+          } else if (r === 'sales manager' || r === 'sales representative') {
+            return {
+              dashboard: 'see', schedules: 'see', clients: 'see', items: 'see',
+              complaints: 'see', messages: 'edit', 'uv-sales': 'see',
+              reports: 'see', users: 'none', sales: 'edit', forms: 'see'
+            };
           } else { // team leader
             return {
               dashboard: 'none', schedules: 'edit', clients: 'none', items: 'none',
@@ -703,6 +715,11 @@ class Database {
         data.formTemplates = [
           { id: 'tmpl-d1', title: 'Fumigation Safety Checklist', category: 'Safety', description: 'Mandatory standard procedure checklist for phosphine gas fumigations.', filename: 'fumigation_safety_v2.pdf', dateAdded: '2026-07-05', fileData: 'data:application/pdf;base64,JVBERi0xLjQKJ...' }
         ];
+        updated = true;
+      }
+
+      if (!data.roles) {
+        data.roles = ['admin coordinator', 'team leader', 'tech supervisor', 'operations manager', 'tech manager', 'GM', 'sales representative', 'sales manager'];
         updated = true;
       }
 

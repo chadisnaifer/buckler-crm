@@ -4404,6 +4404,16 @@ document.addEventListener('DOMContentLoaded', () => {
       <option value="${cat}" ${item && (item.category || 'Others') === cat ? 'selected' : (!item && cat === 'Others' ? 'selected' : '')}>${cat}</option>
     `).join('');
 
+    // Fetch and render suppliers checklist
+    const suppliers = window.BucklerDB.get('suppliers') || [];
+    const itemSuppliers = item ? (item.supplierIds || []) : [];
+    const supplierListHTML = suppliers.map(s => `
+      <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; cursor:pointer; padding:2px 4px; transition:background 0.15s; border-radius:4px;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='transparent'">
+        <input type="checkbox" name="itm-supplier-cb" value="${s.id}" ${itemSuppliers.includes(s.id) ? 'checked' : ''} style="width:14px; height:14px; accent-color:var(--primary-red); cursor:pointer;">
+        <span>${s.name} (${s.category})</span>
+      </label>
+    `).join('');
+
     const html = `
       <form id="item-form">
         <div class="form-group">
@@ -4426,6 +4436,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ${unitOptions}
           </select>
         </div>
+        <div class="form-group" style="margin-top:1rem;">
+          <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:block;">Suppliers of this Product</label>
+          <div style="max-height:140px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; padding:0.5rem; background:#FAFAFA; display:flex; flex-direction:column; gap:4px;">
+            ${supplierListHTML || '<span style="color:var(--text-muted); font-size:0.78rem; padding:0.25rem;">No suppliers registered yet.</span>'}
+          </div>
+        </div>
       </form>
     `;
 
@@ -4439,7 +4455,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = isEdit ? window.BucklerDB.get('users').find(u => u.id === id) : null;
     const regionRestr = getRestrictedRegion();
 
-    const roleOptions = ['admin coordinator', 'team leader', 'tech supervisor', 'operations manager', 'tech manager', 'GM'].map(r => `
+    const roles = window.BucklerDB.get('roles') || ['admin coordinator', 'team leader', 'tech supervisor', 'operations manager', 'tech manager', 'GM', 'sales representative', 'sales manager'];
+    const roleOptions = roles.map(r => `
       <option value="${r}" ${user && user.role === r ? 'selected' : ''}>${r.toUpperCase()}</option>
     `).join('');
 
@@ -4600,6 +4617,83 @@ document.addEventListener('DOMContentLoaded', () => {
       roleSelect.addEventListener('change', toggleVehicleSection);
       toggleVehicleSection();
     }
+  }
+
+  function openManageRolesModal() {
+    const defaultRoles = ['admin coordinator', 'team leader', 'tech supervisor', 'operations manager', 'tech manager', 'GM', 'sales representative', 'sales manager'];
+    
+    const renderRolesList = () => {
+      const roles = window.BucklerDB.get('roles') || defaultRoles;
+      const listEl = document.getElementById('roles-modal-list');
+      if (!listEl) return;
+
+      listEl.innerHTML = roles.map(r => {
+        const isSystem = defaultRoles.includes(r.toLowerCase());
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:6px; border-bottom:1px solid #f1f5f9; font-size:0.82rem;">
+            <span style="font-weight:600; color:var(--text-dark);">${r.toUpperCase()}</span>
+            ${isSystem 
+              ? `<span style="font-size:0.7rem; color:var(--text-muted); font-style:italic;">System Role</span>` 
+              : `<button type="button" class="btn btn-danger btn-sm btn-delete-role" data-role="${r}" style="padding:2px 6px; font-size:0.7rem;">❌ Delete</button>`
+            }
+          </div>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.btn-delete-role').forEach(btn => {
+        btn.onclick = () => {
+          const roleToDelete = btn.getAttribute('data-role');
+          if (confirm(`Are you sure you want to delete the role "${roleToDelete}"?`)) {
+            const data = window.BucklerDB.getData();
+            data.roles = (data.roles || defaultRoles).filter(x => x !== roleToDelete);
+            window.BucklerDB.saveData(data);
+            showToast(`Role "${roleToDelete}" deleted ✓`, 'success');
+            renderRolesList();
+          }
+        };
+      });
+    };
+
+    const modalHTML = `
+      <div style="padding:5px;">
+        <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; align-items:center;">
+          <input type="text" id="new-role-input" class="form-control" placeholder="e.g. Sales Agent" style="flex:1;">
+          <button type="button" class="btn btn-primary" id="btn-add-custom-role" style="white-space:nowrap; padding:0.4rem 1rem;">➕ Add Role</button>
+        </div>
+        <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.5rem; border-bottom:1.5px solid var(--border-color); padding-bottom:4px;">Available System & Custom Roles</h4>
+        <div id="roles-modal-list" style="display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto; padding-right:5px;">
+        </div>
+      </div>
+    `;
+
+    showModal('Manage User Roles', modalHTML, false);
+
+    setTimeout(() => {
+      renderRolesList();
+
+      const btnAdd = document.getElementById('btn-add-custom-role');
+      const inputAdd = document.getElementById('new-role-input');
+      if (btnAdd && inputAdd) {
+        btnAdd.onclick = () => {
+          const newRole = inputAdd.value.trim().toLowerCase();
+          if (!newRole) { showToast('Please enter a role name.', 'error'); return; }
+          
+          const data = window.BucklerDB.getData();
+          if (!data.roles) data.roles = defaultRoles.slice();
+          
+          if (data.roles.map(x => x.toLowerCase()).includes(newRole)) {
+            showToast('This role already exists.', 'error');
+            return;
+          }
+
+          data.roles.push(newRole);
+          window.BucklerDB.saveData(data);
+          showToast(`Role "${newRole}" added ✓`, 'success');
+          inputAdd.value = '';
+          renderRolesList();
+        };
+      }
+    }, 100);
   }
 
   // Operation Log Modal
@@ -5417,13 +5511,38 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = window.BucklerDB.getData();
       if (!data.suppliers) { data.suppliers = []; window.BucklerDB.saveData(data); }
 
+      let supplierId = id;
       if (id) {
         window.BucklerDB.update('suppliers', id, fields);
         showToast('Supplier updated ✓', 'success');
       } else {
-        window.BucklerDB.insert('suppliers', fields);
+        const newSup = window.BucklerDB.insert('suppliers', fields);
+        supplierId = newSup.id;
         showToast('Supplier added ✓', 'success');
       }
+
+      // Bidirectional sync: update items list
+      const syncSupplierProductsBidirectional = (supId, prodIdsList) => {
+        const allItems = window.BucklerDB.get('items') || [];
+        allItems.forEach(itm => {
+          let sIds = itm.supplierIds || [];
+          const includesSup = sIds.includes(supId);
+          const shouldInclude = prodIdsList.includes(itm.id);
+          let changed = false;
+          if (shouldInclude && !includesSup) {
+            sIds.push(supId);
+            changed = true;
+          } else if (!shouldInclude && includesSup) {
+            sIds = sIds.filter(x => x !== supId);
+            changed = true;
+          }
+          if (changed) {
+            window.BucklerDB.update('items', itm.id, { supplierIds: sIds });
+          }
+        });
+      };
+      syncSupplierProductsBidirectional(supplierId, checkedProducts);
+
       els.modalBackdrop.style.display = 'none';
       state.editingRecord = null;
       renderSuppliers();
@@ -5513,20 +5632,48 @@ document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('item-form');
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
+      const checkedSuppliers = Array.from(document.querySelectorAll('input[name="itm-supplier-cb"]:checked')).map(cb => cb.value);
+
       const fields = {
         name: document.getElementById('itm-modal-name').value,
         itemCode: document.getElementById('itm-modal-code').value,
-        unit: document.getElementById('itm-modal-unit').value
+        unit: document.getElementById('itm-modal-unit').value,
+        supplierIds: checkedSuppliers
       };
 
+      let itemId = id;
       if (id) {
         window.BucklerDB.update('items', id, fields);
         showToast('Product updated in inventory', 'success');
       } else {
         fields.stock = 0;
-        window.BucklerDB.insert('items', fields);
+        const newItem = window.BucklerDB.insert('items', fields);
+        itemId = newItem.id;
         showToast('Product registered in inventory', 'success');
       }
+
+      // Bidirectional sync: update suppliers' product lists
+      const syncProductSuppliersBidirectional = (itmId, supIdsList) => {
+        const allSups = window.BucklerDB.get('suppliers') || [];
+        allSups.forEach(sup => {
+          let pIds = sup.productIds || [];
+          const includesItem = pIds.includes(itmId);
+          const shouldInclude = supIdsList.includes(sup.id);
+          let changed = false;
+          if (shouldInclude && !includesItem) {
+            pIds.push(itmId);
+            changed = true;
+          } else if (!shouldInclude && includesItem) {
+            pIds = pIds.filter(x => x !== itmId);
+            changed = true;
+          }
+          if (changed) {
+            window.BucklerDB.update('suppliers', sup.id, { productIds: pIds });
+          }
+        });
+      };
+      syncProductSuppliersBidirectional(itemId, checkedSuppliers);
+
       els.modalBackdrop.style.display = 'none';
       renderItems();
     }
@@ -6078,6 +6225,11 @@ document.addEventListener('DOMContentLoaded', () => {
     els.btnAddItem.addEventListener('click', () => openItemModal());
     els.btnAddUser.addEventListener('click', () => openUserModal());
     els.btnAddComplaint.addEventListener('click', () => openComplaintModal());
+    
+    const btnManageRoles = document.getElementById('btn-manage-roles');
+    if (btnManageRoles) {
+      btnManageRoles.addEventListener('click', () => openManageRolesModal());
+    }
 
     els.btnResetDB.addEventListener('click', () => {
       if (confirm('Are you sure you want to reset the CRM database? This will clear all changes and restore default mock logs.')) {
@@ -9108,6 +9260,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   // SALES CRM MANAGEMENT
   // ============================================================
+  let chartSalesStages = null;
+  let chartSalesRevenue = null;
+  let chartSalesReps = null;
   function _ensureSalesDealsArray() {
     const d = window.BucklerDB.getData();
     if (!Array.isArray(d.salesDeals)) {
@@ -9118,23 +9273,89 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderSalesCRM() {
     _ensureSalesDealsArray();
-    const deals = window.BucklerDB.get('salesDeals') || [];
+    let deals = window.BucklerDB.get('salesDeals') || [];
 
-    // KPI Counters
-    const prospectsCount = deals.filter(d => d.stage === 'Prospecting').length;
-    const proposalsCount = deals.filter(d => d.stage === 'Proposal Sent').length;
-    const negotiationsCount = deals.filter(d => d.stage === 'Negotiation').length;
-    const wonValue = deals.filter(d => d.stage === 'Closed Won').reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
+    // Populating Sales Rep Filter Dropdown
+    const filterRepSelect = document.getElementById('sales-filter-rep');
+    if (filterRepSelect && !filterRepSelect._populated) {
+      filterRepSelect._populated = true;
+      const allUsers = window.BucklerDB.get('users') || [];
+      const reps = allUsers.filter(u => u.role && u.role.toLowerCase().includes('sales'));
+      reps.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = `${r.name} (${r.region})`;
+        filterRepSelect.appendChild(opt);
+      });
+      filterRepSelect.addEventListener('change', renderSalesCRM);
+
+      const fStart = document.getElementById('sales-filter-start');
+      const fEnd = document.getElementById('sales-filter-end');
+      if (fStart) fStart.addEventListener('change', renderSalesCRM);
+      if (fEnd) fEnd.addEventListener('change', renderSalesCRM);
+    }
+
+    // Apply filters
+    const selectedRep = filterRepSelect ? filterRepSelect.value : 'All';
+    const startDate = document.getElementById('sales-filter-start') ? document.getElementById('sales-filter-start').value : '';
+    const endDate = document.getElementById('sales-filter-end') ? document.getElementById('sales-filter-end').value : '';
+
+    let filteredDeals = deals.slice();
+
+    if (selectedRep !== 'All') {
+      filteredDeals = filteredDeals.filter(d => d.assignedSalesRepId === selectedRep);
+    }
+    if (startDate) {
+      filteredDeals = filteredDeals.filter(d => d.dateCreated >= startDate);
+    }
+    if (endDate) {
+      filteredDeals = filteredDeals.filter(d => d.dateCreated <= endDate);
+    }
+
+    // KPI Counters (based on filtered deals)
+    const prospectsCount = filteredDeals.filter(d => d.stage === 'Prospecting').length;
+    const proposalsCount = filteredDeals.filter(d => d.stage === 'Proposal Sent').length;
+    const negotiationsCount = filteredDeals.filter(d => d.stage === 'Negotiation').length;
+    
+    // Split Won values by Currency
+    const wonDeals = filteredDeals.filter(d => d.stage === 'Closed Won');
+    const wonUSD = wonDeals.filter(d => d.currency !== 'IQD').reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
+    const wonIQD = wonDeals.filter(d => d.currency === 'IQD').reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
 
     const elProspects = document.getElementById('stat-sales-prospects');
     const elProposals = document.getElementById('stat-sales-proposals');
     const elNegotiations = document.getElementById('stat-sales-negotiations');
-    const elWonValue = document.getElementById('stat-sales-won-value');
+    const elWonValueUsd = document.getElementById('stat-sales-won-value-usd');
+    const elWonValueIqd = document.getElementById('stat-sales-won-value-iqd');
 
     if (elProspects) elProspects.textContent = prospectsCount;
     if (elProposals) elProposals.textContent = proposalsCount;
     if (elNegotiations) elNegotiations.textContent = negotiationsCount;
-    if (elWonValue) elWonValue.textContent = `$${wonValue.toLocaleString()}`;
+    if (elWonValueUsd) elWonValueUsd.textContent = `$${wonUSD.toLocaleString()}`;
+    if (elWonValueIqd) elWonValueIqd.textContent = `${wonIQD.toLocaleString()} IQD`;
+
+    // Render visual dashboard charts
+    const salesDashPanel = document.getElementById('sales-dashboard-panel');
+    if (salesDashPanel && salesDashPanel.style.display !== 'none') {
+      drawSalesCharts(filteredDeals);
+    }
+
+    // Toggle dashboard handler
+    const btnToggleDash = document.getElementById('btn-toggle-sales-dash');
+    if (btnToggleDash && salesDashPanel && !btnToggleDash._bound) {
+      btnToggleDash._bound = true;
+      btnToggleDash.addEventListener('click', () => {
+        if (salesDashPanel.style.display === 'none') {
+          salesDashPanel.style.display = 'block';
+          drawSalesCharts(filteredDeals);
+        } else {
+          salesDashPanel.style.display = 'none';
+        }
+      });
+    }
+
+    // Run contract expiry notifications scan
+    checkExpiringContracts();
 
     // Stages Config
     const stagesConfig = [
@@ -9147,7 +9368,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     stagesConfig.forEach(cfg => {
-      const colDeals = deals.filter(d => d.stage === cfg.key);
+      const colDeals = filteredDeals.filter(d => d.stage === cfg.key);
       const countEl = document.getElementById(cfg.countId);
       if (countEl) countEl.textContent = colDeals.length;
 
@@ -9155,20 +9376,63 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!container) return;
 
       container.innerHTML = colDeals.length ? colDeals.map(d => {
-        let valText = `$${(d.expectedValue || 0).toLocaleString()}`;
-        let costingBadge = d.costStructure 
-          ? `<span style="background:#D1FAE5; color:#065F46; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:10px; display:inline-block; margin-top:4px;">📊 Costed</span>`
-          : `<span style="background:#FFE4E6; color:#9F1239; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:10px; display:inline-block; margin-top:4px;">⚠️ Price Pending</span>`;
+        const symbol = d.currency === 'IQD' ? 'IQD' : '$';
+        const formattedVal = d.currency === 'IQD' 
+          ? `${Math.round(d.expectedValue || 0).toLocaleString()} IQD` 
+          : `$${(d.expectedValue || 0).toLocaleString()}`;
+        
+        const costingBadge = d.costStructure 
+          ? `<span style="background:#D1FAE5; color:#065F46; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:10px; display:inline-block; margin-top:2px;">📊 Costed</span>`
+          : `<span style="background:#FFE4E6; color:#9F1239; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:10px; display:inline-block; margin-top:2px;">⚠️ Price Pending</span>`;
+
+        // Render Quotation Approvals
+        const approvals = d.approvals || { salesManager: false, opsManager: false, gm: false };
+        
+        const getApprovalStyle = (approved) => {
+          return approved 
+            ? 'background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0;' 
+            : 'background:#F1F5F9; color:#64748B; border:1px solid #E2E8F0; opacity:0.65;';
+        };
+
+        const approvalHTML = `
+          <div style="margin-top:6px; padding-top:4px; border-top:1px dashed #E2E8F0; display:flex; flex-direction:column; gap:4px;">
+            <div style="font-size:0.65rem; font-weight:800; color:var(--text-medium); margin-bottom:2px; text-transform:uppercase; letter-spacing:0.02em;">Quotation Approvals:</div>
+            <div style="display:flex; gap:0.25rem;">
+              <span class="app-sm-pill" data-deal="${d.id}" style="padding:1px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.salesManager)}" title="Toggle Sales Manager Approval">
+                👤 SM: ${approvals.salesManager ? '✅' : '❌'}
+              </span>
+              <span class="app-ops-pill" data-deal="${d.id}" style="padding:1px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.opsManager)}" title="Toggle Operations Manager Approval">
+                ⚙️ OM: ${approvals.opsManager ? '✅' : '❌'}
+              </span>
+              <span class="app-gm-pill" data-deal="${d.id}" style="padding:1px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.gm)}" title="Toggle GM Approval">
+                👑 GM: ${approvals.gm ? '✅' : '❌'}
+              </span>
+            </div>
+          </div>
+        `;
+
+        // Expiry Date Badge for Closed Won
+        const expiryBadge = (d.stage === 'Closed Won' && d.contractExpiryDate)
+          ? `<div style="font-size:0.68rem; color:#D97706; font-weight:700; margin-top:4px; background:#FEF3C7; padding:2px 6px; border-radius:4px; border:1px solid #FCD34D; display:inline-block;">📅 Expires: ${d.contractExpiryDate}</div>`
+          : '';
 
         return `
           <div class="card" style="padding:0.75rem; border:1px solid var(--border-color); background:white; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:0.5rem; display:flex; flex-direction:column; gap:4px;">
-            <div style="font-weight:700; color:var(--text-dark); font-size:0.85rem; line-height:1.2;">${d.name}</div>
+            <div style="display:flex; justify-content:space-between; align-items:start; gap:4px;">
+              <div style="font-weight:700; color:var(--text-dark); font-size:0.85rem; line-height:1.2; flex:1;">${d.name}</div>
+              <span style="font-size:0.62rem; color:var(--text-muted); background:#F1F5F9; padding:1px 4px; border-radius:3px;">${d.dateCreated}</span>
+            </div>
             <div style="font-size:0.75rem; color:var(--text-medium); margin-top:2px;">Prospect: <strong>${d.prospectName}</strong></div>
-            <div style="font-size:0.72rem; color:var(--text-muted);">Service: ${d.serviceType}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted); display:flex; justify-content:space-between;">
+              <span>Service: ${d.serviceType}</span>
+              <span>Rep: <strong>${d.assignedSalesRepName || 'Unassigned'}</strong></span>
+            </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem; border-top:1px dashed #F1F5F9; padding-top:4px;">
-              <span style="font-weight:800; font-size:0.85rem; color:var(--primary-red);">${valText}</span>
+              <span style="font-weight:800; font-size:0.85rem; color:var(--primary-red);">${formattedVal}</span>
               ${costingBadge}
             </div>
+            ${expiryBadge}
+            ${approvalHTML}
             <div style="display:flex; gap:0.25rem; margin-top:0.5rem; justify-content:flex-end;">
               <button class="btn btn-secondary btn-sm edit-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem;">Edit</button>
               <button class="btn btn-secondary btn-sm cost-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem; background:#EFF6FF; color:#1D4ED8; border-color:#BFDBFE;">Costing</button>
@@ -9176,7 +9440,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         `;
-      }).join('') : `<div style="text-align:center; color:var(--text-muted); font-size:0.75rem; padding:1.5rem; border:1px dashed #E2E8F0; border-radius:6px;">Empty</div>`;
+      }).join('') : `<div style="text-align:center; color:var(--text-medium); font-size:0.75rem; padding:1.5rem; border:1px dashed #E2E8F0; border-radius:6px;">Empty</div>`;
     });
 
     // Bind Edit button click
@@ -9202,6 +9466,64 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     });
 
+    // Bind Approval Click Triggers
+    document.querySelectorAll('.app-sm-pill').forEach(el => {
+      el.onclick = () => {
+        const role = state.currentUser.role.toLowerCase();
+        if (role !== 'sales manager' && role !== 'gm') {
+          showToast('Only Sales Manager or GM can approve this quotation.', 'error');
+          return;
+        }
+        const did = el.getAttribute('data-deal');
+        const dealObj = deals.find(x => x.id === did);
+        if (dealObj) {
+          const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
+          app.salesManager = !app.salesManager;
+          window.BucklerDB.update('salesDeals', did, { approvals: app });
+          showToast(`Sales Manager quotation approval ${app.salesManager ? 'granted ✓' : 'revoked ❌'}`, 'success');
+          renderSalesCRM();
+        }
+      };
+    });
+
+    document.querySelectorAll('.app-ops-pill').forEach(el => {
+      el.onclick = () => {
+        const role = state.currentUser.role.toLowerCase();
+        if (role !== 'operations manager' && role !== 'gm') {
+          showToast('Only Operations Manager or GM can approve this quotation.', 'error');
+          return;
+        }
+        const did = el.getAttribute('data-deal');
+        const dealObj = deals.find(x => x.id === did);
+        if (dealObj) {
+          const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
+          app.opsManager = !app.opsManager;
+          window.BucklerDB.update('salesDeals', did, { approvals: app });
+          showToast(`Operations Manager quotation approval ${app.opsManager ? 'granted ✓' : 'revoked ❌'}`, 'success');
+          renderSalesCRM();
+        }
+      };
+    });
+
+    document.querySelectorAll('.app-gm-pill').forEach(el => {
+      el.onclick = () => {
+        const role = state.currentUser.role.toLowerCase();
+        if (role !== 'gm') {
+          showToast('Only General Manager (GM) can approve this quotation.', 'error');
+          return;
+        }
+        const did = el.getAttribute('data-deal');
+        const dealObj = deals.find(x => x.id === did);
+        if (dealObj) {
+          const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
+          app.gm = !app.gm;
+          window.BucklerDB.update('salesDeals', did, { approvals: app });
+          showToast(`General Manager quotation approval ${app.gm ? 'granted ✓' : 'revoked ❌'}`, 'success');
+          renderSalesCRM();
+        }
+      };
+    });
+
     // Bind Add Deal button once
     const btnAddDeal = document.getElementById('btn-add-deal');
     if (btnAddDeal && !btnAddDeal._bound) {
@@ -9210,24 +9532,208 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ── DRAW CHARTS ──
+  function drawSalesCharts(dealsList) {
+    if (typeof Chart === 'undefined') return;
+
+    // Converted to USD equivalent for standard aggregate graphs
+    const getUSDVal = (d) => {
+      const val = parseFloat(d.expectedValue) || 0;
+      if (d.currency === 'IQD') return val / 1450.0;
+      return val;
+    };
+
+    // 1. Pipeline Stages Value Chart
+    const stages = ['Prospecting', 'Qualification', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost'];
+    const stageValues = stages.map(st => {
+      return dealsList.filter(d => d.stage === st).reduce((sum, d) => sum + getUSDVal(d), 0);
+    });
+
+    const ctxStages = document.getElementById('chart-sales-stages');
+    if (ctxStages) {
+      if (chartSalesStages) chartSalesStages.destroy();
+      chartSalesStages = new Chart(ctxStages, {
+        type: 'doughnut',
+        data: {
+          labels: stages,
+          datasets: [{
+            data: stageValues,
+            backgroundColor: ['#94A3B8', '#3B82F6', '#60A5FA', '#F59E0B', '#10B981', '#EF4444'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` $${Math.round(ctx.raw).toLocaleString()} USD equiv`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Revenue Forecast USD vs IQD
+    // Calculates Won vs Pending by currency
+    const currencies = ['USD', 'IQD'];
+    const wonData = currencies.map(curr => {
+      return dealsList.filter(d => d.stage === 'Closed Won' && (d.currency === curr || (!d.currency && curr === 'USD'))).reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
+    });
+    const pendingData = currencies.map(curr => {
+      const pendingStages = ['Prospecting', 'Qualification', 'Proposal Sent', 'Negotiation'];
+      return dealsList.filter(d => pendingStages.includes(d.stage) && (d.currency === curr || (!d.currency && curr === 'USD'))).reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
+    });
+
+    const ctxRev = document.getElementById('chart-sales-revenue');
+    if (ctxRev) {
+      if (chartSalesRevenue) chartSalesRevenue.destroy();
+      chartSalesRevenue = new Chart(ctxRev, {
+        type: 'bar',
+        data: {
+          labels: ['USD ($)', 'IQD (K)'],
+          datasets: [
+            {
+              label: 'Won',
+              data: [wonData[0], wonData[1] / 1000.0], // Scale IQD to thousands
+              backgroundColor: '#10B981'
+            },
+            {
+              label: 'Pending',
+              data: [pendingData[0], pendingData[1] / 1000.0],
+              backgroundColor: '#3B82F6'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 9 } } }
+          }
+        }
+      });
+    }
+
+    // 3. Sales Rep Revenue Leaderboard
+    const reps = [...new Set(dealsList.map(d => d.assignedSalesRepName || 'Unassigned'))];
+    const repWonValues = reps.map(repName => {
+      return dealsList.filter(d => d.stage === 'Closed Won' && (d.assignedSalesRepName || 'Unassigned') === repName).reduce((sum, d) => sum + getUSDVal(d), 0);
+    });
+
+    // Sort descending
+    const sortedReps = reps.map((name, i) => ({ name, val: repWonValues[i] })).sort((a, b) => b.val - a.val).slice(0, 5);
+
+    const ctxReps = document.getElementById('chart-sales-reps');
+    if (ctxReps) {
+      if (chartSalesReps) chartSalesReps.destroy();
+      chartSalesReps = new Chart(ctxReps, {
+        type: 'bar',
+        data: {
+          labels: sortedReps.map(r => r.name.split(' ')[0]), // Use first name
+          datasets: [{
+            data: sortedReps.map(r => r.val),
+            backgroundColor: '#8B5CF6'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` $${Math.round(ctx.raw).toLocaleString()} USD equiv`
+              }
+            }
+          },
+          scales: {
+            x: { beginAtZero: true }
+          }
+        }
+      });
+    }
+  }
+
+  // ── CONTRACT EXPIRY ALERTS ──
+  function checkExpiringContracts() {
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const notifications = window.BucklerDB.get('notifications') || [];
+    const wonDeals = deals.filter(d => d.stage === 'Closed Won' && d.contractExpiryDate);
+
+    const today = new Date();
+    const oneMonthFromNow = new Date();
+    oneMonthFromNow.setDate(today.getDate() + 30);
+
+    const todayStr = today.toISOString().split('T')[0];
+    const oneMonthStr = oneMonthFromNow.toISOString().split('T')[0];
+
+    wonDeals.forEach(d => {
+      // Expiry within 30 days and has not expired yet
+      if (d.contractExpiryDate >= todayStr && d.contractExpiryDate <= oneMonthStr) {
+        const notifTitle = `Contract Expiry Warning: "${d.name}"`;
+        const notifMsg = `The contract for "${d.prospectName}" (assigned to ${d.assignedSalesRepName || 'Sales rep'}) expires on ${d.contractExpiryDate} (in less than 30 days). Plan renewal contact.`;
+
+        // Check if we already created a notification for this deal
+        const alreadyNotified = notifications.some(n => n.title === notifTitle || (n.message && n.message.includes(d.id)));
+
+        if (!alreadyNotified) {
+          const newNotif = {
+            id: `notif-expiry-${d.id}-${Date.now()}`,
+            title: notifTitle,
+            message: `[Deal ID: ${d.id}] ${notifMsg}`,
+            timestamp: new Date().toLocaleString(),
+            read: false,
+            userRole: 'GM' // GM and manager notifications
+          };
+          window.BucklerDB.insert('notifications', newNotif);
+          showToast(`🔔 Expiry Alert: "${d.name}" expires soon! Notification generated.`, 'warning');
+        }
+      }
+    });
+  }
+
   function openDealModal(id = null) {
     _ensureSalesDealsArray();
     const isEdit = !!id;
     const deal = isEdit ? (window.BucklerDB.get('salesDeals') || []).find(d => d.id === id) : null;
     const services = window.BucklerDB.get('services') || ['pest control', 'termite treatment'];
+    const allUsers = window.BucklerDB.get('users') || [];
+
+    // Filter sales rep options
+    const salesReps = allUsers.filter(u => u.role && u.role.toLowerCase().includes('sales'));
+    const repOptions = salesReps.map(r => `
+      <option value="${r.id}" ${deal && deal.assignedSalesRepId === r.id ? 'selected' : ''}>${r.name} (${r.region})</option>
+    `).join('') || `<option value="" disabled selected>No Sales Representatives found</option>`;
 
     state.editingRecord = { entity: 'salesDeals', id: id };
 
     const html = `
       <form id="deal-form" onsubmit="event.preventDefault();">
-        <div class="form-group">
-          <label for="deal-modal-name">Opportunity Name *</label>
-          <input type="text" id="deal-modal-name" class="form-control" required value="${deal ? deal.name : ''}" placeholder="e.g. Erbil Mall Pest Control Contract">
-        </div>
         <div class="form-group row-split">
+          <div>
+            <label for="deal-modal-name">Opportunity Name *</label>
+            <input type="text" id="deal-modal-name" class="form-control" required value="${deal ? deal.name : ''}" placeholder="e.g. Erbil Mall Pest Control Contract">
+          </div>
           <div>
             <label for="deal-modal-prospect">Prospect / Client Name *</label>
             <input type="text" id="deal-modal-prospect" class="form-control" required value="${deal ? deal.prospectName : ''}" placeholder="e.g. Erbil Mall Ltd">
+          </div>
+        </div>
+        <div class="form-group row-split">
+          <div>
+            <label for="deal-modal-rep">Assigned Sales Rep *</label>
+            <select id="deal-modal-rep" class="form-control" required>
+              <option value="" disabled ${!deal ? 'selected' : ''}>Select Representative...</option>
+              ${repOptions}
+            </select>
           </div>
           <div>
             <label for="deal-modal-service">Target Service *</label>
@@ -9249,8 +9755,24 @@ document.addEventListener('DOMContentLoaded', () => {
             </select>
           </div>
           <div>
-            <label for="deal-modal-value">Expected Deal Value (USD/mo) *</label>
-            <input type="number" id="deal-modal-value" class="form-control" required value="${deal ? (deal.expectedValue || '') : ''}" placeholder="Calculated or estimated value">
+            <label for="deal-modal-value">Expected Deal Value *</label>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <input type="number" id="deal-modal-value" class="form-control" style="flex:1;" required value="${deal ? (deal.expectedValue || '') : ''}" placeholder="Value">
+              <select id="deal-modal-currency" class="form-control" style="max-width:90px; font-weight:700;">
+                <option value="USD" ${deal && deal.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
+                <option value="IQD" ${deal && deal.currency === 'IQD' ? 'selected' : ''}>IQD (IQD)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="form-group row-split">
+          <div>
+            <label for="deal-modal-date">Opportunity Date *</label>
+            <input type="date" id="deal-modal-date" class="form-control" required value="${deal ? (deal.dateCreated || '') : new Date().toISOString().split('T')[0]}">
+          </div>
+          <div id="deal-expiry-section" style="display:none;">
+            <label for="deal-modal-expiry" style="color:var(--primary-red); font-weight:700;">Contract Expiry Date *</label>
+            <input type="date" id="deal-modal-expiry" class="form-control" value="${deal ? (deal.contractExpiryDate || '') : ''}">
           </div>
         </div>
       </form>
@@ -9258,28 +9780,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showModal(isEdit ? 'Edit Sales Opportunity' : 'Add New Sales Opportunity', html, true);
 
+    // Toggle Expiry Date based on stage
+    setTimeout(() => {
+      const stageSelect = document.getElementById('deal-modal-stage');
+      const expirySec = document.getElementById('deal-expiry-section');
+      if (stageSelect && expirySec) {
+        const toggleExpiry = () => {
+          if (stageSelect.value === 'Closed Won') {
+            expirySec.style.display = 'block';
+            document.getElementById('deal-modal-expiry').setAttribute('required', 'true');
+          } else {
+            expirySec.style.display = 'none';
+            document.getElementById('deal-modal-expiry').removeAttribute('required');
+          }
+        };
+        stageSelect.addEventListener('change', toggleExpiry);
+        toggleExpiry();
+      }
+    }, 100);
+
     const saveBtn = document.getElementById('modal-save-btn');
     if (saveBtn) {
       saveBtn.onclick = () => {
         const form = document.getElementById('deal-form');
         if (!form.checkValidity()) { form.reportValidity(); return; }
 
+        const stage = document.getElementById('deal-modal-stage').value;
+        const expiryDate = document.getElementById('deal-modal-expiry').value;
+
+        if (stage === 'Closed Won' && !expiryDate) {
+          showToast('Contract expiry date is required for Closed Won deals.', 'error');
+          return;
+        }
+
+        const repId = document.getElementById('deal-modal-rep').value;
+        const assignedRep = allUsers.find(u => u.id === repId);
+
         const fields = {
           name: document.getElementById('deal-modal-name').value.trim(),
           prospectName: document.getElementById('deal-modal-prospect').value.trim(),
+          assignedSalesRepId: repId,
+          assignedSalesRepName: assignedRep ? assignedRep.name : 'Unknown Rep',
           serviceType: document.getElementById('deal-modal-service').value,
-          stage: document.getElementById('deal-modal-stage').value,
+          stage: stage,
           expectedValue: parseFloat(document.getElementById('deal-modal-value').value) || 0,
+          currency: document.getElementById('deal-modal-currency').value,
+          dateCreated: document.getElementById('deal-modal-date').value,
+          contractExpiryDate: stage === 'Closed Won' ? expiryDate : null,
           costStructure: deal ? deal.costStructure : null,
-          dateCreated: deal ? deal.dateCreated : new Date().toISOString().split('T')[0]
+          customCosts: deal ? deal.customCosts : null,
+          approvals: deal && deal.approvals ? deal.approvals : { salesManager: false, opsManager: false, gm: false }
         };
 
         if (isEdit) {
           window.BucklerDB.update('salesDeals', id, fields);
           showToast('Opportunity updated successfully ✓', 'success');
         } else {
-          window.BucklerDB.insert('salesDeals', fields);
+          const newDeal = window.BucklerDB.insert('salesDeals', fields);
+          id = newDeal.id;
           showToast('New opportunity created ✓', 'success');
+        }
+
+        // ── SYNC WON DEALS TO CLIENTS REGISTRY ──
+        if (stage === 'Closed Won') {
+          const clients = window.BucklerDB.get('clients') || [];
+          const existingClient = clients.find(c => c.name.toLowerCase() === fields.prospectName.toLowerCase() || c.id === `cli-deal-${id}`);
+          
+          if (!existingClient) {
+            const clientCode = fields.prospectName.replace(/\s+/g, '-').toUpperCase().slice(0, 8) + '-' + Math.floor(100 + Math.random() * 900);
+            const region = assignedRep ? assignedRep.region : 'Central';
+            const city = assignedRep ? assignedRep.city : 'Baghdad';
+            
+            const newClient = {
+              id: `cli-deal-${id}`,
+              clientCode: clientCode,
+              name: fields.prospectName,
+              contact: fields.name,
+              phone: '',
+              email: '',
+              region: region,
+              city: city,
+              address: `${city}, Iraq (Sales Portal Won)`,
+              lat: 33.3150, 
+              lng: 44.3660,
+              sector: 'Commercial',
+              contractValue: fields.expectedValue,
+              contractCurrency: fields.currency,
+              monthlyVisits: fields.costStructure ? fields.costStructure.visitsPerMonth : 4,
+              baitStationsCount: fields.costStructure ? fields.costStructure.baitStations : 10,
+              uvMachinesCount: 0,
+              contractTypes: [fields.serviceType],
+              serviceVisits: {}
+            };
+            window.BucklerDB.insert('clients', newClient);
+            showToast(`Contract created in Clients registry for Admin Scheduling! ✓`, 'success');
+          } else {
+            // Update existing client contract details
+            const updatedClient = {
+              contractValue: fields.expectedValue,
+              contractCurrency: fields.currency,
+              monthlyVisits: fields.costStructure ? fields.costStructure.visitsPerMonth : (existingClient.monthlyVisits || 4),
+              baitStationsCount: fields.costStructure ? fields.costStructure.baitStations : (existingClient.baitStationsCount || 10)
+            };
+            if (!existingClient.contractTypes.includes(fields.serviceType)) {
+              updatedClient.contractTypes = [...existingClient.contractTypes, fields.serviceType];
+            }
+            window.BucklerDB.update('clients', existingClient.id, updatedClient);
+          }
         }
 
         els.modalBackdrop.style.display = 'none';
@@ -9296,11 +9903,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const cs = deal.costStructure || {};
     const isPest = deal.serviceType.toLowerCase().includes('pest');
+    const savedCustomCosts = deal.customCosts || [];
 
     let formHTML = '';
 
+    // Currency selector at top of form
+    const currencyHeaderHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; background:#EFF6FF; border:1px solid #BFDBFE; padding:0.5rem 1rem; border-radius:6px;">
+        <span style="font-weight:700; font-size:0.85rem; color:#1E40AF;">Select Costing Currency:</span>
+        <select id="cost-currency" class="form-control" style="max-width:120px; font-weight:700;">
+          <option value="USD" ${deal.currency === 'USD' || !deal.currency ? 'selected' : ''}>USD ($)</option>
+          <option value="IQD" ${deal.currency === 'IQD' ? 'selected' : ''}>IQD (IQD)</option>
+        </select>
+      </div>
+    `;
+
     if (isPest) {
       formHTML = `
+        ${currencyHeaderHTML}
         <div style="background:#F8FAFC; border:1px solid var(--border-color); border-radius: var(--radius-md); padding:1rem; margin-bottom:1rem;">
           <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.75rem; border-bottom:1px dashed var(--border-color); padding-bottom:4px;">Pest Control Cost Factors</h4>
           <div class="form-group row-split">
@@ -9325,7 +9945,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="form-group row-split">
             <div>
-              <label for="cost-additional">Additional Material/Other Cost ($) *</label>
+              <label for="cost-additional">Additional Material/Other Cost (<span class="currency-symbol">$</span>) *</label>
               <input type="number" id="cost-additional" class="form-control calc-trigger" required value="${cs.additionalCost || 0}" min="0">
             </div>
             <div>
@@ -9339,19 +9959,15 @@ document.addEventListener('DOMContentLoaded', () => {
           <h4 style="font-size:0.85rem; font-weight:700; color:#B45309; margin-bottom:0.75rem; border-bottom:1px dashed #FCD34D; padding-bottom:4px;">Rate Settings & Markup</h4>
           <div class="form-group row-split">
             <div>
-              <label for="rate-labor">Labor Hourly Rate ($/hr)</label>
+              <label for="rate-labor">Labor Hourly Rate (<span class="currency-symbol">$</span>/hr)</label>
               <input type="number" id="rate-labor" class="form-control calc-trigger" value="${cs.laborRatePerHour || 15}" min="0">
             </div>
             <div>
-              <label for="rate-station">Unit Cost per Bait Station ($)</label>
-              <input type="number" id="rate-station" class="form-control calc-trigger" value="${cs.costPerBaitStation || 8}" min="0">
+              <label for="rate-sticker">Unit Cost per Sticker (<span class="currency-symbol">$</span>)</label>
+              <input type="number" id="rate-sticker" class="form-control calc-trigger" value="${cs.costPerSticker || 0.50}" min="0" step="0.05">
             </div>
           </div>
           <div class="form-group row-split">
-            <div>
-              <label for="rate-sticker">Unit Cost per Sticker ($)</label>
-              <input type="number" id="rate-sticker" class="form-control calc-trigger" value="${cs.costPerSticker || 0.50}" min="0" step="0.05">
-            </div>
             <div>
               <label for="rate-margin">Desired Profit Margin (%)</label>
               <input type="number" id="rate-margin" class="form-control calc-trigger" value="${cs.profitMargin || 30}" min="0" max="95">
@@ -9361,6 +9977,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     } else {
       formHTML = `
+        ${currencyHeaderHTML}
         <div style="background:#F8FAFC; border:1px solid var(--border-color); border-radius: var(--radius-md); padding:1rem; margin-bottom:1rem;">
           <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.75rem; border-bottom:1px dashed var(--border-color); padding-bottom:4px;">General Service Cost Factors</h4>
           <p style="font-size:0.78rem; color:var(--text-medium); margin-bottom:0.75rem;">(Price structure for non-pest services is general. Specific structures will be added later.)</p>
@@ -9376,7 +9993,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="form-group row-split">
             <div>
-              <label for="cost-additional">Additional Cost ($) *</label>
+              <label for="cost-additional">Additional Cost (<span class="currency-symbol">$</span>) *</label>
               <input type="number" id="cost-additional" class="form-control calc-trigger" required value="${cs.additionalCost || 0}" min="0">
             </div>
             <div>
@@ -9390,7 +10007,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <h4 style="font-size:0.85rem; font-weight:700; color:#B45309; margin-bottom:0.75rem; border-bottom:1px dashed #FCD34D; padding-bottom:4px;">Rate Settings & Markup</h4>
           <div class="form-group row-split">
             <div>
-              <label for="rate-labor">Labor Hourly Rate ($/hr)</label>
+              <label for="rate-labor">Labor Hourly Rate (<span class="currency-symbol">$</span>/hr)</label>
               <input type="number" id="rate-labor" class="form-control calc-trigger" value="${cs.laborRatePerHour || 15}" min="0">
             </div>
             <div>
@@ -9406,45 +10023,53 @@ document.addEventListener('DOMContentLoaded', () => {
       <form id="costing-form" onsubmit="event.preventDefault();" style="display:grid; grid-template-columns:1.8fr 1.2fr; gap:1.5rem; align-items:start; padding:5px;">
         <div>
           ${formHTML}
+          
+          <!-- Custom costing rows section -->
+          <div style="background:#F1F5F9; border:1px dashed #CBD5E1; border-radius: var(--radius-md); padding:1rem; margin-top:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); margin:0;">➕ Additional Custom Costs</h4>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-custom-cost-row" style="padding:2px 8px; font-size:0.75rem;">➕ Add Cost Field</button>
+            </div>
+            <div id="custom-costs-container" style="display:flex; flex-direction:column; gap:0.5rem;">
+               <!-- Row elements injected here -->
+            </div>
+          </div>
         </div>
+        
         <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius: var(--radius-md); padding:1.25rem; display:flex; flex-direction:column; gap:0.85rem; box-shadow: var(--shadow-sm); position:sticky; top:10px;">
           <h4 style="font-size:0.9rem; font-weight:800; color:#1E40AF; border-bottom:1.5px solid #BFDBFE; padding-bottom:4px; margin-bottom:2px;">Pricing Structure Summary</h4>
           
           <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
             <span>Labor Cost/mo:</span>
-            <span id="calc-lbl-labor" style="font-weight:700;">$0.00</span>
+            <span id="calc-lbl-labor" style="font-weight:700;">0.00</span>
           </div>
 
           ${isPest ? `
             <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
-              <span>Bait Stations (Amortized):</span>
-              <span id="calc-lbl-stations" style="font-weight:700;">$0.00</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
               <span>Stickers Cost/mo:</span>
-              <span id="calc-lbl-stickers" style="font-weight:700;">$0.00</span>
+              <span id="calc-lbl-stickers" style="font-weight:700;">0.00</span>
             </div>
           ` : ''}
 
           <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
             <span>Additional Costs:</span>
-            <span id="calc-lbl-additional" style="font-weight:700;">$0.00</span>
+            <span id="calc-lbl-additional" style="font-weight:700;">0.00</span>
           </div>
 
           <div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:800; border-top:1px dashed #BFDBFE; padding-top:6px; color:#1E3A8A; margin-top:2px;">
             <span>Total Base Cost/mo:</span>
-            <span id="calc-lbl-base-total">$0.00</span>
+            <span id="calc-lbl-base-total">0.00</span>
           </div>
 
           <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#059669; font-weight:600;">
             <span>Markup Value:</span>
-            <span id="calc-lbl-markup">$0.00</span>
+            <span id="calc-lbl-markup">0.00</span>
           </div>
 
           <div style="background:white; border:1.5px solid #1E40AF; border-radius:6px; padding:0.65rem; display:flex; flex-direction:column; align-items:center; margin-top:5px;">
             <span style="font-size:0.7rem; text-transform:uppercase; font-weight:800; color:#1E40AF; letter-spacing:0.05em; margin-bottom:2px;">Recommended Price / mo</span>
-            <span id="calc-lbl-selling-price" style="font-size:1.6rem; font-weight:900; color:var(--primary-red);">$0.00</span>
-            <span id="calc-lbl-annual-value" style="font-size:0.72rem; color:var(--text-medium); margin-top:1px;">Annual: $0.00</span>
+            <span id="calc-lbl-selling-price" style="font-size:1.6rem; font-weight:900; color:var(--primary-red);">0.00</span>
+            <span id="calc-lbl-annual-value" style="font-size:0.72rem; color:var(--text-medium); margin-top:1px;">Annual: 0.00</span>
           </div>
         </div>
       </form>
@@ -9452,7 +10077,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showModal(`Price Costing Structure — ${deal.name}`, calculatorHTML, true, 'modal-xl');
 
+    // Helper to format based on chosen currency
+    const formatCurrency = (val, currency) => {
+      if (currency === 'IQD') {
+        return `${Math.round(val).toLocaleString()} IQD`;
+      }
+      return `$${val.toFixed(2)}`;
+    };
+
     const updatePricingSummary = () => {
+      const curVal = document.getElementById('cost-currency').value;
+
+      // Update currency text indicators dynamically
+      document.querySelectorAll('.currency-symbol').forEach(el => {
+        el.textContent = curVal === 'IQD' ? 'IQD' : '$';
+      });
+
       const visits = parseFloat(document.getElementById('cost-visits').value) || 0;
       const hours = parseFloat(document.getElementById('cost-hours').value) || 0;
       const additional = parseFloat(document.getElementById('cost-additional').value) || 0;
@@ -9460,25 +10100,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const margin = parseFloat(document.getElementById('rate-margin').value) || 0;
 
       let laborCost = visits * hours * laborRate;
-      let stationsCost = 0;
       let stickersCost = 0;
 
       if (isPest) {
-        const stations = parseFloat(document.getElementById('cost-stations').value) || 0;
         const stickers = parseFloat(document.getElementById('cost-stickers').value) || 0;
-        const stationRate = parseFloat(document.getElementById('rate-station').value) || 0;
         const stickerRate = parseFloat(document.getElementById('rate-sticker').value) || 0;
-
-        stationsCost = (stations * stationRate) / 12;
         stickersCost = stickers * stickerRate;
 
-        const elStations = document.getElementById('calc-lbl-stations');
         const elStickers = document.getElementById('calc-lbl-stickers');
-        if (elStations) elStations.textContent = `$${stationsCost.toFixed(2)}`;
-        if (elStickers) elStickers.textContent = `$${stickersCost.toFixed(2)}`;
+        if (elStickers) elStickers.textContent = formatCurrency(stickersCost, curVal);
       }
 
-      const baseTotal = laborCost + stationsCost + stickersCost + additional;
+      // Sum custom costs from fields
+      let customCostsTotal = 0;
+      document.querySelectorAll('.custom-cost-row').forEach(row => {
+        const amt = parseFloat(row.querySelector('.custom-cost-amount').value) || 0;
+        customCostsTotal += amt;
+      });
+
+      const baseTotal = laborCost + stickersCost + additional + customCostsTotal;
       const markupValue = baseTotal * (margin / 100);
       const sellingPrice = baseTotal + markupValue;
       const annualValue = sellingPrice * 12;
@@ -9490,25 +10130,71 @@ document.addEventListener('DOMContentLoaded', () => {
       const elSell = document.getElementById('calc-lbl-selling-price');
       const elAnn = document.getElementById('calc-lbl-annual-value');
 
-      if (elLabor) elLabor.textContent = `$${laborCost.toFixed(2)}`;
-      if (elAdd) elAdd.textContent = `$${additional.toFixed(2)}`;
-      if (elBase) elBase.textContent = `$${baseTotal.toFixed(2)}`;
-      if (elMarkup) elMarkup.textContent = `$${markupValue.toFixed(2)}`;
-      if (elSell) elSell.textContent = `$${sellingPrice.toFixed(2)}`;
-      if (elAnn) elAnn.textContent = `Annual: $${annualValue.toFixed(2)}`;
+      if (elLabor) elLabor.textContent = formatCurrency(laborCost, curVal);
+      if (elAdd) elAdd.textContent = formatCurrency(additional + customCostsTotal, curVal);
+      if (elBase) elBase.textContent = formatCurrency(baseTotal, curVal);
+      if (elMarkup) elMarkup.textContent = `${margin}% (${formatCurrency(markupValue, curVal)})`;
+      if (elSell) elSell.textContent = formatCurrency(sellingPrice, curVal);
+      if (elAnn) elAnn.textContent = `Annual: ${formatCurrency(annualValue, curVal)}`;
     };
+
+    // Render custom cost rows
+    const renderCustomCostRow = (name = '', amount = 0) => {
+      const row = document.createElement('div');
+      row.className = 'custom-cost-row';
+      row.style.display = 'flex';
+      row.style.gap = '0.5rem';
+      row.style.alignItems = 'center';
+      row.innerHTML = `
+        <input type="text" class="form-control custom-cost-desc" placeholder="e.g. Chemical special dose" value="${name}" style="flex:2;" required>
+        <div style="display:flex; align-items:center; gap:0.25rem; flex:1;">
+          <input type="number" class="form-control custom-cost-amount calc-trigger" placeholder="Cost" value="${amount || ''}" style="width:100%;" required min="0">
+          <span class="currency-symbol" style="font-weight:600; font-size:0.85rem;">$</span>
+        </div>
+        <button type="button" class="btn btn-danger btn-sm btn-del-custom-cost" style="padding:4px 8px;">❌</button>
+      `;
+      row.querySelector('.btn-del-custom-cost').onclick = () => {
+        row.remove();
+        updatePricingSummary();
+      };
+      row.querySelector('.calc-trigger').addEventListener('input', updatePricingSummary);
+      row.querySelector('.calc-trigger').addEventListener('change', updatePricingSummary);
+      document.getElementById('custom-costs-container').appendChild(row);
+    };
+
+    // Bind Add Row button
+    const btnAddCustom = document.getElementById('btn-add-custom-cost-row');
+    if (btnAddCustom) {
+      btnAddCustom.onclick = () => {
+        renderCustomCostRow('', 0);
+        updatePricingSummary();
+      };
+    }
+
+    // Load initial custom cost rows
+    savedCustomCosts.forEach(cc => {
+      renderCustomCostRow(cc.name, cc.amount);
+    });
 
     setTimeout(() => {
       document.querySelectorAll('.calc-trigger').forEach(inp => {
         inp.addEventListener('input', updatePricingSummary);
         inp.addEventListener('change', updatePricingSummary);
       });
+      const currencySelector = document.getElementById('cost-currency');
+      if (currencySelector) {
+        currencySelector.addEventListener('change', updatePricingSummary);
+      }
       updatePricingSummary();
     }, 100);
 
     const saveBtn = document.getElementById('modal-save-btn');
     if (saveBtn) {
       saveBtn.onclick = () => {
+        const costingForm = document.getElementById('costing-form');
+        if (!costingForm.checkValidity()) { costingForm.reportValidity(); return; }
+
+        const curVal = document.getElementById('cost-currency').value;
         const visits = parseFloat(document.getElementById('cost-visits').value) || 0;
         const hours = parseFloat(document.getElementById('cost-hours').value) || 0;
         const additional = parseFloat(document.getElementById('cost-additional').value) || 0;
@@ -9517,33 +10203,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const costLabel = document.getElementById('cost-label').value.trim();
 
         let laborCost = visits * hours * laborRate;
-        let stationsCost = 0;
         let stickersCost = 0;
-        let stations = 0;
         let stickers = 0;
-        let stationRate = 0;
         let stickerRate = 0;
 
         if (isPest) {
-          stations = parseFloat(document.getElementById('cost-stations').value) || 0;
           stickers = parseFloat(document.getElementById('cost-stickers').value) || 0;
-          stationRate = parseFloat(document.getElementById('rate-station').value) || 0;
           stickerRate = parseFloat(document.getElementById('rate-sticker').value) || 0;
-          stationsCost = (stations * stationRate) / 12;
           stickersCost = stickers * stickerRate;
         }
 
-        const baseTotal = laborCost + stationsCost + stickersCost + additional;
+        // Collect custom costs
+        const customCosts = [];
+        let customCostsTotal = 0;
+        document.querySelectorAll('.custom-cost-row').forEach(row => {
+          const desc = row.querySelector('.custom-cost-desc').value.trim();
+          const amt = parseFloat(row.querySelector('.custom-cost-amount').value) || 0;
+          if (desc) {
+            customCosts.push({ name: desc, amount: amt });
+            customCostsTotal += amt;
+          }
+        });
+
+        const baseTotal = laborCost + stickersCost + additional + customCostsTotal;
         const sellingPrice = Math.round(baseTotal + (baseTotal * (margin / 100)));
 
         const structure = {
           visitsPerMonth: visits,
           hoursPerVisit: hours,
-          baitStations: stations,
+          baitStations: isPest ? parseFloat(document.getElementById('cost-stations').value) || 0 : 0,
           stickersPerMonth: stickers,
           additionalCost: additional,
           laborRatePerHour: laborRate,
-          costPerBaitStation: stationRate,
           costPerSticker: stickerRate,
           profitMargin: margin,
           label: costLabel
@@ -9551,11 +10242,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const updatedFields = {
           expectedValue: sellingPrice,
-          costStructure: structure
+          currency: curVal,
+          costStructure: structure,
+          customCosts: customCosts
         };
 
         window.BucklerDB.update('salesDeals', dealId, updatedFields);
-        showToast('Pricing structure saved to opportunity Expected Value ✓', 'success');
+        showToast('Pricing structure saved successfully ✓', 'success');
 
         els.modalBackdrop.style.display = 'none';
         renderSalesCRM();
