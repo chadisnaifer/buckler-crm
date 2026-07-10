@@ -9280,7 +9280,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filterRepSelect && !filterRepSelect._populated) {
       filterRepSelect._populated = true;
       const allUsers = window.BucklerDB.get('users') || [];
-      const sortedUsers = allUsers.slice().sort((a, b) => a.name.localeCompare(b.name));
+      const allowedFilterRoles = ['gm', 'operations manager', 'sales manager', 'sales rep', 'sales representative'];
+      const sortedUsers = allUsers.filter(u => u.role && allowedFilterRoles.includes(u.role.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
       sortedUsers.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r.id;
@@ -9556,6 +9557,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dealObj) {
           const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
           app.salesManager = !app.salesManager;
+          // Cascade revocation: if Sales Manager approval is revoked, revoke all higher ones
+          if (!app.salesManager) {
+            app.opsManager = false;
+            app.gm = false;
+          }
           window.BucklerDB.update('salesDeals', did, { approvals: app });
           
           const updatedDeal = { ...dealObj, approvals: app };
@@ -9578,7 +9584,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const dealObj = deals.find(x => x.id === did);
         if (dealObj) {
           const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
+          
+          // Enforce level prerequisite: Sales Manager must have approved first
+          if (!app.salesManager && !app.opsManager) {
+            showToast('Quotation must be approved by the Sales Manager first (Level 1).', 'error');
+            return;
+          }
+
           app.opsManager = !app.opsManager;
+          // Cascade revocation: if Operations Manager approval is revoked, revoke GM approval
+          if (!app.opsManager) {
+            app.gm = false;
+          }
           window.BucklerDB.update('salesDeals', did, { approvals: app });
           
           const updatedDeal = { ...dealObj, approvals: app };
@@ -9601,6 +9618,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const dealObj = deals.find(x => x.id === did);
         if (dealObj) {
           const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
+          
+          // Enforce level prerequisite: Operations Manager must have approved first
+          if (!app.opsManager && !app.gm) {
+            showToast('Quotation must be approved by the Operations Manager first (Level 2).', 'error');
+            return;
+          }
+
           app.gm = !app.gm;
           window.BucklerDB.update('salesDeals', did, { approvals: app });
           
@@ -9908,11 +9932,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const services = window.BucklerDB.get('services') || ['pest control', 'termite treatment'];
     const allUsers = window.BucklerDB.get('users') || [];
 
-    // Filter sales rep options
-    const salesReps = allUsers.filter(u => u.role && u.role.toLowerCase().includes('sales'));
+    // Filter sales rep options to include allowed CRM user roles
+    const allowedRepRoles = ['gm', 'operations manager', 'sales manager', 'sales rep', 'sales representative'];
+    const salesReps = allUsers.filter(u => u.role && allowedRepRoles.includes(u.role.toLowerCase()));
     const repOptions = salesReps.map(r => `
-      <option value="${r.id}" ${deal && deal.assignedSalesRepId === r.id ? 'selected' : ''}>${r.name} (${r.region})</option>
-    `).join('') || `<option value="" disabled selected>No Sales Representatives found</option>`;
+      <option value="${r.id}" ${deal && deal.assignedSalesRepId === r.id ? 'selected' : ''}>${r.name} (${r.role.toUpperCase()})</option>
+    `).join('') || `<option value="" disabled>No Representatives found</option>`;
 
     state.editingRecord = { entity: 'salesDeals', id: id };
 
@@ -9930,9 +9955,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-group row-split">
           <div>
-            <label for="deal-modal-rep">Assigned Sales Rep *</label>
-            <select id="deal-modal-rep" class="form-control" required>
-              <option value="" disabled ${!deal ? 'selected' : ''}>Select Representative...</option>
+            <label for="deal-modal-rep">Assigned Sales Rep</label>
+            <select id="deal-modal-rep" class="form-control">
+              <option value="" ${!deal || !deal.assignedSalesRepId ? 'selected' : ''}>-- Unassigned --</option>
               ${repOptions}
             </select>
           </div>
@@ -10014,14 +10039,14 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        const repId = document.getElementById('deal-modal-rep').value;
+        const repId = document.getElementById('deal-modal-rep').value || '';
         const assignedRep = allUsers.find(u => u.id === repId);
 
         const fields = {
           name: document.getElementById('deal-modal-name').value.trim(),
           prospectName: document.getElementById('deal-modal-prospect').value.trim(),
           assignedSalesRepId: repId,
-          assignedSalesRepName: assignedRep ? assignedRep.name : 'Unknown Rep',
+          assignedSalesRepName: assignedRep ? assignedRep.name : 'Unassigned',
           serviceType: document.getElementById('deal-modal-service').value,
           stage: stage,
           expectedValue: parseFloat(document.getElementById('deal-modal-value').value) || 0,
@@ -10412,6 +10437,43 @@ document.addEventListener('DOMContentLoaded', () => {
         elPriceInput.addEventListener('input', () => {
           const curVal = document.getElementById('cost-currency').value;
           const currentPrice = parseFloat(elPriceInput.value) || 0;
+
+          // Re-calculate base costs to adjust markup
+          const visits = parseFloat(document.getElementById('cost-visits').value) || 0;
+          const hours = parseFloat(document.getElementById('cost-hours').value) || 0;
+          const additional = parseFloat(document.getElementById('cost-additional').value) || 0;
+          const laborRate = parseFloat(document.getElementById('rate-labor').value) || 0;
+
+          let laborCost = visits * hours * laborRate;
+          let stickersCost = 0;
+          if (isPest) {
+            const stickers = parseFloat(document.getElementById('cost-stickers').value) || 0;
+            const stickerRate = parseFloat(document.getElementById('rate-sticker').value) || 0;
+            stickersCost = stickers * stickerRate;
+          }
+
+          let customCostsTotal = 0;
+          document.querySelectorAll('.custom-cost-row').forEach(row => {
+            const amt = parseFloat(row.querySelector('.custom-cost-amount').value) || 0;
+            customCostsTotal += amt;
+          });
+
+          const baseTotal = laborCost + stickersCost + additional + customCostsTotal;
+          const markupValue = currentPrice - baseTotal;
+          const marginPercent = baseTotal > 0 ? Math.round((markupValue / baseTotal) * 100) : 0;
+
+          // Update margin input field
+          const marginInput = document.getElementById('rate-margin');
+          if (marginInput) {
+            marginInput.value = marginPercent;
+          }
+
+          // Update markup label
+          const elMarkup = document.getElementById('calc-lbl-markup');
+          if (elMarkup) {
+            elMarkup.textContent = `${marginPercent}% (${formatCurrency(markupValue, curVal)})`;
+          }
+
           const annualValue = currentPrice * 12;
           const elAnn = document.getElementById('calc-lbl-annual-value');
           if (elAnn) elAnn.textContent = `Annual: ${formatCurrency(annualValue, curVal)}`;
