@@ -7,16 +7,24 @@ document.addEventListener('DOMContentLoaded', () => {
     activeTab: 'dashboard',
     charts: {},
     signaturePad: null,
-    editingRecord: null, // Holds { entity, id } when editing in a modal
+    editingRecord: null,
     selectedMapRegion: 'All',
     selectedRouteTL: null,
     selectedRouteTLs: [],
     selectedRoutingRegion: 'All',
-    activeChatTarget: null, // User ID or Channel ID
-    scheduleActiveView: 'list', // 'list' or 'calendar'
-    calendarPeriod: 'Month', // 'Month', 'Week', 'Day'
+    activeChatTarget: null,
+    scheduleActiveView: 'list',
+    calendarPeriod: 'Month',
     calendarCurrentDate: new Date('2026-06-04'),
-    uploadedPictures: []
+    uploadedPictures: [],
+    dashFilters: {
+      service: 'All',
+      region: 'All',
+      dateFrom: '',
+      dateTo: '',
+      preset: 'month' // 'month' | 'all' | 'custom'
+    },
+    dashActivityServiceFilter: 'All'
   };
 
   // DOM Elements
@@ -41,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterScheduleCity: document.getElementById('filter-schedule-city'),
     filterScheduleClient: document.getElementById('filter-schedule-client'),
     filterScheduleTL: document.getElementById('filter-schedule-tl'),
+    filterScheduleService: document.getElementById('filter-schedule-service'),
     filterScheduleStatus: document.getElementById('filter-schedule-status'),
     filterScheduleDate: document.getElementById('filter-schedule-date'),
     btnClearScheduleFilters: document.getElementById('btn-clear-schedule-filters'),
@@ -454,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load initial user & render
     switchUser(els.roleSelector.value);
+    initDashFilterBar();
     
     // Reactive UI updates on local database writes
     window.addEventListener('storage', () => {
@@ -470,7 +480,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 15000);
   }
 
-  // Toast Notification Utility
+  // ── Global window helpers for dashboard filter bar (called from HTML onclick) ──
+  window.setDashPreset = function(preset) {
+    const now = new Date();
+    if (preset === 'month') {
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const last = new Date(y, now.getMonth() + 1, 0).getDate();
+      state.dashFilters.dateFrom = '';
+      state.dashFilters.dateTo = '';
+      state.dashFilters.preset = 'month';
+      const fromEl = document.getElementById('dash-filter-date-from');
+      const toEl = document.getElementById('dash-filter-date-to');
+      if (fromEl) fromEl.value = `${y}-${m}-01`;
+      if (toEl) toEl.value = `${y}-${m}-${String(last).padStart(2, '0')}`;
+    } else {
+      state.dashFilters.dateFrom = '';
+      state.dashFilters.dateTo = '';
+      state.dashFilters.preset = 'all';
+      const fromEl = document.getElementById('dash-filter-date-from');
+      const toEl = document.getElementById('dash-filter-date-to');
+      if (fromEl) fromEl.value = '';
+      if (toEl) toEl.value = '';
+    }
+    syncDashPresetButtons(preset);
+    renderDashboard();
+  };
+
+  window.clearDashFilters = function() {
+    state.dashFilters = { service: 'All', region: 'All', dateFrom: '', dateTo: '', preset: 'all' };
+    state.dashActivityServiceFilter = 'All';
+    const svcSel = document.getElementById('dash-filter-service');
+    const regSel = document.getElementById('dash-filter-region');
+    const fromEl = document.getElementById('dash-filter-date-from');
+    const toEl = document.getElementById('dash-filter-date-to');
+    if (svcSel) svcSel.value = 'All';
+    if (regSel && !regSel.disabled) regSel.value = 'All';
+    if (fromEl) fromEl.value = '';
+    if (toEl) toEl.value = '';
+    syncDashPresetButtons('all');
+    renderDashboard();
+  };
+
+  window._setDashActivityFilter = function(svc) {
+    state.dashActivityServiceFilter = svc;
+    renderDashboard();
+  };
+
+  window._openActivityLog = function(logId) {
+    const log = (window.BucklerDB.getLogs('All')).find(l => l.id === logId);
+    if (!log) return;
+    const sch = (window.BucklerDB.get('schedules') || []).find(s => s.id === log.scheduleId);
+    if (sch) openViewLogModal(log.id, sch.id);
+  };
+
   function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container') || createToastContainer();
     const toast = document.createElement('div');
@@ -946,6 +1009,8 @@ document.addEventListener('DOMContentLoaded', () => {
       lastSelectedTLs = ['All'];
       els.filterScheduleStatus.value = 'All';
       els.filterScheduleDate.value = '';
+      if (els.filterScheduleService) els.filterScheduleService.value = 'All';
+
       renderSchedules();
     });
 
@@ -1066,73 +1131,256 @@ document.addEventListener('DOMContentLoaded', () => {
   // 5. Dashboard Visualizer
   function renderDashboard() {
     if (dashboardMap) {
-      setTimeout(() => {
-        dashboardMap.invalidateSize();
-      }, 100);
+      setTimeout(() => { dashboardMap.invalidateSize(); }, 100);
     }
-    const region = getRestrictedRegion();
+    const roleRegion = getRestrictedRegion();
     const city = getRestrictedCity();
     const role = state.currentUser.role.toLowerCase();
-    
-    let schedules = window.BucklerDB.getSchedules(region);
-    if (city !== 'All') {
-      schedules = schedules.filter(s => s.city === city);
+    const df = state.dashFilters;
+
+    // Resolve region: respect role restriction, override with filter if allowed
+    const filterRegion = (roleRegion === 'All') ? (df.region || 'All') : roleRegion;
+
+    // Compute date window
+    let dateFrom = df.dateFrom;
+    let dateTo = df.dateTo;
+    if (df.preset === 'month' && !dateFrom) {
+      const now = new Date();
+      dateFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      dateTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     }
+
+    let schedules = window.BucklerDB.getSchedules(filterRegion);
+    if (city !== 'All') schedules = schedules.filter(s => s.city === city);
+
+    // Apply service filter
+    if (df.service && df.service !== 'All') {
+      schedules = schedules.filter(s => s.service === df.service);
+    }
+    // Apply date filter (uses schedule date)
+    if (dateFrom) schedules = schedules.filter(s => s.date >= dateFrom);
+    if (dateTo) schedules = schedules.filter(s => s.date <= dateTo);
+
     const conducted = schedules.filter(s => s.status === 'Conducted');
     const scheduled = schedules.filter(s => s.status === 'Scheduled');
-    
+
     const scheduleIds = new Set(schedules.map(s => s.id));
-    const logs = window.BucklerDB.getLogs(region).filter(l => scheduleIds.has(l.scheduleId));
-    
+    const logs = window.BucklerDB.getLogs(filterRegion).filter(l => scheduleIds.has(l.scheduleId));
+
     let itemsCount = 0;
-    logs.forEach(l => {
-      if (l.itemsConsumed) {
-        l.itemsConsumed.forEach(i => itemsCount += i.qty);
-      }
-    });
+    logs.forEach(l => { if (l.itemsConsumed) l.itemsConsumed.forEach(i => itemsCount += i.qty); });
 
     els.statScheduled.textContent = scheduled.length;
     els.statConducted.textContent = conducted.length;
     els.statCompletion.textContent = schedules.length ? `${Math.round((conducted.length / schedules.length) * 100)}%` : '0%';
     els.statItemsUsed.textContent = itemsCount;
 
-    renderChartsData(region, schedules, conducted, logs);
-    renderCommuteLog(region);
+    // Update filter summary badge
+    const summaryEl = document.getElementById('dash-filter-summary');
+    if (summaryEl) {
+      const parts = [];
+      if (df.service !== 'All') parts.push(`Service: ${df.service}`);
+      if (filterRegion !== 'All') parts.push(`Region: ${filterRegion}`);
+      if (dateFrom && dateTo) parts.push(`${dateFrom} → ${dateTo}`);
+      else if (df.preset === 'month') { const m = new Date(); parts.push(`${m.toLocaleString('default',{month:'long'})} ${m.getFullYear()}`); }
+      summaryEl.textContent = parts.length ? `Showing: ${parts.join(' | ')}` : '';
+    }
+
+    renderChartsData(filterRegion, schedules, conducted, logs);
+    renderCommuteLog(filterRegion);
 
     if (role !== 'team leader') {
       els.staffRoutingPanel.style.display = 'grid';
       setupRoutingPanel();
-      
-      // Driver Shifts Report
-      if (!state.selectedShiftRegions) {
-        setupDriverShiftsPanel();
-      }
+      if (!state.selectedShiftRegions) setupDriverShiftsPanel();
       renderShiftRegionPills();
       renderShiftTLPills();
       renderDriverShifts();
     } else {
       els.staffRoutingPanel.style.display = 'none';
       if (dashboardRouteLayers) {
-        dashboardRouteLayers.forEach(l => {
-          if (dashboardMap) dashboardMap.removeLayer(l);
-        });
+        dashboardRouteLayers.forEach(l => { if (dashboardMap) dashboardMap.removeLayer(l); });
         dashboardRouteLayers = [];
       }
-      
       const shiftsPanel = document.getElementById('driver-shifts-panel');
       if (shiftsPanel) shiftsPanel.style.display = 'none';
     }
 
-    updateMapDisplay(region);
+    updateMapDisplay(filterRegion);
 
-    // Deep-dives initialization and rendering
     populateDashConsumeClients(els.dashConsumeRegion ? els.dashConsumeRegion.value : 'All');
     populateDashConsumeItems();
     renderDashConsume();
-
     populateDashComplaintClients(els.dashComplaintRegion ? els.dashComplaintRegion.value : 'All');
     renderDashComplaint();
+
+    // Activity feed
+    renderActivityFeed(logs, schedules);
   }
+
+  // ── Dashboard filter bar initializer ─────────────────────────────────────
+  function initDashFilterBar() {
+    // Populate service dropdown
+    const svcSel = document.getElementById('dash-filter-service');
+    if (svcSel) {
+      const services = window.BucklerDB.get('services') || [];
+      svcSel.innerHTML = `<option value="All">All Services</option>` +
+        services.map(s => `<option value="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('');
+      svcSel.addEventListener('change', () => {
+        state.dashFilters.service = svcSel.value;
+        state.dashFilters.preset = 'custom';
+        renderDashboard();
+      });
+    }
+
+    // Region dropdown (only if user has All-region access)
+    const regSel = document.getElementById('dash-filter-region');
+    if (regSel) {
+      const restricted = getRestrictedRegion();
+      if (restricted !== 'All') {
+        regSel.value = restricted;
+        regSel.disabled = true;
+        state.dashFilters.region = restricted;
+      }
+      regSel.addEventListener('change', () => {
+        state.dashFilters.region = regSel.value;
+        state.dashFilters.preset = 'custom';
+        renderDashboard();
+      });
+    }
+
+    // Date inputs
+    const dateFrom = document.getElementById('dash-filter-date-from');
+    const dateTo = document.getElementById('dash-filter-date-to');
+    if (dateFrom) {
+      dateFrom.addEventListener('change', () => {
+        state.dashFilters.dateFrom = dateFrom.value;
+        state.dashFilters.preset = 'custom';
+        syncDashPresetButtons('custom');
+        renderDashboard();
+      });
+    }
+    if (dateTo) {
+      dateTo.addEventListener('change', () => {
+        state.dashFilters.dateTo = dateTo.value;
+        state.dashFilters.preset = 'custom';
+        syncDashPresetButtons('custom');
+        renderDashboard();
+      });
+    }
+
+    // Set default preset to current month
+    setDashPreset('month');
+
+    // Populate schedule service filter
+    const schSvcSel = document.getElementById('filter-schedule-service');
+    if (schSvcSel) {
+      const services = window.BucklerDB.get('services') || [];
+      schSvcSel.innerHTML = `<option value="All">All Services</option>` +
+        services.map(s => `<option value="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('');
+      if (els.filterScheduleService) {
+        els.filterScheduleService.addEventListener('change', () => renderSchedules());
+      }
+    }
+  }
+
+  function syncDashPresetButtons(preset) {
+    document.querySelectorAll('.btn-dash-preset').forEach(btn => {
+      btn.style.background = 'white';
+      btn.style.color = 'var(--text-medium)';
+    });
+    const active = document.getElementById(preset === 'month' ? 'dash-preset-month' : 'dash-preset-all');
+    if (active && preset !== 'custom') {
+      active.style.background = 'var(--primary-red)';
+      active.style.color = 'white';
+    }
+  }
+
+  // ── Activity Feed Renderer ────────────────────────────────────────────────
+  const SERVICE_COLORS = {
+    'pest control': '#EF4444', 'termite treatment': '#8B5CF6', 'weed removal': '#10B981',
+    'animal control': '#F59E0B', 'bird control': '#3B82F6', 'poultry disinfection': '#EC4899',
+    'landscaping': '#14B8A6', 'cleaning': '#06B6D4', 'maintenance': '#F97316', 'products sales': '#6B7280'
+  };
+
+  function renderActivityFeed(logs, schedules) {
+    const container = document.getElementById('dashboard-activity-feed');
+    if (!container) return;
+    const pillsContainer = document.getElementById('dash-activity-service-pills');
+
+    const clients = window.BucklerDB.get('clients');
+    const users = window.BucklerDB.get('users');
+    const items = window.BucklerDB.get('items');
+    const svcFilter = state.dashActivityServiceFilter || 'All';
+
+    // Build pill filters from unique services in current logs
+    if (pillsContainer) {
+      const seen = new Set();
+      logs.forEach(l => {
+        const sch = schedules.find(s => s.id === l.scheduleId);
+        if (sch && sch.service) seen.add(sch.service);
+      });
+      const allServices = ['All', ...Array.from(seen).sort()];
+      pillsContainer.innerHTML = allServices.map(svc => {
+        const isActive = svc === svcFilter;
+        const color = SERVICE_COLORS[svc] || '#6B7280';
+        return `<button onclick="window._setDashActivityFilter('${svc}')"
+          style="padding:0.2rem 0.6rem; font-size:0.72rem; font-weight:600; border-radius:20px; border:1.5px solid ${isActive ? color : 'var(--border-color)'}; background:${isActive ? color : 'white'}; color:${isActive ? 'white' : 'var(--text-medium)'}; cursor:pointer; transition:all 0.15s;">${svc === 'All' ? 'All' : svc.charAt(0).toUpperCase() + svc.slice(1)}</button>`;
+      }).join('');
+    }
+
+    // Filter and sort logs — most recent first
+    let filteredLogs = [...logs].sort((a, b) => new Date(b.dateConducted + 'T' + (b.timeIn || '00:00')) - new Date(a.dateConducted + 'T' + (a.timeIn || '00:00')));
+    if (svcFilter !== 'All') {
+      filteredLogs = filteredLogs.filter(l => {
+        const sch = schedules.find(s => s.id === l.scheduleId);
+        return sch && sch.service === svcFilter;
+      });
+    }
+    filteredLogs = filteredLogs.slice(0, 20);
+
+    if (filteredLogs.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.85rem;">No recent activities${svcFilter !== 'All' ? ` for "${svcFilter}"` : ''} in this period.</div>`;
+      return;
+    }
+
+    container.innerHTML = filteredLogs.map(log => {
+      const sch = schedules.find(s => s.id === log.scheduleId);
+      const client = clients.find(c => sch && c.id === sch.clientId);
+      const svcName = sch ? sch.service : 'Unknown Service';
+      const svcColor = SERVICE_COLORS[svcName] || '#6B7280';
+      const tlIds = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(x => x.trim()) : [];
+      const tlNames = tlIds.map(id => { const u = users.find(x => x.id === id); return u ? u.name : id; }).join(', ') || 'Unassigned';
+      const mats = log.itemsConsumed && log.itemsConsumed.length
+        ? log.itemsConsumed.map(c => { const it = items.find(i => i.id === c.itemId); return `${it ? it.name : c.itemId} ×${c.qty}`; }).join(', ')
+        : '—';
+      const statusBg = log.clientComments ? '#ECFDF5' : '#F8FAFC';
+
+      return `<div onclick="window._openActivityLog('${log.id}')"
+        style="display:grid; grid-template-columns:90px 1fr 1fr 1fr 1fr; gap:0.5rem; align-items:center; padding:0.65rem 1rem; border-bottom:1px solid var(--border-color); cursor:pointer; transition:background 0.1s; font-size:0.8rem;"
+        onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='white'">
+        <div style="display:flex; flex-direction:column;">
+          <span style="font-weight:700; color:var(--text-dark);">${log.dateConducted || '—'}</span>
+          <span style="font-size:0.7rem; color:var(--text-muted);">${log.timeIn || ''} – ${log.timeOut || ''}</span>
+        </div>
+        <div>
+          <div style="font-weight:700; color:var(--text-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${client ? client.name : 'Unknown Client'}</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">${client ? (client.city || client.region || '') : ''}</div>
+        </div>
+        <div><span style="background:${svcColor}1A; color:${svcColor}; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.7rem; font-weight:700;">${svcName.charAt(0).toUpperCase() + svcName.slice(1)}</span></div>
+        <div style="color:var(--text-medium); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${tlNames}</div>
+        <div style="color:var(--text-muted); font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${mats}</div>
+      </div>`;
+    }).join('');
+
+    // Table header (inserted before rows)
+    const header = `<div style="display:grid; grid-template-columns:90px 1fr 1fr 1fr 1fr; gap:0.5rem; padding:0.5rem 1rem; background:#F8FAFC; border-bottom:2px solid var(--border-color); font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">
+      <span>Date</span><span>Client</span><span>Service</span><span>Team Leader</span><span>Materials</span>
+    </div>`;
+    container.innerHTML = header + container.innerHTML;
+  }
+
 
   function renderChartsData(region, schedules, conducted, logs) {
     if (state.charts.visits) state.charts.visits.destroy();
@@ -2142,6 +2390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const targetStatus = els.filterScheduleStatus.value;
     const targetDate = els.filterScheduleDate.value;
+    const targetService = els.filterScheduleService ? els.filterScheduleService.value : 'All';
     const searchQuery = els.searchSchedule.value.toLowerCase();
 
     const schedules = window.BucklerDB.getSchedules(targetRegion, 'All');
@@ -2152,17 +2401,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const client = clients.find(c => c.id === sch.clientId);
       const clientName = client ? client.name.toLowerCase() : '';
       const serviceName = sch.service.toLowerCase();
-      
+
       const matchSearch = clientName.includes(searchQuery) || serviceName.includes(searchQuery);
       const matchStatus = targetStatus === 'All' ? true : sch.status === targetStatus;
       const matchDate = targetDate === '' ? true : sch.date === targetDate;
       const matchClient = targetClient === 'All' ? true : sch.clientId === targetClient;
       const matchCity = targetCity === 'All' ? true : sch.city === targetCity;
-      
+      const matchService = targetService === 'All' ? true : sch.service === targetService;
+
       const schTLs = sch.teamLeaderId ? sch.teamLeaderId.split(',').map(x => x.trim()) : [];
       const matchTL = targetTLs.includes('All') || schTLs.some(id => targetTLs.includes(id));
 
-      return matchSearch && matchStatus && matchDate && matchClient && matchCity && matchTL;
+      return matchSearch && matchStatus && matchDate && matchClient && matchCity && matchService && matchTL;
     });
 
     filteredSchedules.sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
@@ -3928,7 +4178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">Select all that apply</span>
           </label>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:0.4rem;padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:#FAFAFA;">
-            ${['Pest Control','Weed Removal','Termite Treatment','Animal Control','Bird Control','Poultry Halls','Landscaping'].map(ct => `
+            ${['Pest Control','Weed Removal','Termite Treatment','Animal Control','Bird Control','Poultry Halls','Landscaping','Cleaning','Maintenance'].map(ct => `
               <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;cursor:pointer;padding:0.3rem 0.4rem;border-radius:4px;">
                 <input type="checkbox" name="cli-contract-type-cb" value="${ct}" ${(client && (client.contractTypes||[]).includes(ct)) ? 'checked' : ''} style="accent-color:var(--primary-red);width:14px;height:14px;" ${!canEdit ? 'disabled' : ''}>
                 <span>${ct}</span>

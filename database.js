@@ -24,6 +24,8 @@ const DEFAULT_DATA = {
     'bird control',
     'poultry disinfection',
     'landscaping',
+    'cleaning',
+    'maintenance',
     'products sales'
   ],
 
