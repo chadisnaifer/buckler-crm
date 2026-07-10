@@ -9464,9 +9464,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }).join('') : `<div style="text-align:center; color:var(--text-medium); font-size:0.75rem; padding:1.5rem; border:1px dashed #E2E8F0; border-radius:6px;">Empty</div>`;
     });
 
-    // Bind Edit button click
+    // Bind Edit button click and card double click
     document.querySelectorAll('.edit-deal-btn').forEach(btn => {
       btn.onclick = () => openDealModal(btn.getAttribute('data-id'));
+    });
+
+    document.querySelectorAll('#sales-tab .card').forEach(card => {
+      const editBtn = card.querySelector('.edit-deal-btn');
+      if (editBtn) {
+        const dealId = editBtn.getAttribute('data-id');
+        card.style.cursor = 'pointer';
+        card.title = 'Double click to open and edit details';
+        card.ondblclick = (e) => {
+          // Don't trigger if clicking buttons or links
+          if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('.app-sm-pill') || e.target.closest('.app-ops-pill') || e.target.closest('.app-gm-pill')) return;
+          openDealModal(dealId);
+        };
+      }
     });
 
     // Bind Client Registry Edit Link click
@@ -9647,6 +9661,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 label: (ctx) => ` $${Math.round(ctx.raw).toLocaleString()} USD equiv`
               }
             }
+          },
+          onClick: (evt, activeEl) => {
+            if (activeEl && activeEl.length > 0) {
+              const index = activeEl[0].index;
+              const stageLabel = stages[index];
+              const colIds = {
+                'Prospecting': 'kanban-prospecting',
+                'Qualification': 'kanban-qualification',
+                'Proposal Sent': 'kanban-proposal',
+                'Negotiation': 'kanban-negotiation',
+                'Closed Won': 'kanban-won',
+                'Closed Lost': 'kanban-lost'
+              };
+              const colId = colIds[stageLabel];
+              const colEl = document.getElementById(colId);
+              if (colEl) {
+                colEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                colEl.style.outline = '3px solid var(--primary-red)';
+                colEl.style.borderRadius = '8px';
+                setTimeout(() => { colEl.style.outline = 'none'; }, 1500);
+                showToast(`Focused on pipeline stage: ${stageLabel} ✓`, 'success');
+              }
+            }
           }
         }
       });
@@ -9731,6 +9768,23 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           scales: {
             x: { beginAtZero: true }
+          },
+          onClick: (evt, activeEl) => {
+            if (activeEl && activeEl.length > 0) {
+              const index = activeEl[0].index;
+              const repLabel = sortedReps[index].name;
+              // Map back to the representative's full user ID
+              const allUsers = window.BucklerDB.get('users') || [];
+              const foundRep = allUsers.find(u => u.name === repLabel);
+              if (foundRep) {
+                const repSelect = document.getElementById('sales-filter-rep');
+                if (repSelect) {
+                  repSelect.value = foundRep.id;
+                  showToast(`Filtering pipeline by representative: ${foundRep.name} ✓`, 'success');
+                  renderSalesCRM();
+                }
+              }
+            }
           }
         }
       });
@@ -10225,10 +10279,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <span id="calc-lbl-markup">0.00</span>
           </div>
 
-          <div style="background:white; border:1.5px solid #1E40AF; border-radius:6px; padding:0.65rem; display:flex; flex-direction:column; align-items:center; margin-top:5px;">
-            <span style="font-size:0.7rem; text-transform:uppercase; font-weight:800; color:#1E40AF; letter-spacing:0.05em; margin-bottom:2px;">Recommended Price / mo</span>
-            <span id="calc-lbl-selling-price" style="font-size:1.6rem; font-weight:900; color:var(--primary-red);">0.00</span>
-            <span id="calc-lbl-annual-value" style="font-size:0.72rem; color:var(--text-medium); margin-top:1px;">Annual: 0.00</span>
+          <div style="background:white; border:1.5px solid #1E40AF; border-radius:6px; padding:0.65rem; display:flex; flex-direction:column; align-items:center; margin-top:5px; width:100%;">
+            <span style="font-size:0.72rem; text-transform:uppercase; font-weight:800; color:#1E40AF; letter-spacing:0.04em; margin-bottom:4px; text-align:center;">Final Selling Price / mo</span>
+            <div style="display:flex; align-items:center; gap:0.25rem; width:100%; justify-content:center;">
+              <span class="currency-symbol" style="font-weight:900; font-size:1.1rem; color:var(--primary-red);">$</span>
+              <input type="number" id="calc-selling-price-input" class="form-control" style="font-size:1.3rem; font-weight:900; color:var(--primary-red); text-align:center; padding:2px; border:1px solid #BFDBFE; max-width:145px; margin:0;" value="${deal.expectedValue || ''}" required min="0">
+            </div>
+            <span id="calc-lbl-annual-value" style="font-size:0.72rem; color:var(--text-medium); margin-top:4px;">Annual: 0.00</span>
           </div>
         </div>
       </form>
@@ -10280,20 +10337,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const baseTotal = laborCost + stickersCost + additional + customCostsTotal;
       const markupValue = baseTotal * (margin / 100);
       const sellingPrice = baseTotal + markupValue;
-      const annualValue = sellingPrice * 12;
 
       const elLabor = document.getElementById('calc-lbl-labor');
       const elAdd = document.getElementById('calc-lbl-additional');
       const elBase = document.getElementById('calc-lbl-base-total');
       const elMarkup = document.getElementById('calc-lbl-markup');
-      const elSell = document.getElementById('calc-lbl-selling-price');
       const elAnn = document.getElementById('calc-lbl-annual-value');
 
       if (elLabor) elLabor.textContent = formatCurrency(laborCost, curVal);
       if (elAdd) elAdd.textContent = formatCurrency(additional + customCostsTotal, curVal);
       if (elBase) elBase.textContent = formatCurrency(baseTotal, curVal);
       if (elMarkup) elMarkup.textContent = `${margin}% (${formatCurrency(markupValue, curVal)})`;
-      if (elSell) elSell.textContent = formatCurrency(sellingPrice, curVal);
+
+      // Update final selling price input ONLY if user is not manually focused on it
+      const elPriceInput = document.getElementById('calc-selling-price-input');
+      if (elPriceInput && document.activeElement !== elPriceInput) {
+        elPriceInput.value = Math.round(sellingPrice);
+      }
+
+      const finalPrice = elPriceInput ? (parseFloat(elPriceInput.value) || 0) : sellingPrice;
+      const annualValue = finalPrice * 12;
       if (elAnn) elAnn.textContent = `Annual: ${formatCurrency(annualValue, curVal)}`;
     };
 
@@ -10344,6 +10407,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currencySelector) {
         currencySelector.addEventListener('change', updatePricingSummary);
       }
+      const elPriceInput = document.getElementById('calc-selling-price-input');
+      if (elPriceInput) {
+        elPriceInput.addEventListener('input', () => {
+          const curVal = document.getElementById('cost-currency').value;
+          const currentPrice = parseFloat(elPriceInput.value) || 0;
+          const annualValue = currentPrice * 12;
+          const elAnn = document.getElementById('calc-lbl-annual-value');
+          if (elAnn) elAnn.textContent = `Annual: ${formatCurrency(annualValue, curVal)}`;
+        });
+      }
       updatePricingSummary();
     }, 100);
 
@@ -10385,7 +10458,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const baseTotal = laborCost + stickersCost + additional + customCostsTotal;
-        const sellingPrice = Math.round(baseTotal + (baseTotal * (margin / 100)));
+        const elPriceInput = document.getElementById('calc-selling-price-input');
+        const sellingPrice = elPriceInput 
+          ? Math.round(parseFloat(elPriceInput.value) || baseTotal + (baseTotal * (margin / 100)))
+          : Math.round(baseTotal + (baseTotal * (margin / 100)));
 
         const structure = {
           visitsPerMonth: visits,
@@ -10407,6 +10483,20 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         window.BucklerDB.update('salesDeals', dealId, updatedFields);
+        
+        // Update client contract details as well if already Closed Won
+        const dealObj = (window.BucklerDB.get('salesDeals') || []).find(d => d.id === dealId);
+        if (dealObj && dealObj.stage === 'Closed Won') {
+          const clients = window.BucklerDB.get('clients') || [];
+          const existingClient = clients.find(c => c.name.toLowerCase() === dealObj.prospectName.toLowerCase() || c.id === `cli-deal-${dealId}`);
+          if (existingClient) {
+            window.BucklerDB.update('clients', existingClient.id, {
+              contractValue: sellingPrice,
+              contractCurrency: curVal
+            });
+          }
+        }
+
         showToast('Pricing structure saved successfully ✓', 'success');
 
         els.modalBackdrop.style.display = 'none';
