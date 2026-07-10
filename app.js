@@ -9535,11 +9535,17 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.onclick = () => {
         const id = btn.getAttribute('data-id');
         const deal = (window.BucklerDB.get('salesDeals') || []).find(d => d.id === id);
-        if (deal && confirm(`Delete deal "${deal.name}"?`)) {
-          window.BucklerDB.delete('salesDeals', id);
-          notifySalesConcerned(deal, 'deleted');
-          showToast('Sales opportunity removed ✓', 'success');
-          renderSalesCRM();
+        if (deal) {
+          if (!canEditOrDeleteDeal(deal)) {
+            showToast('You do not have permission to delete this deal.', 'error');
+            return;
+          }
+          if (confirm(`Delete deal "${deal.name}"?`)) {
+            window.BucklerDB.delete('salesDeals', id);
+            notifySalesConcerned(deal, 'deleted');
+            showToast('Sales opportunity removed ✓', 'success');
+            renderSalesCRM();
+          }
         }
       };
     });
@@ -9925,10 +9931,39 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function canEditOrDeleteDeal(deal) {
+    if (!state.currentUser) return true;
+    const role = state.currentUser.role.toLowerCase();
+    
+    // GMs, Sales Managers, and Operations Managers have full permissions
+    if (role === 'gm' || role === 'sales manager' || role === 'operations manager') {
+      return true;
+    }
+    
+    // Sales Representatives/Reps can edit/delete any deal in the Prospecting stage
+    if (role === 'sales representative' || role === 'sales rep') {
+      if (deal.stage === 'Prospecting') {
+        return true;
+      }
+      // For other stages, they must be the assigned representative
+      return deal.assignedSalesRepId === state.currentUser.id;
+    }
+    
+    return false;
+  }
+
   function openDealModal(id = null) {
     _ensureSalesDealsArray();
     const isEdit = !!id;
     const deal = isEdit ? (window.BucklerDB.get('salesDeals') || []).find(d => d.id === id) : null;
+    
+    if (isEdit && deal) {
+      if (!canEditOrDeleteDeal(deal)) {
+        showToast('You do not have permission to edit this deal.', 'error');
+        return;
+      }
+    }
+
     const services = window.BucklerDB.get('services') || ['pest control', 'termite treatment'];
     const allUsers = window.BucklerDB.get('users') || [];
 
@@ -9955,9 +9990,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-group row-split">
           <div>
-            <label for="deal-modal-rep">Assigned Sales Rep</label>
-            <select id="deal-modal-rep" class="form-control">
-              <option value="" ${!deal || !deal.assignedSalesRepId ? 'selected' : ''}>-- Unassigned --</option>
+            <label for="deal-modal-rep">Assigned Sales Rep *</label>
+            <select id="deal-modal-rep" class="form-control" required>
+              <option value="" disabled ${!deal || !deal.assignedSalesRepId ? 'selected' : ''}>Select Representative...</option>
               ${repOptions}
             </select>
           </div>
