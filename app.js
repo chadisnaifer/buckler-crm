@@ -3922,31 +3922,23 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="number" step="0.000001" id="cli-modal-lng" class="form-control" value="${client && client.lng !== null && client.lng !== undefined ? client.lng : ''}" placeholder="e.g. 44.3615 (Optional)" ${!canEdit ? 'disabled' : ''}>
           </div>
         </div>
-        <div class="form-group row-split">
-          <div>
-            <label for="cli-modal-contract-value">Contract Value *</label>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="number" id="cli-modal-contract-value" class="form-control" value="${client ? (client.contractValue || '') : ''}" placeholder="e.g. 2500" required ${!canEdit ? 'disabled' : ''} style="flex: 1;">
-              <select id="cli-modal-contract-currency" class="form-control" style="max-width: 90px;" ${!canEdit ? 'disabled' : ''}>
-                <option value="USD" ${client && client.contractCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="IQD" ${client && client.contractCurrency === 'IQD' ? 'selected' : ''}>IQD</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label for="cli-modal-monthly-visits">Monthly Visits Target *</label>
-            <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || '') : ''}" placeholder="e.g. 4" required ${!canEdit ? 'disabled' : ''}>
+        <div class="form-group">
+          <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+            <span>Contract Types / Services</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">Select all that apply</span>
+          </label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:0.4rem;padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:#FAFAFA;">
+            ${['Pest Control','Weed Removal','Termite Treatment','Animal Control','Bird Control','Poultry Halls','Landscaping'].map(ct => `
+              <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;cursor:pointer;padding:0.3rem 0.4rem;border-radius:4px;">
+                <input type="checkbox" name="cli-contract-type-cb" value="${ct}" ${(client && (client.contractTypes||[]).includes(ct)) ? 'checked' : ''} style="accent-color:var(--primary-red);width:14px;height:14px;" ${!canEdit ? 'disabled' : ''}>
+                <span>${ct}</span>
+              </label>
+            `).join('')}
           </div>
         </div>
-        <div class="form-group row-split">
-          <div>
-            <label for="cli-modal-bait-stations">Bait Stations Count *</label>
-            <input type="number" id="cli-modal-bait-stations" class="form-control" value="${client ? (client.baitStationsCount || 0) : 0}" placeholder="e.g. 10" required ${!canEdit ? 'disabled' : ''}>
-          </div>
-          <div>
-            <label for="cli-modal-uv-machines">UV Machines Count *</label>
-            <input type="number" id="cli-modal-uv-machines" class="form-control" value="${client ? (client.uvMachinesCount || 0) : 0}" placeholder="e.g. 4" required ${!canEdit ? 'disabled' : ''}>
-          </div>
+        <div class="form-group">
+          <label for="cli-modal-monthly-visits">Monthly Visits Target</label>
+          <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || '') : ''}" placeholder="e.g. 4" ${!canEdit ? 'disabled' : ''}>
         </div>
         ${isEdit ? (() => {
           const logs = window.BucklerDB.get('operationLogs').filter(l => l.clientId === id);
@@ -4884,11 +4876,41 @@ document.addEventListener('DOMContentLoaded', () => {
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(reportUrl).then(() => showToast('Report link copied to clipboard', 'success'));
       };
+      const emailBtn = document.createElement('button');
+      emailBtn.className = 'btn btn-secondary';
+      emailBtn.innerHTML = '📧 Email Report';
+      emailBtn.title = 'Send visit report to client by email';
+      emailBtn.onclick = () => {
+        const clientEmail = client ? client.email : '';
+        const tlNames = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => {
+          const u = users.find(x => x.id === tid.trim());
+          return u ? u.name : tid;
+        }).join(', ') : 'N/A';
+        const itemsList = log.itemsConsumed && log.itemsConsumed.length
+          ? log.itemsConsumed.map(c => { const it = items.find(i => i.id === c.itemId); return `${it ? it.name : c.itemId}: ${c.qty} ${it ? it.unit : ''}`; }).join(', ')
+          : 'None';
+        const subject = encodeURIComponent(`Visit Report — ${client ? client.name : ''} — ${log.dateConducted}`);
+        const body = encodeURIComponent(
+          `Dear ${client ? (client.contact || client.name) : 'Valued Client'},\n\n` +
+          `Please find the summary of our recent visit to your premises.\n\n` +
+          `Client: ${client ? client.name : ''}\nDate: ${log.dateConducted}\nService: ${sch ? sch.service : 'N/A'}\n` +
+          `Time In: ${log.timeIn || 'N/A'}  |  Time Out: ${log.timeOut || 'N/A'}\n` +
+          `Duration: ${log.timeSpent || 'N/A'}\nTeam Leader: ${tlNames}\n` +
+          `Materials Used: ${itemsList}\nNotes: ${log.comments || 'N/A'}\n` +
+          `Client Feedback: ${log.clientComments || 'None'}\n\n` +
+          `Full interactive report:\n${reportUrl}\n\n` +
+          `Thank you for choosing Buckler Pest Control.\nBest regards,\nBuckler Operations Team`
+        );
+        window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
+        if (!clientEmail) showToast('No email address on file for this client.', 'warning');
+      };
       const footer = cancelBtn.parentElement;
       if (footer) {
         footer.insertBefore(shareBtn, cancelBtn);
         footer.insertBefore(copyBtn, cancelBtn);
+        footer.insertBefore(emailBtn, cancelBtn);
       }
+
     }
   }
 
@@ -4986,11 +5008,8 @@ document.addEventListener('DOMContentLoaded', () => {
         address: document.getElementById('cli-modal-address').value,
         lat: document.getElementById('cli-modal-lat').value !== '' ? parseFloat(document.getElementById('cli-modal-lat').value) : null,
         lng: document.getElementById('cli-modal-lng').value !== '' ? parseFloat(document.getElementById('cli-modal-lng').value) : null,
-        contractValue: document.getElementById('cli-modal-contract-value') ? parseFloat(document.getElementById('cli-modal-contract-value').value) || 0 : 0,
-        contractCurrency: document.getElementById('cli-modal-contract-currency') ? document.getElementById('cli-modal-contract-currency').value : 'USD',
         monthlyVisits: document.getElementById('cli-modal-monthly-visits') ? parseInt(document.getElementById('cli-modal-monthly-visits').value) || 0 : 0,
-        baitStationsCount: document.getElementById('cli-modal-bait-stations') ? parseInt(document.getElementById('cli-modal-bait-stations').value) || 0 : 0,
-        uvMachinesCount: document.getElementById('cli-modal-uv-machines') ? parseInt(document.getElementById('cli-modal-uv-machines').value) || 0 : 0
+        contractTypes: Array.from(document.querySelectorAll('input[name="cli-contract-type-cb"]:checked')).map(cb => cb.value)
       };
 
       if (id) {
@@ -5215,12 +5234,38 @@ document.addEventListener('DOMContentLoaded', () => {
         dateSubmitted: formatDateLocal(new Date())
       };
 
+      const cmpClient = window.BucklerDB.get('clients').find(c => c.id === fields.clientId);
+      const cmpClientName = cmpClient ? cmpClient.name : 'Unknown Client';
       if (id) {
         window.BucklerDB.update('complaints', id, fields);
+        // Notify assigned staff and GM of status change
+        const allUsers = window.BucklerDB.get('users');
+        const nd = window.BucklerDB.getData();
+        if (!nd.notifications) nd.notifications = [];
+        const ts = Date.now();
+        const assignedUser = allUsers.find(u => u.id === fields.assignedStaffId);
+        const gm = allUsers.find(u => u.role && u.role.toLowerCase() === 'gm');
+        if (assignedUser) nd.notifications.unshift({ id: `ntf-${ts}-1`, type: 'complaint', message: `📋 Complaint for ${cmpClientName} updated → ${fields.status}`, read: false, timestamp: new Date().toISOString() });
+        if (gm) nd.notifications.unshift({ id: `ntf-${ts}-2`, type: 'complaint', message: `🔔 Complaint update: ${cmpClientName} — ${fields.status} [${fields.severity}]`, read: false, timestamp: new Date().toISOString() });
+        window.BucklerDB.saveData(nd);
+        renderNotifications();
         showToast('Complaint record updated', 'success');
       } else {
         window.BucklerDB.insert('complaints', fields);
-        showToast('New complaint logged and alerts dispatched', 'success');
+        // Fire internal notifications to GM, assigned staff, Tech Manager
+        const allUsers = window.BucklerDB.get('users');
+        const nd = window.BucklerDB.getData();
+        if (!nd.notifications) nd.notifications = [];
+        const ts = Date.now();
+        const assignedUser = allUsers.find(u => u.id === fields.assignedStaffId);
+        const gm = allUsers.find(u => u.role && u.role.toLowerCase() === 'gm');
+        const techMgr = allUsers.find(u => u.role && u.role.toLowerCase() === 'tech manager');
+        if (assignedUser) nd.notifications.unshift({ id: `ntf-${ts}-a`, type: 'complaint', message: `⚠️ New complaint assigned to you — Client: ${cmpClientName} [${fields.severity}]`, read: false, timestamp: new Date().toISOString() });
+        if (gm) nd.notifications.unshift({ id: `ntf-${ts}-g`, type: 'complaint', message: `⚠️ New ${fields.severity} complaint: ${cmpClientName}`, read: false, timestamp: new Date().toISOString() });
+        if (techMgr) nd.notifications.unshift({ id: `ntf-${ts}-t`, type: 'complaint', message: `⚠️ New complaint: ${cmpClientName} — ${fields.severity}`, read: false, timestamp: new Date().toISOString() });
+        window.BucklerDB.saveData(nd);
+        renderNotifications();
+        showToast('New complaint logged — team notified ✓', 'success');
       }
       els.modalBackdrop.style.display = 'none';
       renderComplaints();
@@ -6523,27 +6568,54 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function populateReportClientSelect() {
-    if (!els.reportClientSelect) return;
+    const checklist = document.getElementById('report-client-checklist');
     const regionRestr = getRestrictedRegion();
     const cityRestr = getRestrictedCity();
     let clients = window.BucklerDB.getClients(regionRestr);
-    if (cityRestr !== 'All') {
-      clients = clients.filter(c => c.city === cityRestr);
-    }
+    if (cityRestr !== 'All') clients = clients.filter(c => c.city === cityRestr);
     clients.sort((a, b) => a.name.localeCompare(b.name));
-    
-    const prevVal = els.reportClientSelect.value;
-    els.reportClientSelect.innerHTML = clients.map(c => `
-      <option value="${c.id}">${c.name} (${c.clientCode || c.id})</option>
-    `).join('');
-    
-    if (clients.some(c => c.id === prevVal)) {
-      els.reportClientSelect.value = prevVal;
-    } else if (clients.length > 0) {
-      els.reportClientSelect.value = clients[0].id;
+
+    // Populate checkbox list
+    if (checklist) {
+      const prevChecked = new Set(Array.from(checklist.querySelectorAll('input:checked')).map(cb => cb.value));
+      checklist.innerHTML = clients.map(c => `
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="${c.id}" ${prevChecked.has(c.id) || prevChecked.size === 0 ? 'checked' : ''} style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>${c.name}</span>
+        </label>
+      `).join('');
+
+      const btnAll = document.getElementById('btn-report-select-all');
+      const btnClear = document.getElementById('btn-report-clear-all');
+      if (btnAll && !btnAll._rBound) {
+        btnAll._rBound = true;
+        btnAll.addEventListener('click', () => checklist.querySelectorAll('input').forEach(cb => cb.checked = true));
+      }
+      if (btnClear && !btnClear._rBound) {
+        btnClear._rBound = true;
+        btnClear.addEventListener('click', () => checklist.querySelectorAll('input').forEach(cb => cb.checked = false));
+      }
     }
-    
+
+    // Also populate hidden legacy <select> (used by loadCompletedVisitsForClient)
+    if (els.reportClientSelect) {
+      const prevVal = els.reportClientSelect.value;
+      els.reportClientSelect.innerHTML = clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      if (clients.some(c => c.id === prevVal)) els.reportClientSelect.value = prevVal;
+      else if (clients.length > 0) els.reportClientSelect.value = clients[0].id;
+    }
+
     loadCompletedVisitsForClient();
+  }
+
+  function getSelectedReportClientIds() {
+    const checklist = document.getElementById('report-client-checklist');
+    if (!checklist) {
+      // fallback to hidden select
+      return els.reportClientSelect && els.reportClientSelect.value ? [els.reportClientSelect.value] : [];
+    }
+    const checked = Array.from(checklist.querySelectorAll('input:checked')).map(cb => cb.value);
+    return checked.length > 0 ? checked : (els.reportClientSelect && els.reportClientSelect.value ? [els.reportClientSelect.value] : []);
   }
 
   function loadCompletedVisitsForClient() {
@@ -6565,16 +6637,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateIPMReport() {
     const reportType = els.reportType.value;
-    const clientId = els.reportClientSelect.value;
-    
-    if (!clientId) {
-      showToast('Please select a client first.', 'error');
+    const selectedClientIds = getSelectedReportClientIds();
+
+    if (selectedClientIds.length === 0) {
+      showToast('Please select at least one client.', 'error');
       return;
     }
-    
+
+    // For visit report: use first selected client only
+    const clientId = selectedClientIds[0];
     const client = window.BucklerDB.get('clients').find(c => c.id === clientId);
     if (!client) return;
-    
+
     const outputContainer = els.reportsOutputContainer;
     if (!outputContainer) return;
 
@@ -6819,9 +6893,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span><strong>Client Code:</strong> ${client.clientCode || client.id}</span>
           <span><strong>Business Sector:</strong> ${client.sector}</span>
           <span><strong>Region / City:</strong> ${client.region} / ${client.city}</span>
-          <span><strong>Bait Stations:</strong> ${client.baitStationsCount || 0} devices</span>
-          <span><strong>UV Fly Traps:</strong> ${client.uvMachinesCount || 0} devices</span>
-          <span><strong>Contract Value:</strong> ${client.contractValue ? `${client.contractValue.toLocaleString()} ${client.contractCurrency || 'USD'}` : 'N/A'}</span>
+          <span><strong>Contract Types:</strong> ${(client.contractTypes && client.contractTypes.length) ? client.contractTypes.join(', ') : 'N/A'}</span>
           <span><strong>Monthly Target Visits:</strong> ${client.monthlyVisits || 0} visits</span>
         </div>
         
@@ -7050,6 +7122,92 @@ document.addEventListener('DOMContentLoaded', () => {
         state.charts.detailedBaitChart = detailedBaitChart;
         state.charts.detailedUvChart = detailedUvChart;
       }
+    }
+
+    // If multiple clients selected (regular/detailed), append additional client sections
+    if (selectedClientIds.length > 1) {
+      const schedules = window.BucklerDB.get('schedules');
+      const users = window.BucklerDB.get('users');
+      const items = window.BucklerDB.get('items');
+      const startDate = els.reportStartDate.value;
+      const endDate = els.reportEndDate.value;
+      const allClientsData = window.BucklerDB.get('clients');
+
+      selectedClientIds.slice(1).forEach(cid => {
+        const c = allClientsData.find(x => x.id === cid);
+        if (!c) return;
+        const cLogs = window.BucklerDB.getLogs('All').filter(l => {
+          if (l.clientId !== cid) return false;
+          const ld = l.dateConducted;
+          return ld && (startDate ? ld >= startDate : true) && (endDate ? ld <= endDate : true);
+        });
+        cLogs.sort((a, b) => new Date(a.dateConducted) - new Date(b.dateConducted));
+
+        const rows = cLogs.map(l => {
+          const sch = schedules.find(s => s.id === l.scheduleId);
+          const tl = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => { const u = users.find(x => x.id === tid.trim()); return u ? u.name : tid; }).join(', ') : 'N/A';
+          const svc = sch ? (sch.service.charAt(0).toUpperCase() + sch.service.slice(1)) : 'N/A';
+          const day = new Date(l.dateConducted).toLocaleDateString('en-US', { weekday: 'long' });
+          return `<tr><td>${l.dateConducted}</td><td>${day}</td><td>${svc}</td><td>${tl}</td><td>${l.timeIn||''} - ${l.timeOut||''}</td><td>${l.timeSpent||''}</td></tr>`;
+        }).join('');
+
+        const detailRows = cLogs.map((l, idx) => {
+          const sch = schedules.find(s => s.id === l.scheduleId);
+          const tl = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => { const u = users.find(x => x.id === tid.trim()); return u ? u.name : tid; }).join(', ') : 'N/A';
+          const svc = sch ? (sch.service.charAt(0).toUpperCase() + sch.service.slice(1)) : 'N/A';
+          const mats = l.itemsConsumed && l.itemsConsumed.length ? l.itemsConsumed.map(cn => { const it = items.find(i => i.id === cn.itemId); return `${it ? it.name : cn.itemId} (${cn.qty})`; }).join(', ') : 'None';
+          return `<div style="border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:0.75rem;background:#FAFBFD;">
+            <strong>Visit #${idx+1} — ${l.dateConducted} (${svc})</strong><br/>
+            <span style="font-size:0.82rem;color:var(--text-medium);">Team Leader: ${tl} | Materials: ${mats} | Notes: ${l.comments || 'N/A'}</span>
+          </div>`;
+        }).join('');
+
+        const cTypes = (c.contractTypes && c.contractTypes.length) ? c.contractTypes.join(', ') : 'N/A';
+        const section = document.createElement('div');
+        section.innerHTML = `
+          <div style="margin-top:2rem;border-top:3px dashed var(--border-color);padding-top:2rem;">
+            <div class="sanitation-report-card print-area">
+              <div class="sanitation-report-header">
+                <h2 class="sanitation-report-title">${reportType === 'detailed' ? 'Detailed' : 'Regular'} Sanitation &amp; IPM Report</h2>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-top:5px;">Client: ${c.name} | Period: ${startDate} to ${endDate}</p>
+              </div>
+              <div class="sanitation-report-meta">
+                <span><strong>Client Name:</strong> ${c.name}</span>
+                <span><strong>Client Code:</strong> ${c.clientCode || c.id}</span>
+                <span><strong>Business Sector:</strong> ${c.sector}</span>
+                <span><strong>Region / City:</strong> ${c.region} / ${c.city}</span>
+                <span><strong>Contract Types:</strong> ${cTypes}</span>
+                <span><strong>Monthly Target Visits:</strong> ${c.monthlyVisits || 0} visits</span>
+              </div>
+              <div style="margin-top:1.5rem;">
+                <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-dark);margin-bottom:0.75rem;border-bottom:2px solid var(--primary-red);padding-bottom:0.25rem;">Operational Service Summary</h3>
+                <table class="data-table" style="width:100%;"><thead><tr><th>Date</th><th>Day</th><th>Service</th><th>Team Leader</th><th>Time Window</th><th>Duration</th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No visits in this period.</td></tr>'}</tbody></table>
+              </div>
+              <div style="margin-top:1.5rem;">
+                <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-dark);margin-bottom:0.75rem;border-bottom:2px solid var(--primary-red);padding-bottom:0.25rem;">Visit Highlights</h3>
+                ${detailRows || '<p style="color:var(--text-muted);">No logs recorded.</p>'}
+              </div>
+            </div>
+          </div>
+        `;
+        outputContainer.appendChild(section);
+      });
+    }
+
+    // Show Email Report button
+    const emailReportBtn = document.getElementById('btn-email-report');
+    if (emailReportBtn) {
+      emailReportBtn.style.display = 'inline-flex';
+      emailReportBtn.onclick = () => {
+        const fc = window.BucklerDB.get('clients').find(c => c.id === clientId);
+        if (!fc || !fc.email) { showToast('No email address on file for this client.', 'warning'); return; }
+        const sd = els.reportStartDate ? els.reportStartDate.value : '';
+        const ed = els.reportEndDate ? els.reportEndDate.value : '';
+        const subject = encodeURIComponent(`IPM Report — ${fc.name} — ${sd} to ${ed}`);
+        const body = encodeURIComponent(`Dear ${fc.contact || fc.name},\n\nPlease find your Sanitation & IPM report for ${sd} to ${ed}.\n\nBest regards,\nBuckler Operations Team`);
+        window.open(`mailto:${fc.email}?subject=${subject}&body=${body}`, '_blank');
+      };
     }
   }
 
