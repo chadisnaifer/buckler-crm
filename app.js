@@ -4110,10 +4110,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Client Modal
-  function openClientModal(id = null) {
+  function openClientModal(id = null, prefillData = null) {
     const isEdit = !!id;
     state.editingRecord = { entity: 'clients', id: id };
-    const client = isEdit ? window.BucklerDB.get('clients').find(c => c.id === id) : null;
+    const client = isEdit ? window.BucklerDB.get('clients').find(c => c.id === id) : prefillData;
     const regionRestr = getRestrictedRegion();
     const canEdit = hasEditPermission('clients');
 
@@ -9280,11 +9280,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filterRepSelect && !filterRepSelect._populated) {
       filterRepSelect._populated = true;
       const allUsers = window.BucklerDB.get('users') || [];
-      const reps = allUsers.filter(u => u.role && u.role.toLowerCase().includes('sales'));
-      reps.forEach(r => {
+      const sortedUsers = allUsers.slice().sort((a, b) => a.name.localeCompare(b.name));
+      sortedUsers.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r.id;
-        opt.textContent = `${r.name} (${r.region})`;
+        opt.textContent = `${r.name} (${r.role.toUpperCase()})`;
         filterRepSelect.appendChild(opt);
       });
       filterRepSelect.addEventListener('change', renderSalesCRM);
@@ -9416,6 +9416,26 @@ document.addEventListener('DOMContentLoaded', () => {
           ? `<div style="font-size:0.68rem; color:#D97706; font-weight:700; margin-top:4px; background:#FEF3C7; padding:2px 6px; border-radius:4px; border:1px solid #FCD34D; display:inline-block;">📅 Expires: ${d.contractExpiryDate}</div>`
           : '';
 
+        const clients = window.BucklerDB.get('clients') || [];
+        const client = clients.find(c => c.name.toLowerCase() === d.prospectName.toLowerCase() || c.id === `cli-deal-${d.id}`);
+        
+        let clientRegistryHTML = '';
+        if (client) {
+          clientRegistryHTML = `
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:0.25rem;">
+              <span>📇 Registry:</span>
+              <a href="#" class="btn-open-client-registry-edit" data-id="${client.id}" style="color:#1D4ED8; font-weight:700; text-decoration:underline;">${client.clientCode} (Edit Client)</a>
+            </div>
+          `;
+        } else {
+          clientRegistryHTML = `
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:0.25rem;">
+              <span>📇 Registry:</span>
+              <a href="#" class="btn-open-client-registry-create" data-deal-id="${d.id}" style="color:#64748B; font-style:italic; text-decoration:underline;">Prefill Client Profile</a>
+            </div>
+          `;
+        }
+
         return `
           <div class="card" style="padding:0.75rem; border:1px solid var(--border-color); background:white; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:0.5rem; display:flex; flex-direction:column; gap:4px;">
             <div style="display:flex; justify-content:space-between; align-items:start; gap:4px;">
@@ -9423,6 +9443,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span style="font-size:0.62rem; color:var(--text-muted); background:#F1F5F9; padding:1px 4px; border-radius:3px;">${d.dateCreated}</span>
             </div>
             <div style="font-size:0.75rem; color:var(--text-medium); margin-top:2px;">Prospect: <strong>${d.prospectName}</strong></div>
+            ${clientRegistryHTML}
             <div style="font-size:0.72rem; color:var(--text-muted); display:flex; justify-content:space-between;">
               <span>Service: ${d.serviceType}</span>
               <span>Rep: <strong>${d.assignedSalesRepName || 'Unassigned'}</strong></span>
@@ -9448,6 +9469,47 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.onclick = () => openDealModal(btn.getAttribute('data-id'));
     });
 
+    // Bind Client Registry Edit Link click
+    document.querySelectorAll('.btn-open-client-registry-edit').forEach(lnk => {
+      lnk.onclick = (e) => {
+        e.preventDefault();
+        openClientModal(lnk.getAttribute('data-id'));
+      };
+    });
+
+    // Bind Client Registry Prefill Create Link click
+    document.querySelectorAll('.btn-open-client-registry-create').forEach(lnk => {
+      lnk.onclick = (e) => {
+        e.preventDefault();
+        const dealId = lnk.getAttribute('data-deal-id');
+        const dealObj = (window.BucklerDB.get('salesDeals') || []).find(x => x.id === dealId);
+        if (dealObj) {
+          const clientCode = dealObj.prospectName.replace(/\s+/g, '-').toUpperCase().slice(0, 8) + '-' + Math.floor(100 + Math.random() * 900);
+          const rep = (window.BucklerDB.get('users') || []).find(u => u.id === dealObj.assignedSalesRepId);
+          const prefill = {
+            id: `cli-deal-${dealObj.id}`,
+            clientCode: clientCode,
+            name: dealObj.prospectName,
+            contact: dealObj.name,
+            phone: '',
+            email: '',
+            region: rep ? rep.region : 'Central',
+            city: rep ? rep.city : 'Baghdad',
+            address: `${rep ? rep.city : 'Baghdad'}, Iraq (Sales Portal Won)`,
+            sector: 'Commercial',
+            contractValue: dealObj.expectedValue,
+            contractCurrency: dealObj.currency || 'USD',
+            monthlyVisits: dealObj.costStructure ? dealObj.costStructure.visitsPerMonth : 4,
+            baitStationsCount: dealObj.costStructure ? dealObj.costStructure.baitStations : 10,
+            uvMachinesCount: 0,
+            contractTypes: [dealObj.serviceType],
+            serviceVisits: {}
+          };
+          openClientModal(null, prefill);
+        }
+      };
+    });
+
     // Bind Cost Calculator button click
     document.querySelectorAll('.cost-deal-btn').forEach(btn => {
       btn.onclick = () => openCostCalculatorModal(btn.getAttribute('data-id'));
@@ -9460,6 +9522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deal = (window.BucklerDB.get('salesDeals') || []).find(d => d.id === id);
         if (deal && confirm(`Delete deal "${deal.name}"?`)) {
           window.BucklerDB.delete('salesDeals', id);
+          notifySalesConcerned(deal, 'deleted');
           showToast('Sales opportunity removed ✓', 'success');
           renderSalesCRM();
         }
@@ -9480,6 +9543,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
           app.salesManager = !app.salesManager;
           window.BucklerDB.update('salesDeals', did, { approvals: app });
+          
+          const updatedDeal = { ...dealObj, approvals: app };
+          notifySalesConcerned(updatedDeal, 'approved');
+
           showToast(`Sales Manager quotation approval ${app.salesManager ? 'granted ✓' : 'revoked ❌'}`, 'success');
           renderSalesCRM();
         }
@@ -9499,6 +9566,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
           app.opsManager = !app.opsManager;
           window.BucklerDB.update('salesDeals', did, { approvals: app });
+          
+          const updatedDeal = { ...dealObj, approvals: app };
+          notifySalesConcerned(updatedDeal, 'approved');
+
           showToast(`Operations Manager quotation approval ${app.opsManager ? 'granted ✓' : 'revoked ❌'}`, 'success');
           renderSalesCRM();
         }
@@ -9518,6 +9589,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const app = dealObj.approvals || { salesManager: false, opsManager: false, gm: false };
           app.gm = !app.gm;
           window.BucklerDB.update('salesDeals', did, { approvals: app });
+          
+          const updatedDeal = { ...dealObj, approvals: app };
+          notifySalesConcerned(updatedDeal, 'approved');
+
           showToast(`General Manager quotation approval ${app.gm ? 'granted ✓' : 'revoked ❌'}`, 'success');
           renderSalesCRM();
         }
@@ -9700,6 +9775,78 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function notifySalesConcerned(deal, action, details = '') {
+    const allUsers = window.BucklerDB.get('users') || [];
+    const targets = new Set();
+
+    // GM and Sales Manager are always concerned
+    const gmUsers = allUsers.filter(u => u.role && u.role.toLowerCase() === 'gm');
+    const smUsers = allUsers.filter(u => u.role && u.role.toLowerCase() === 'sales manager');
+    const omUsers = allUsers.filter(u => u.role && u.role.toLowerCase() === 'operations manager');
+    const adminUsers = allUsers.filter(u => u.role && u.role.toLowerCase() === 'admin coordinator');
+
+    // 1. Notify the assigned Sales Representative
+    if (deal.assignedSalesRepId) {
+      targets.add(deal.assignedSalesRepId);
+    }
+
+    // 2. Add managers and coordinators based on actions
+    if (action === 'created' || action === 'updated') {
+      smUsers.forEach(u => targets.add(u.id));
+      gmUsers.forEach(u => targets.add(u.id));
+    } else if (action === 'approved') {
+      smUsers.forEach(u => targets.add(u.id));
+      gmUsers.forEach(u => targets.add(u.id));
+      omUsers.forEach(u => targets.add(u.id));
+    } else if (action === 'closed_won') {
+      smUsers.forEach(u => targets.add(u.id));
+      gmUsers.forEach(u => targets.add(u.id));
+      omUsers.forEach(u => targets.add(u.id));
+      adminUsers.forEach(u => targets.add(u.id)); // Admin Coordinators need to schedule visits!
+    } else if (action === 'deleted') {
+      smUsers.forEach(u => targets.add(u.id));
+      gmUsers.forEach(u => targets.add(u.id));
+    }
+
+    // Compose notification content
+    let title = '';
+    let message = '';
+    
+    if (action === 'created') {
+      title = `🆕 Sales Deal Registered`;
+      message = `Opportunity "${deal.name}" for prospect "${deal.prospectName}" has been created. Assigned Rep: ${deal.assignedSalesRepName || 'None'}.`;
+    } else if (action === 'updated') {
+      title = `📝 Sales Deal Updated`;
+      message = `Opportunity "${deal.name}" details or stage changed to "${deal.stage}". ${details}`;
+    } else if (action === 'approved') {
+      const app = deal.approvals || { salesManager: false, opsManager: false, gm: false };
+      title = `✅ Quotation Approval Update`;
+      message = `Approvals for "${deal.name}": SM (${app.salesManager ? '✅' : '❌'}), OM (${app.opsManager ? '✅' : '❌'}), GM (${app.gm ? '✅' : '❌'}).`;
+    } else if (action === 'closed_won') {
+      const valText = deal.currency === 'IQD' 
+        ? `${Math.round(deal.expectedValue || 0).toLocaleString()} IQD` 
+        : `$${(deal.expectedValue || 0).toLocaleString()}`;
+      title = `🎉 Deal CLOSED WON!`;
+      message = `Opportunity for "${deal.prospectName}" was Won! Value: ${valText}. Expiry: ${deal.contractExpiryDate || 'None'}. Admin coordinator scheduling visits soon.`;
+    } else if (action === 'deleted') {
+      title = `🗑️ Sales Deal Removed`;
+      message = `Opportunity "${deal.name}" for client "${deal.prospectName}" was deleted from the sales pipeline.`;
+    }
+
+    // Insert notifications
+    targets.forEach(userId => {
+      const newNoti = {
+        id: `noti-sales-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+        title: title,
+        message: message,
+        date: new Date().toLocaleString(),
+        read: false,
+        userId: userId
+      };
+      window.BucklerDB.insert('notifications', newNoti);
+    });
+  }
+
   function openDealModal(id = null) {
     _ensureSalesDealsArray();
     const isEdit = !!id;
@@ -9833,12 +9980,24 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         if (isEdit) {
+          const oldStage = deal ? deal.stage : '';
           window.BucklerDB.update('salesDeals', id, fields);
           showToast('Opportunity updated successfully ✓', 'success');
+
+          // Notify concerned
+          const updatedDeal = { id, ...fields };
+          if (oldStage !== fields.stage && fields.stage === 'Closed Won') {
+            notifySalesConcerned(updatedDeal, 'closed_won');
+          } else {
+            notifySalesConcerned(updatedDeal, 'updated');
+          }
         } else {
           const newDeal = window.BucklerDB.insert('salesDeals', fields);
           id = newDeal.id;
           showToast('New opportunity created ✓', 'success');
+
+          // Notify concerned
+          notifySalesConcerned(newDeal, 'created');
         }
 
         // ── SYNC WON DEALS TO CLIENTS REGISTRY ──
