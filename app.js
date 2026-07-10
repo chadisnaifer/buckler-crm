@@ -1502,7 +1502,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="commute-badge ${statusClass}">${com.status}</span>
           </div>
           <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
-            Driver: <strong style="cursor:pointer;" class="user-click" data-id="${com.teamLeaderId}">${tlName}</strong> | Route: ${com.startLocation} â†’ ${com.endLocation}
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="${com.teamLeaderId}">${tlName}</strong> | Route: ${com.startLocation} → ${com.endLocation}
           </div>
           <div class="commute-body">
             <div class="commute-metric">
@@ -1734,7 +1734,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = `
       <div class="tl-pill ${isAllSelected ? 'active' : ''}" data-value="All" style="margin-right: 4px; margin-bottom: 4px;">
-        <span class="pill-avatar">â˜…</span>
+        <span class="pill-avatar">★</span>
         <span>All</span>
       </div>
     `;
@@ -2009,7 +2009,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   ? `<a href="#" class="client-click" data-id="${from.id}" style="color:inherit; font-weight:600; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${from.name}</a>` 
                   : `<span style="font-weight:600; color:var(--text-dark);">${from.name}</span>`
                 }
-                <span style="color:var(--text-muted); font-size:0.75rem; margin:0 0.25rem;">âž”</span>
+                <span style="color:var(--text-muted); font-size:0.75rem; margin:0 0.25rem;">➔</span>
                 ${to.type === 'client' 
                   ? `<a href="#" class="client-click" data-id="${to.id}" style="color:inherit; font-weight:600; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${to.name}</a>` 
                   : `<span style="font-weight:600; color:var(--text-dark);">${to.name}</span>`
@@ -2572,7 +2572,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const statusStyle = getEventStatusStyle(s.status);
               return `
                 <div class="cal-week-card" data-id="${s.id}" style="background-color: ${statusStyle.bg}; color: ${statusStyle.text}; border-left: 4px solid ${statusStyle.border};" ${isTL ? '' : 'draggable="true"'}>
-                  <span class="cal-week-card-time" style="color: ${statusStyle.text}; opacity: 0.85;">â° ${s.time}</span>
+                  <span class="cal-week-card-time" style="color: ${statusStyle.text}; opacity: 0.85;">⏰ ${s.time}</span>
                   <span class="cal-week-card-client" style="color: ${statusStyle.text}; font-weight: 700;">${cName}</span>
                   <span class="cal-week-card-service" style="color: ${statusStyle.text}; opacity: 0.8;">${s.service} (${s.status})</span>
                 </div>
@@ -2679,7 +2679,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const statusStyle = getEventStatusStyle(s.status);
               return `
                 <div class="cal-day-card" data-id="${s.id}" style="background-color: ${statusStyle.bg}; color: ${statusStyle.text}; border-left: 4px solid ${statusStyle.border};" ${isTL ? '' : 'draggable="true"'}>
-                  <span class="cal-day-card-time" style="color: ${statusStyle.text}; opacity: 0.85;">â° ${s.time}</span>
+                  <span class="cal-day-card-time" style="color: ${statusStyle.text}; opacity: 0.85;">⏰ ${s.time}</span>
                   <div class="cal-day-card-details">
                     <span class="cal-day-card-client" style="color: ${statusStyle.text}; font-weight: 700;">${cName}</span>
                     <span class="cal-day-card-service" style="color: ${statusStyle.text}; opacity: 0.8;">${s.service} (${s.status})</span>
@@ -3743,7 +3743,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="multiselect-dropdown" id="sch-modal-tl-dropdown">
             <button type="button" class="multiselect-toggle" id="sch-modal-tl-btn">
               <span id="multiselect-label">Select Team Leader(s)</span>
-              <span style="font-size: 0.7rem; color: var(--text-muted); pointer-events: none;">â–¼</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted); pointer-events: none;">▼</span>
             </button>
             <div class="multiselect-menu" id="sch-modal-tl-menu">
               <!-- Dropdown items will be dynamically injected here -->
@@ -3922,23 +3922,31 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="number" step="0.000001" id="cli-modal-lng" class="form-control" value="${client && client.lng !== null && client.lng !== undefined ? client.lng : ''}" placeholder="e.g. 44.3615 (Optional)" ${!canEdit ? 'disabled' : ''}>
           </div>
         </div>
-        <div class="form-group">
-          <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
-            <span>Contract Types / Services</span>
-            <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">Select all that apply</span>
-          </label>
-          <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:0.4rem; padding:0.75rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;" ${!canEdit ? 'disabled' : ''}>
-            ${['Pest Control','Weed Removal','Termite Treatment','Animal Control','Bird Control','Poultry Halls','Landscaping'].map(ct => `
-              <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; cursor:pointer; padding:0.3rem 0.5rem; border-radius:4px; transition:background 0.15s;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='transparent'">
-                <input type="checkbox" name="cli-contract-type-cb" value="${ct}" ${(client && (client.contractTypes||[]).includes(ct)) ? 'checked' : ''} style="accent-color:var(--primary-red); width:14px; height:14px;" ${!canEdit ? 'disabled' : ''}>
-                <span>${ct}</span>
-              </label>
-            `).join('')}
+        <div class="form-group row-split">
+          <div>
+            <label for="cli-modal-contract-value">Contract Value *</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="number" id="cli-modal-contract-value" class="form-control" value="${client ? (client.contractValue || '') : ''}" placeholder="e.g. 2500" required ${!canEdit ? 'disabled' : ''} style="flex: 1;">
+              <select id="cli-modal-contract-currency" class="form-control" style="max-width: 90px;" ${!canEdit ? 'disabled' : ''}>
+                <option value="USD" ${client && client.contractCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="IQD" ${client && client.contractCurrency === 'IQD' ? 'selected' : ''}>IQD</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="cli-modal-monthly-visits">Monthly Visits Target *</label>
+            <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || '') : ''}" placeholder="e.g. 4" required ${!canEdit ? 'disabled' : ''}>
           </div>
         </div>
-        <div class="form-group">
-          <label for="cli-modal-monthly-visits">Monthly Visits Target</label>
-          <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || '') : ''}" placeholder="e.g. 4" ${!canEdit ? 'disabled' : ''}>
+        <div class="form-group row-split">
+          <div>
+            <label for="cli-modal-bait-stations">Bait Stations Count *</label>
+            <input type="number" id="cli-modal-bait-stations" class="form-control" value="${client ? (client.baitStationsCount || 0) : 0}" placeholder="e.g. 10" required ${!canEdit ? 'disabled' : ''}>
+          </div>
+          <div>
+            <label for="cli-modal-uv-machines">UV Machines Count *</label>
+            <input type="number" id="cli-modal-uv-machines" class="form-control" value="${client ? (client.uvMachinesCount || 0) : 0}" placeholder="e.g. 4" required ${!canEdit ? 'disabled' : ''}>
+          </div>
         </div>
         ${isEdit ? (() => {
           const logs = window.BucklerDB.get('operationLogs').filter(l => l.clientId === id);
@@ -4305,7 +4313,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // GATE: Team Leaders must check in before logging any visit
     if (state.currentUser && state.currentUser.role.toLowerCase() === 'team leader') {
       if (!isTLCheckedIn()) {
-        showToast('â›” You must Check-In first before logging a visit. Click "Start Day (Check-In)" above.', 'error');
+        showToast('⛔ You must Check-In first before logging a visit. Click "Start Day (Check-In)" above.', 'error');
         // Scroll shift widget into view
         const widget = document.getElementById('tl-shift-widget');
         if (widget) widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -4341,7 +4349,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <label for="log-modal-geolocation">Geographical Coordinates (GPS) *</label>
           <div style="display:flex; gap:0.5rem;">
             <input type="text" id="log-modal-geolocation" class="form-control" value="${defaultGPS}" placeholder="Lat, Lng (e.g. 33.3128, 44.3615)" required>
-            <button type="button" class="btn btn-secondary" id="log-modal-geo-btn" style="white-space:nowrap; padding: 0.5rem 1rem;">ðŸ“ Current GPS</button>
+            <button type="button" class="btn btn-secondary" id="log-modal-geo-btn" style="white-space:nowrap; padding: 0.5rem 1rem;">📍 Current GPS</button>
           </div>
         </div>
         
@@ -4482,7 +4490,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="number" class="form-control consume-qty-input" value="${initialQty}" min="0.001" step="any" required placeholder="Qty" style="max-width:90px;">
           <span class="consume-uom-label" style="font-size:0.75rem; font-weight:700; color:var(--text-medium); min-width: 50px;"></span>
         </div>
-        <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem; line-height:1;">âœ•</button>
+        <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem; line-height:1;">✕</button>
       `;
       rowsContainer.appendChild(div);
 
@@ -4582,7 +4590,7 @@ document.addEventListener('DOMContentLoaded', () => {
               container.className = 'visit-photo-preview-container';
               container.innerHTML = `
                 <img src="${compressedBase64}" class="visit-photo-thumbnail" />
-                <button type="button" class="visit-photo-remove-btn">âœ•</button>
+                <button type="button" class="visit-photo-remove-btn">✕</button>
               `;
               container.querySelector('.visit-photo-remove-btn').addEventListener('click', () => {
                 const idx = state.uploadedPictures.indexOf(compressedBase64);
@@ -4705,7 +4713,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="text" class="form-control log-bait-comment" value="${commentVal}" placeholder="Notes..." style="padding:0.25rem; font-size:0.75rem; margin:0; height:auto; min-height:auto;" />
         </td>
         <td style="text-align:center;">
-          <button type="button" class="btn btn-danger btn-sm remove-audit-row-btn" style="padding:0.2rem 0.4rem; font-size:0.75rem; line-height:1; min-width:auto; height:auto; margin:0;">âœ•</button>
+          <button type="button" class="btn btn-danger btn-sm remove-audit-row-btn" style="padding:0.2rem 0.4rem; font-size:0.75rem; line-height:1; min-width:auto; height:auto; margin:0;">✕</button>
         </td>
       `;
       tr.querySelector('.remove-audit-row-btn').addEventListener('click', () => tr.remove());
@@ -4725,7 +4733,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="number" class="form-control log-uv-catch" value="${catchRateVal}" min="0" max="100" required style="padding:0.25rem; font-size:0.75rem; margin:0; height:auto; min-height:auto;" />
         </td>
         <td style="text-align:center;">
-          <button type="button" class="btn btn-danger btn-sm remove-audit-row-btn" style="padding:0.2rem 0.4rem; font-size:0.75rem; line-height:1; min-width:auto; height:auto; margin:0;">âœ•</button>
+          <button type="button" class="btn btn-danger btn-sm remove-audit-row-btn" style="padding:0.2rem 0.4rem; font-size:0.75rem; line-height:1; min-width:auto; height:auto; margin:0;">✕</button>
         </td>
       `;
       tr.querySelector('.remove-audit-row-btn').addEventListener('click', () => tr.remove());
@@ -4821,7 +4829,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div>Time-Out (Departure): <strong>${log.timeOut || 'N/A'}</strong></div>
           <div>Total Duration: <strong>${log.timeSpent || 'N/A'}</strong></div>
           <div>Team Leader: <strong><a href="#" class="user-click" data-id="${sch.teamLeaderId}" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${tl ? tl.name : 'Unassigned'}</a></strong></div>
-          <div style="grid-column: span 2;">Geographical Coordinates: <strong>ðŸ“ ${log.geoLocation || 'N/A'}</strong></div>
+          <div style="grid-column: span 2;">Geographical Coordinates: <strong>📍 ${log.geoLocation || 'N/A'}</strong></div>
         </div>
 
         <div>
@@ -4866,54 +4874,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const shareBtn = document.createElement('button');
       shareBtn.className = 'btn btn-secondary';
       shareBtn.style.marginRight = 'auto';
-      shareBtn.innerHTML = 'ðŸ“¤ Full Report';
+      shareBtn.innerHTML = '📤 Full Report';
       shareBtn.title = 'Open shareable visit report in a new tab';
       shareBtn.onclick = () => window.open(reportUrl, '_blank');
       const copyBtn = document.createElement('button');
       copyBtn.className = 'btn btn-secondary';
-      copyBtn.innerHTML = 'ðŸ”— Copy Link';
+      copyBtn.innerHTML = '🔗 Copy Link';
       copyBtn.title = 'Copy report link to clipboard';
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(reportUrl).then(() => showToast('Report link copied to clipboard', 'success'));
-      };
-      // Email report button
-      const emailBtn = document.createElement('button');
-      emailBtn.className = 'btn btn-secondary';
-      emailBtn.innerHTML = 'ðŸ“§ Email Report';
-      emailBtn.title = 'Send visit report to client by email';
-      emailBtn.onclick = () => {
-        const clientEmail = client ? client.email : '';
-        const tlNames = sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => { const u = users.find(x => x.id === tid.trim()); return u ? u.name : tid; }).join(', ') : 'N/A';
-        const itemsList = log.itemsConsumed && log.itemsConsumed.length ? log.itemsConsumed.map(c => { const it = items.find(i => i.id === c.itemId); return `${it ? it.name : c.itemId}: ${c.qty} ${it ? it.unit : ''}`; }).join(', ') : 'None';
-        const subject = encodeURIComponent(`Visit Report â€” ${client ? client.name : ''} â€” ${log.dateConducted}`);
-        const body = encodeURIComponent(
-          `Dear ${client ? client.contact || client.name : 'Valued Client'},\n\n` +
-          `Please find below the summary of our recent visit to your premises.\n\n` +
-          `â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n` +
-          `VISIT REPORT SUMMARY\n` +
-          `â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n` +
-          `Client: ${client ? client.name : ''}\n` +
-          `Date: ${log.dateConducted}\n` +
-          `Service: ${sch.service}\n` +
-          `Time In: ${log.timeIn || 'N/A'}  |  Time Out: ${log.timeOut || 'N/A'}\n` +
-          `Duration: ${log.timeSpent || 'N/A'}\n` +
-          `Team Leader: ${tlNames}\n` +
-          `Location: ${log.geoLocation || 'N/A'}\n` +
-          `Materials Used: ${itemsList}\n` +
-          `Technician Notes: ${log.comments || 'N/A'}\n` +
-          `Client Feedback: ${log.clientComments || 'None'}\n\n` +
-          `For the full interactive report, visit:\n${reportUrl}\n\n` +
-          `Thank you for choosing Buckler Pest Control.\n` +
-          `Best regards,\nBuckler Operations Team`
-        );
-        window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
-        if (!clientEmail) showToast('No email address on file for this client. Please update the client profile first.', 'warning');
       };
       const footer = cancelBtn.parentElement;
       if (footer) {
         footer.insertBefore(shareBtn, cancelBtn);
         footer.insertBefore(copyBtn, cancelBtn);
-        footer.insertBefore(emailBtn, cancelBtn);
       }
     }
   }
@@ -4921,7 +4895,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Handle forms submit
   function handleModalSubmit(entity, id) {
 
-    // â”€â”€ SUPPLIERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SUPPLIERS ─────────────────────────────────────────────
     if (entity === 'suppliers') {
       const nameEl    = document.getElementById('sup-modal-name');
       const catEl     = document.getElementById('sup-modal-category');
@@ -4950,17 +4924,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (id) {
         window.BucklerDB.update('suppliers', id, fields);
-        showToast('Supplier updated âœ“', 'success');
+        showToast('Supplier updated ✓', 'success');
       } else {
         window.BucklerDB.insert('suppliers', fields);
-        showToast('Supplier added âœ“', 'success');
+        showToast('Supplier added ✓', 'success');
       }
       els.modalBackdrop.style.display = 'none';
       state.editingRecord = null;
       renderSuppliers();
       return;
     }
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ──────────────────────────────────────────────────────────
 
     if (entity === 'schedules') {
       const form = document.getElementById('schedule-form');
@@ -5012,8 +4986,11 @@ document.addEventListener('DOMContentLoaded', () => {
         address: document.getElementById('cli-modal-address').value,
         lat: document.getElementById('cli-modal-lat').value !== '' ? parseFloat(document.getElementById('cli-modal-lat').value) : null,
         lng: document.getElementById('cli-modal-lng').value !== '' ? parseFloat(document.getElementById('cli-modal-lng').value) : null,
+        contractValue: document.getElementById('cli-modal-contract-value') ? parseFloat(document.getElementById('cli-modal-contract-value').value) || 0 : 0,
+        contractCurrency: document.getElementById('cli-modal-contract-currency') ? document.getElementById('cli-modal-contract-currency').value : 'USD',
         monthlyVisits: document.getElementById('cli-modal-monthly-visits') ? parseInt(document.getElementById('cli-modal-monthly-visits').value) || 0 : 0,
-        contractTypes: Array.from(document.querySelectorAll('input[name="cli-contract-type-cb"]:checked')).map(cb => cb.value)
+        baitStationsCount: document.getElementById('cli-modal-bait-stations') ? parseInt(document.getElementById('cli-modal-bait-stations').value) || 0 : 0,
+        uvMachinesCount: document.getElementById('cli-modal-uv-machines') ? parseInt(document.getElementById('cli-modal-uv-machines').value) || 0 : 0
       };
 
       if (id) {
@@ -5238,50 +5215,12 @@ document.addEventListener('DOMContentLoaded', () => {
         dateSubmitted: formatDateLocal(new Date())
       };
 
-      const cmpClient = window.BucklerDB.get('clients').find(c => c.id === fields.clientId);
-      const cmpClientName = cmpClient ? cmpClient.name : 'Unknown Client';
       if (id) {
-        const oldCmp = (window.BucklerDB.get('complaints') || []).find(c => c.id === id);
         window.BucklerDB.update('complaints', id, fields);
-        // Notify assigned staff of status change
-        const notifData = window.BucklerDB.getData();
-        if (!notifData.notifications) notifData.notifications = [];
-        const allUsers = window.BucklerDB.get('users');
-        const assignedUser = allUsers.find(u => u.id === fields.assignedStaffId);
-        // Notify assigned staff
-        if (assignedUser) {
-          notifData.notifications.unshift({ id: `ntf-${Date.now()}-1`, type: 'complaint', message: `ðŸ“‹ Complaint for ${cmpClientName} updated â†’ Status: ${fields.status}`, read: false, timestamp: new Date().toISOString(), targetUserId: assignedUser.id });
-        }
-        // Notify GM
-        const gm = allUsers.find(u => u.role && u.role.toLowerCase() === 'gm');
-        if (gm) {
-          notifData.notifications.unshift({ id: `ntf-${Date.now()}-2`, type: 'complaint', message: `ðŸ”” Complaint update for ${cmpClientName}: ${fields.status} â€” ${fields.severity}`, read: false, timestamp: new Date().toISOString(), targetUserId: gm.id });
-        }
-        window.BucklerDB.saveData(notifData);
-        renderNotifications();
         showToast('Complaint record updated', 'success');
       } else {
-        const newCmp = window.BucklerDB.insert('complaints', fields);
-        // Fire internal notifications
-        const notifData = window.BucklerDB.getData();
-        if (!notifData.notifications) notifData.notifications = [];
-        const allUsers = window.BucklerDB.get('users');
-        const assignedUser = allUsers.find(u => u.id === fields.assignedStaffId);
-        const gm = allUsers.find(u => u.role && u.role.toLowerCase() === 'gm');
-        const techMgr = allUsers.find(u => u.role && u.role.toLowerCase() === 'tech manager');
-        const ts = Date.now();
-        if (assignedUser) notifData.notifications.unshift({ id: `ntf-${ts}-a`, type: 'complaint', message: `âš ï¸ New complaint assigned to you â€” Client: ${cmpClientName} [${fields.severity}]`, read: false, timestamp: new Date().toISOString(), targetUserId: assignedUser.id });
-        if (gm) notifData.notifications.unshift({ id: `ntf-${ts}-g`, type: 'complaint', message: `âš ï¸ New ${fields.severity} complaint logged for ${cmpClientName}`, read: false, timestamp: new Date().toISOString(), targetUserId: gm.id });
-        if (techMgr) notifData.notifications.unshift({ id: `ntf-${ts}-t`, type: 'complaint', message: `âš ï¸ New complaint: ${cmpClientName} â€” ${fields.severity} â€” ${fields.details.substring(0,60)}`, read: false, timestamp: new Date().toISOString(), targetUserId: techMgr.id });
-        window.BucklerDB.saveData(notifData);
-        renderNotifications();
-        showToast('New complaint logged â€” team notified âœ“', 'success');
-      }
-      // Generate client notification email draft
-      if (cmpClient && cmpClient.email) {
-        const emailSubject = encodeURIComponent(`Complaint Status â€” ${cmpClientName} â€” Ref: ${id || 'NEW'}`);
-        const emailBody = encodeURIComponent(`Dear ${cmpClient.contact || cmpClientName},\n\nThis is to inform you that a complaint has been logged for your account.\n\nSeverity: ${fields.severity}\nStatus: ${fields.status}\nDetails: ${fields.details}\n\nWe are committed to resolving this as quickly as possible. Our team will contact you shortly.\n\nBest regards,\nBuckler Operations Team`);
-        // Add notify client link in complaint view (handled via openComplaintModal)
+        window.BucklerDB.insert('complaints', fields);
+        showToast('New complaint logged and alerts dispatched', 'success');
       }
       els.modalBackdrop.style.display = 'none';
       renderComplaints();
@@ -5757,7 +5696,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <!-- Cloud Short Link Card -->
           <div style="background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.08); padding:1rem; border-radius:10px; display:flex; flex-direction:column; gap:0.8rem;">
             <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span style="font-size:1.2rem;">â˜ï¸</span>
+              <span style="font-size:1.2rem;">☁️</span>
               <strong style="font-size:0.95rem;">Live Cloud Short Link (Recommended)</strong>
             </div>
             <p style="font-size:0.8rem; color:var(--text-medium); margin:0; line-height:1.4;">
@@ -5765,7 +5704,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </p>
             <div id="short-link-container" style="display:flex; flex-direction:column; gap:0.6rem;">
               <button class="btn btn-primary" id="btn-generate-short-link" style="width:100%; font-weight:700; background:#3B82F6; border:none; padding:0.6rem; border-radius:6px; cursor:pointer; color:white;">
-                âš¡ Generate Cloud Short Link
+                ⚡ Generate Cloud Short Link
               </button>
             </div>
           </div>
@@ -5773,7 +5712,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <!-- Offline Base64 Link Card -->
           <div style="background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.08); padding:1rem; border-radius:10px; display:flex; flex-direction:column; gap:0.8rem;">
             <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span style="font-size:1.2rem;">ðŸ’¾</span>
+              <span style="font-size:1.2rem;">💾</span>
               <strong style="font-size:0.95rem;">Standalone Full Offline Link</strong>
             </div>
             <p style="font-size:0.8rem; color:var(--text-medium); margin:0; line-height:1.4;">
@@ -5796,7 +5735,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       generateBtn.addEventListener('click', async () => {
         generateBtn.disabled = true;
-        generateBtn.textContent = 'â³ Uploading to Cloud Vault...';
+        generateBtn.textContent = '⏳ Uploading to Cloud Vault...';
         
         try {
           const shortId = Math.random().toString(36).substring(2, 10);
@@ -5836,7 +5775,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
           console.error(err);
           generateBtn.disabled = false;
-          generateBtn.textContent = 'âš¡ Try Again';
+          generateBtn.textContent = '⚡ Try Again';
           showToast('Failed to upload cloud state: ' + err.message, 'error');
         }
       });
@@ -5874,8 +5813,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isConnected = window.BucklerDB.isSupabase;
     const statusText = isConnected 
-      ? '<span style="color:#10B981; font-weight:700; font-size:0.85rem;">ðŸŸ¢ Connected to Supabase Cloud Database</span>' 
-      : '<span style="color:#64748B; font-weight:700; font-size:0.85rem;">ðŸ”´ Offline Mode (localStorage Fallback)</span>';
+      ? '<span style="color:#10B981; font-weight:700; font-size:0.85rem;">🟢 Connected to Supabase Cloud Database</span>' 
+      : '<span style="color:#64748B; font-weight:700; font-size:0.85rem;">🔴 Offline Mode (localStorage Fallback)</span>';
 
     const html = `
       <div style="display:flex; flex-direction:column; gap:1.2rem; max-width:550px; width:100%; color:var(--text-dark);">
@@ -5901,7 +5840,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
             <button type="button" class="btn btn-primary" id="btn-sb-save" style="flex:1; font-weight:700;">
-              ðŸ”Œ Test & Connect
+              🔌 Test & Connect
             </button>
             ${isConnected ? `
               <button type="button" class="btn btn-danger" id="btn-sb-disconnect" style="font-weight:700; background:#EF4444; border:none; color:white;">
@@ -5914,7 +5853,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${isConnected ? `
           <div style="border-top:1px dashed var(--border-color); padding-top:1rem; margin-top:0.5rem; display:flex; flex-direction:column; gap:0.8rem;">
             <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span style="font-size:1.1rem;">ðŸ“¤</span>
+              <span style="font-size:1.1rem;">📤</span>
               <strong style="font-size:0.9rem; color:var(--text-dark);">First-Time Database Seeder</strong>
             </div>
             <p style="font-size:0.78rem; color:var(--text-medium); margin:0; line-height:1.4;">
@@ -5953,7 +5892,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       saveBtn.disabled = true;
-      saveBtn.textContent = 'â³ Testing Connection...';
+      saveBtn.textContent = '⏳ Testing Connection...';
 
       try {
         await window.BucklerDB.connectSupabase(url, key);
@@ -5965,7 +5904,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.error(err);
         saveBtn.disabled = false;
-        saveBtn.textContent = 'ðŸ”Œ Test & Connect';
+        saveBtn.textContent = '🔌 Test & Connect';
         showToast('Connection failed: ' + err.message, 'error');
       }
     });
@@ -5990,7 +5929,7 @@ document.addEventListener('DOMContentLoaded', () => {
       seedBtn.addEventListener('click', async () => {
         if (confirm('Are you sure you want to push all your current local users, clients, vehicles, and schedules to Supabase? (Warning: This will overwrite duplicates)')) {
           seedBtn.disabled = true;
-          seedBtn.textContent = 'â³ Uploading data rows...';
+          seedBtn.textContent = '⏳ Uploading data rows...';
           try {
             await window.BucklerDB.pushLocalDataToSupabase();
             showToast('All local data successfully synced to Supabase!', 'success');
@@ -6228,7 +6167,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let msg = `We currently manage <strong>${clients.length} active corporate clients</strong> across Iraq:<br/><br/>`;
       regions.forEach(reg => {
         const count = clients.filter(c => c.region === reg).length;
-        msg += `â€¢ <strong>${reg} Region:</strong> ${count} clients<br/>`;
+        msg += `• <strong>${reg} Region:</strong> ${count} clients<br/>`;
       });
       msg += `<br/>Click the **Client Registry** tab in the sidebar to search or edit client details.`;
       return msg;
@@ -6240,12 +6179,12 @@ document.addEventListener('DOMContentLoaded', () => {
       
       let msg = `<strong>Inventory Summary:</strong><br/>`;
       if (lowStock.length) {
-        msg += `âš ï¸ The following items are running low in stock:<br/>`;
+        msg += `⚠️ The following items are running low in stock:<br/>`;
         lowStock.forEach(i => {
-          msg += `â€¢ <strong>${i.name}</strong>: ${i.stock} ${i.unit} left.<br/>`;
+          msg += `• <strong>${i.name}</strong>: ${i.stock} ${i.unit} left.<br/>`;
         });
       } else {
-        msg += `âœ… All products have healthy stock counts.<br/>`;
+        msg += `✅ All products have healthy stock counts.<br/>`;
       }
       msg += `<br/>Click on the **Products & Inventory** tab to view product details and restock products.`;
       return msg;
@@ -6257,7 +6196,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const regions = ['Central', 'Kurdistan', 'South'];
       regions.forEach(reg => {
         const regTLs = tls.filter(t => t.region === reg).map(t => t.name);
-        msg += `â€¢ <strong>${reg} drivers:</strong> ${regTLs.join(', ')}<br/>`;
+        msg += `• <strong>${reg} drivers:</strong> ${regTLs.join(', ')}<br/>`;
       });
       return msg;
     }
@@ -6268,12 +6207,12 @@ document.addEventListener('DOMContentLoaded', () => {
       
       let msg = `We currently have <strong>${complaints.length} logged complaints</strong>.<br/>`;
       if (pending.length) {
-        msg += `âš ï¸ <strong>${pending.length} unresolved issues</strong> require review:<br/>`;
+        msg += `⚠️ <strong>${pending.length} unresolved issues</strong> require review:<br/>`;
         pending.forEach(c => {
-          msg += `â€¢ <strong>${c.complainantName}</strong> (${c.region}) [${c.severity} Severity]: <em>"${c.details.substring(0,35)}..."</em><br/>`;
+          msg += `• <strong>${c.complainantName}</strong> (${c.region}) [${c.severity} Severity]: <em>"${c.details.substring(0,35)}..."</em><br/>`;
         });
       } else {
-        msg += `âœ… Zero unresolved complaints registered!`;
+        msg += `✅ Zero unresolved complaints registered!`;
       }
       return msg;
     }
@@ -6288,7 +6227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         schedules.forEach(s => {
           const client = clients.find(c => c.id === s.clientId);
           const cName = client ? client.name : 'Client';
-          msg += `â€¢ <strong>${s.time}</strong> - ${cName} (${s.region}): ${s.service} (TL: ${s.teamLeaderId.replace('tl-','')})<br/>`;
+          msg += `• <strong>${s.time}</strong> - ${cName} (${s.region}): ${s.service} (TL: ${s.teamLeaderId.replace('tl-','')})<br/>`;
         });
       } else {
         msg += `No visits scheduled for today.`;
@@ -6315,11 +6254,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return `I couldn't find a direct database match for that question. 
     <br/><br/>
     I can search live records for:
-    â€¢ **"low stock"** (inventory)
-    â€¢ **"complaints"** (tickets)
-    â€¢ **"today's schedules"** (visits)
-    â€¢ **"clients count"** (registry)
-    â€¢ Or ask me about **termite treatment** or **weed removal** protocols in Iraq.`;
+    • **"low stock"** (inventory)
+    • **"complaints"** (tickets)
+    • **"today's schedules"** (visits)
+    • **"clients count"** (registry)
+    • Or ask me about **termite treatment** or **weed removal** protocols in Iraq.`;
   }
 
   // 18. Missing Operations CRM Helpers and Modal Handlers
@@ -6584,57 +6523,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function populateReportClientSelect() {
-    const checklist = document.getElementById('report-client-checklist');
-    const hiddenSelect = els.reportClientSelect; // hidden <select> for legacy refs
-    if (!checklist) return;
-
+    if (!els.reportClientSelect) return;
     const regionRestr = getRestrictedRegion();
     const cityRestr = getRestrictedCity();
     let clients = window.BucklerDB.getClients(regionRestr);
-    if (cityRestr !== 'All') clients = clients.filter(c => c.city === cityRestr);
+    if (cityRestr !== 'All') {
+      clients = clients.filter(c => c.city === cityRestr);
+    }
     clients.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Keep previously checked IDs
-    const prevChecked = new Set(
-      Array.from(checklist.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value)
-    );
-
-    checklist.innerHTML = clients.map(c => `
-      <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; padding:0.25rem 0.3rem; border-radius:4px; cursor:pointer; white-space:nowrap;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='transparent'">
-        <input type="checkbox" class="report-client-cb" value="${c.id}" ${prevChecked.has(c.id) || prevChecked.size === 0 ? 'checked' : ''} style="accent-color:var(--primary-red); width:13px; height:13px;">
-        <span>${c.name} <span style="color:var(--text-muted); font-size:0.72rem;">(${c.clientCode || c.id})</span></span>
-      </label>
+    
+    const prevVal = els.reportClientSelect.value;
+    els.reportClientSelect.innerHTML = clients.map(c => `
+      <option value="${c.id}">${c.name} (${c.clientCode || c.id})</option>
     `).join('');
-
-    // Also populate hidden legacy <select>
-    if (hiddenSelect) {
-      hiddenSelect.innerHTML = clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      if (clients.length > 0) hiddenSelect.value = clients[0].id;
+    
+    if (clients.some(c => c.id === prevVal)) {
+      els.reportClientSelect.value = prevVal;
+    } else if (clients.length > 0) {
+      els.reportClientSelect.value = clients[0].id;
     }
-
-    // Select All / Clear All buttons
-    const btnAll = document.getElementById('btn-report-select-all');
-    const btnClear = document.getElementById('btn-report-clear-all');
-    if (btnAll && !btnAll._rBound) {
-      btnAll._rBound = true;
-      btnAll.addEventListener('click', () => {
-        checklist.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
-      });
-    }
-    if (btnClear && !btnClear._rBound) {
-      btnClear._rBound = true;
-      btnClear.addEventListener('click', () => {
-        checklist.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
-      });
-    }
-
+    
     loadCompletedVisitsForClient();
-  }
-
-  function getSelectedReportClientIds() {
-    const checklist = document.getElementById('report-client-checklist');
-    if (!checklist) return [];
-    return Array.from(checklist.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
   }
 
   function loadCompletedVisitsForClient() {
@@ -6656,120 +6565,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateIPMReport() {
     const reportType = els.reportType.value;
-    const selectedClientIds = getSelectedReportClientIds();
-
-    if (selectedClientIds.length === 0) {
-      showToast('Please select at least one client.', 'error');
+    const clientId = els.reportClientSelect.value;
+    
+    if (!clientId) {
+      showToast('Please select a client first.', 'error');
       return;
     }
-
+    
+    const client = window.BucklerDB.get('clients').find(c => c.id === clientId);
+    if (!client) return;
+    
     const outputContainer = els.reportsOutputContainer;
     if (!outputContainer) return;
-    outputContainer.style.display = 'block';
-    if (els.btnPrintReport) els.btnPrintReport.style.display = 'inline-flex';
 
-    // For visit report type â€” use only the FIRST selected client (visit is client+log specific)
+    outputContainer.style.display = 'block';
+    
+    if (els.btnPrintReport) els.btnPrintReport.style.display = 'inline-flex';
+    
     if (reportType === 'visit') {
       if (els.btnExportReportCsv) els.btnExportReportCsv.style.display = 'none';
-
-      const clientId = selectedClientIds[0];
-      const client = window.BucklerDB.get('clients').find(c => c.id === clientId);
-      if (!client) return;
-
+      
       const logId = document.getElementById('report-visit-select').value;
       if (!logId) {
         outputContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">No visit selected or available.</p>';
         return;
       }
-
+      
       const log = window.BucklerDB.getLogs('All').find(l => l.id === logId);
       if (!log) return;
-
-      const sched = window.BucklerDB.get('schedules').find(s => s.id === log.scheduleId);
-      const users = window.BucklerDB.get('users');
-      const tlNames = sched && sched.teamLeaderId ? sched.teamLeaderId.split(',').map(tid => {
-        const u = users.find(x => x.id === tid.trim());
-        return u ? u.name : tid;
-      }).join(', ') : 'N/A';
-      const service = sched ? (sched.service.charAt(0).toUpperCase() + sched.service.slice(1)) : 'N/A';
-
-      const observations = document.getElementById('report-visit-observations').value || 'No observations recorded.';
-      const recommendations = document.getElementById('report-visit-recommendations').value || 'No recommendations recorded.';
-      const generatedBy = document.getElementById('report-visit-generated-by').value || 'Authorized Buckler Personnel';
-
-      const items = window.BucklerDB.get('items');
-      const materials = log.itemsConsumed && log.itemsConsumed.length
-        ? log.itemsConsumed.map(cons => {
-            const item = items.find(i => i.id === cons.itemId);
-            return `${item ? item.name : cons.itemId} (${cons.qty} ${item ? item.unit : ''})`;
-          }).join(', ')
-        : 'None';
-
-      let picsHTML = '';
-      if (log.pictures && log.pictures.length > 0) {
-        picsHTML = `<div style="margin-top:1rem;"><h5 style="font-weight:700;color:var(--text-dark);margin-bottom:0.5rem;">Visit Pictures:</h5><div class="visit-photos-grid">${log.pictures.map(pic => `<img src="${pic}" class="visit-photo-thumbnail" onclick="window.open('${pic}','_blank')" />`).join('')}</div></div>`;
-      }
-
-      const openComplaints = (window.BucklerDB.get('complaints') || []).filter(c => c.clientId === clientId && c.status !== 'Resolved');
-      const complaintsHTML = openComplaints.length > 0 ? `<div style="margin-top:1rem;padding:0.75rem 1rem;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;font-size:0.85rem;"><strong style="color:#DC2626;">âš ï¸ ${openComplaints.length} Open Complaint(s):</strong>${openComplaints.map(c => `<div style="margin-top:0.3rem;color:#7F1D1D;">${c.severity} â€” ${(c.details||'').substring(0,80)} [${c.status}]</div>`).join('')}</div>` : '';
-      const contractTypesStr = (client.contractTypes && client.contractTypes.length) ? client.contractTypes.join(', ') : 'N/A';
-
-      outputContainer.innerHTML = `
-        <div class="sanitation-report-card print-area">
-          <div class="sanitation-report-header">
-            <h2 class="sanitation-report-title">Visit Audit Report</h2>
-            <p style="color:var(--text-muted);font-size:0.85rem;margin-top:5px;">Client Service &amp; Sanitation Review</p>
-          </div>
-          <div class="sanitation-report-meta">
-            <span><strong>Client Name:</strong> ${client.name}</span>
-            <span><strong>Client Code:</strong> ${client.clientCode || client.id}</span>
-            <span><strong>Region / City:</strong> ${client.region} / ${client.city}</span>
-            <span><strong>Contract Types:</strong> ${contractTypesStr}</span>
-            <span><strong>Visit Date:</strong> ${log.dateConducted}</span>
-            <span><strong>Service:</strong> ${service}</span>
-            <span><strong>Team Leader:</strong> ${tlNames}</span>
-            <span><strong>Duration:</strong> ${log.timeSpent}</span>
-            <span><strong>GPS Coordinates:</strong> ${log.geoLocation || 'N/A'}</span>
-          </div>
-          ${complaintsHTML}
-          <div style="margin-top:1.5rem;border-top:1px solid var(--border-color);padding-top:1rem;">
-            <h4 style="font-weight:700;color:var(--text-dark);margin-bottom:0.5rem;">Visit Highlights &amp; Materials</h4>
-            <p style="font-size:0.9rem;color:var(--text-medium);margin-bottom:0.5rem;"><strong>Operation Comments:</strong> ${log.comments || 'N/A'}</p>
-            <p style="font-size:0.9rem;color:var(--text-medium);margin-bottom:0.5rem;"><strong>Materials Consumed:</strong> ${materials}</p>
-            <p style="font-size:0.9rem;color:var(--text-medium);margin-bottom:0.5rem;"><strong>Client Feedback:</strong> ${log.clientComments || 'None'}</p>
-            ${picsHTML}
-          </div>
-          <div style="margin-top:1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;border-top:1px solid var(--border-color);padding-top:1rem;">
-            <div style="border:1px solid var(--border-color);padding:1rem;border-radius:8px;background:#FAF9F9;">
-              <h4 style="font-weight:700;color:var(--primary-red);margin-bottom:0.5rem;">Observations</h4>
-              <p style="font-size:0.9rem;line-height:1.4;color:var(--text-dark);white-space:pre-wrap;">${observations}</p>
-            </div>
-            <div style="border:1px solid var(--border-color);padding:1rem;border-radius:8px;background:#FAF9F9;">
-              <h4 style="font-weight:700;color:var(--primary-red);margin-bottom:0.5rem;">Recommendations</h4>
-              <p style="font-size:0.9rem;line-height:1.4;color:var(--text-dark);white-space:pre-wrap;">${recommendations}</p>
-            </div>
-          </div>
-          <div style="margin-top:2rem;border-top:1px solid var(--border-color);padding-top:1.25rem;display:flex;justify-content:space-between;align-items:flex-end;font-size:0.85rem;">
-            <div><strong>Report Generated By:</strong><br/><span style="font-size:0.95rem;font-weight:700;color:var(--text-dark);">${generatedBy}</span></div>
-            <div style="text-align:right;"><strong>Client Signature:</strong><br/>
-              <img src="${log.clientSignature}" style="max-height:50px;border:1px solid var(--border-color);border-radius:4px;background:#FFF;padding:2px;margin-top:4px;" />
-            </div>
-          </div>
-        </div>
-      `;
-      const emailBtn = document.getElementById('btn-email-report');
-      if (emailBtn) {
-        emailBtn.style.display = 'inline-flex';
-        emailBtn.onclick = () => {
-          const subject = encodeURIComponent(`Visit Report â€” ${client.name} â€” ${log.dateConducted}`);
-          const body = encodeURIComponent(`Dear ${client.contact || client.name},\n\nVisit summary:\nClient: ${client.name}\nDate: ${log.dateConducted}\nService: ${service}\nTeam Leader: ${tlNames}\nMaterials: ${materials}\nNotes: ${log.comments || 'N/A'}\n\nBest regards,\nBuckler Operations Team`);
-          window.open(`mailto:${client.email || ''}?subject=${subject}&body=${body}`, '_blank');
-          if (!client.email) showToast('No email address on file for this client.', 'warning');
-        };
-      }
-      return;
-    }
-
       
       const sched = window.BucklerDB.get('schedules').find(s => s.id === log.scheduleId);
       const users = window.BucklerDB.get('users');
@@ -6855,104 +6678,380 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // â”€â”€ REGULAR / DETAILED â€” loop over ALL selected clients â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const startDate = els.reportStartDate.value;
     const endDate = els.reportEndDate.value;
-    if (els.btnExportReportCsv) els.btnExportReportCsv.style.display = 'inline-flex';
-
-    const allClients = window.BucklerDB.get('clients');
+    
+    const logs = window.BucklerDB.getLogs('All').filter(l => {
+      if (l.clientId !== client.id) return false;
+      const logDate = l.dateConducted;
+      if (!logDate) return false;
+      const matchStart = startDate ? logDate >= startDate : true;
+      const matchEnd = endDate ? logDate <= endDate : true;
+      return matchStart && matchEnd;
+    });
+    
+    logs.sort((a, b) => new Date(a.dateConducted) - new Date(b.dateConducted));
+    
     const schedules = window.BucklerDB.get('schedules');
     const users = window.BucklerDB.get('users');
     const items = window.BucklerDB.get('items');
-
-    const clientSections = selectedClientIds.map((clientId, cIdx) => {
-      const client = allClients.find(c => c.id === clientId);
-      if (!client) return '';
-
-      const logs = window.BucklerDB.getLogs('All').filter(l => {
-        if (l.clientId !== clientId) return false;
-        const logDate = l.dateConducted;
-        if (!logDate) return false;
-        return (startDate ? logDate >= startDate : true) && (endDate ? logDate <= endDate : true);
-      });
-      logs.sort((a, b) => new Date(a.dateConducted) - new Date(b.dateConducted));
-
-      const contractTypesStr = (client.contractTypes && client.contractTypes.length) ? client.contractTypes.join(', ') : 'N/A';
-
-      let summaryRows = logs.length === 0
-        ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No visits conducted in this period.</td></tr>'
-        : logs.map(log => {
-            const sched = schedules.find(s => s.id === log.scheduleId);
-            const tlNames = sched && sched.teamLeaderId ? sched.teamLeaderId.split(',').map(tid => { const u = users.find(x => x.id === tid.trim()); return u ? u.name : tid; }).join(', ') : 'N/A';
-            const service = sched ? (sched.service.charAt(0).toUpperCase() + sched.service.slice(1)) : 'N/A';
-            const dayOfWeek = new Date(log.dateConducted).toLocaleDateString('en-US', { weekday: 'long' });
-            return `<tr><td>${log.dateConducted}</td><td>${dayOfWeek}</td><td>${service}</td><td>${tlNames}</td><td>${log.timeIn} - ${log.timeOut}</td><td>${log.timeSpent}</td></tr>`;
-          }).join('');
-
-      let detailedLogsHTML = logs.length === 0
-        ? '<p style="color:var(--text-muted);text-align:center;padding:1rem;border:1px dashed var(--border-color);border-radius:8px;">No operational logs recorded.</p>'
-        : logs.map((log, index) => {
-            const sched = schedules.find(s => s.id === log.scheduleId);
-            const tlNames = sched && sched.teamLeaderId ? sched.teamLeaderId.split(',').map(tid => { const u = users.find(x => x.id === tid.trim()); return u ? u.name : tid; }).join(', ') : 'N/A';
-            const service = sched ? (sched.service.charAt(0).toUpperCase() + sched.service.slice(1)) : 'N/A';
-            const materials = log.itemsConsumed && log.itemsConsumed.length ? log.itemsConsumed.map(cons => { const item = items.find(i => i.id === cons.itemId); return `${item ? item.name : cons.itemId} (${cons.qty} ${item ? item.unit : ''})`; }).join(', ') : 'None';
-            const pics = log.pictures && log.pictures.length ? `<div class="visit-photos-grid" style="margin-top:0.5rem;">${log.pictures.map(pic => `<img src="${pic}" class="visit-photo-thumbnail" onclick="window.open('${pic}','_blank')" />`).join('')}</div>` : '';
-            return `<div class="sanitation-visit-log-item" style="border:1px solid var(--border-color);border-radius:8px;padding:1.25rem;margin-bottom:1rem;background:#FAFBFD;">
-              <h4 style="font-size:0.95rem;font-weight:700;color:var(--text-dark);border-bottom:1px dashed var(--border-color);padding-bottom:0.5rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;">
-                <span>Visit #${index + 1} - ${log.dateConducted} (${service})</span>
-                <span style="font-size:0.8rem;color:var(--text-muted);">Duration: ${log.timeSpent}</span>
-              </h4>
-              <div style="font-size:0.85rem;color:var(--text-medium);line-height:1.5;">
-                <p><strong>Team Leader:</strong> ${tlNames}</p>
-                <p><strong>Operational Comments:</strong> ${log.comments || 'N/A'}</p>
-                <p><strong>Materials Consumed:</strong> ${materials}</p>
-                <p><strong>Client Signature:</strong><br/><img src="${log.clientSignature}" style="max-height:40px;border:1px solid var(--border-color);border-radius:4px;background:#FFF;padding:2px;margin-top:4px;"/></p>
-                ${pics}
-              </div>
-            </div>`;
-          }).join('');
-
-      const divider = cIdx > 0 ? '<div style="margin:2.5rem 0;border-top:3px dashed var(--border-color);padding-top:2rem;"></div>' : '';
-      return `${divider}<div class="sanitation-report-card print-area">
+    
+    let summaryRows = '';
+    let detailedLogsHTML = '';
+    
+    if (logs.length === 0) {
+      summaryRows = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No visits conducted in this period.</td></tr>';
+      detailedLogsHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem; border:1px dashed var(--border-color); border-radius:8px;">No operational logs recorded.</p>';
+    } else {
+      summaryRows = logs.map(log => {
+        const sched = schedules.find(s => s.id === log.scheduleId);
+        const tlNames = sched && sched.teamLeaderId ? sched.teamLeaderId.split(',').map(id => {
+          const u = users.find(x => x.id === id.trim());
+          return u ? u.name : id;
+        }).join(', ') : 'N/A';
+        const service = sched ? (sched.service.charAt(0).toUpperCase() + sched.service.slice(1)) : 'N/A';
+        const dateObj = new Date(log.dateConducted);
+        const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        
+        return `
+          <tr>
+            <td>${log.dateConducted}</td>
+            <td>${dayOfWeek}</td>
+            <td>${service}</td>
+            <td>${tlNames}</td>
+            <td>${log.timeIn} - ${log.timeOut}</td>
+            <td>${log.timeSpent}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      detailedLogsHTML = logs.map((log, index) => {
+        const sched = schedules.find(s => s.id === log.scheduleId);
+        const tlNames = sched && sched.teamLeaderId ? sched.teamLeaderId.split(',').map(id => {
+          const u = users.find(x => x.id === id.trim());
+          return u ? u.name : id;
+        }).join(', ') : 'N/A';
+        const service = sched ? (sched.service.charAt(0).toUpperCase() + sched.service.slice(1)) : 'N/A';
+        
+        const materials = log.itemsConsumed && log.itemsConsumed.length
+          ? log.itemsConsumed.map(cons => {
+              const item = items.find(i => i.id === cons.itemId);
+              return `${item ? item.name : cons.itemId} (${cons.qty} ${item ? item.unit : ''})`;
+            }).join(', ')
+          : 'None';
+          
+        let pics = '';
+        if (log.pictures && log.pictures.length > 0) {
+          pics = `
+            <div class="visit-photos-grid" style="margin-top:0.5rem;">
+              ${log.pictures.map(pic => `<img src="${pic}" class="visit-photo-thumbnail" onclick="window.open('${pic}', '_blank')" />`).join('')}
+            </div>
+          `;
+        }
+        
+        return `
+          <div class="sanitation-visit-log-item" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; background: #FAFBFD;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark); border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between;">
+              <span>Visit #${index + 1} - ${log.dateConducted} (${service})</span>
+              <span style="font-size:0.8rem; color:var(--text-muted);">Duration: ${log.timeSpent}</span>
+            </h4>
+            <div style="font-size:0.85rem; color:var(--text-medium); line-height:1.5;">
+              <p><strong>Team Leader:</strong> ${tlNames}</p>
+              <p><strong>Operational Comments:</strong> ${log.comments || 'N/A'}</p>
+              <p><strong>Materials Consumed:</strong> ${materials}</p>
+              <p><strong>Client Signature:</strong><br/>
+                <img src="${log.clientSignature}" style="max-height: 40px; border: 1px solid var(--border-color); border-radius: 4px; background: #FFF; padding: 2px; margin-top: 4px;" />
+              </p>
+              ${pics}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+ 
+    let detailedSectionHTML = '';
+    if (reportType === 'detailed') {
+      const auditLogs = logs.filter(log => log.baitStationsAudit || log.uvMachinesAudit);
+      if (auditLogs.length === 0) {
+        detailedSectionHTML = `
+          <div style="margin-top: 2rem; border-top: 2px solid var(--primary-red); padding-top: 1.5rem; text-align: center; color: var(--text-muted); font-style: italic;">
+            No bait station or UV machine audits were logged for this client during the selected period.
+          </div>
+        `;
+      } else {
+        let auditSelectorHTML = '';
+        if (auditLogs.length > 1) {
+          auditSelectorHTML = `
+            <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;" class="no-print">
+              <label for="report-audit-date-select" style="font-weight: 700; font-size: 0.85rem; color: var(--text-dark);">Select Audit Date:</label>
+              <select id="report-audit-date-select" class="filter-select" style="margin: 0; min-width: 150px;">
+                ${auditLogs.map(l => `<option value="${l.id}">${l.dateConducted}</option>`).join('')}
+              </select>
+            </div>
+          `;
+        }
+        
+        detailedSectionHTML = `
+          <div style="margin-top: 2rem; border-top: 2px solid var(--primary-red); padding-top: 1.5rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-dark); margin-bottom: 1rem; border-bottom: 2px solid var(--primary-red); padding-bottom: 0.25rem;">
+              Detailed Devices Audit & Real-time Charts
+            </h3>
+            
+            ${auditSelectorHTML}
+            
+            <div id="detailed-audit-content">
+              <!-- Dynamically populated in JavaScript -->
+            </div>
+          </div>
+        `;
+      }
+    }
+ 
+    outputContainer.innerHTML = `
+      <div class="sanitation-report-card print-area">
         <div class="sanitation-report-header">
-          <h2 class="sanitation-report-title">${reportType === 'detailed' ? 'Detailed' : 'Regular'} Sanitation &amp; IPM Report</h2>
-          <p style="color:var(--text-muted);font-size:0.85rem;margin-top:5px;">Client: ${client.name} | Period: ${startDate} to ${endDate}</p>
+          <h2 class="sanitation-report-title">${reportType === 'detailed' ? 'Detailed' : 'Regular'} Sanitation & IPM Report</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Client: ${client.name} | Period: ${startDate} to ${endDate}</p>
         </div>
+        
         <div class="sanitation-report-meta">
           <span><strong>Client Name:</strong> ${client.name}</span>
           <span><strong>Client Code:</strong> ${client.clientCode || client.id}</span>
           <span><strong>Business Sector:</strong> ${client.sector}</span>
           <span><strong>Region / City:</strong> ${client.region} / ${client.city}</span>
-          <span><strong>Contract Types:</strong> ${contractTypesStr}</span>
+          <span><strong>Bait Stations:</strong> ${client.baitStationsCount || 0} devices</span>
+          <span><strong>UV Fly Traps:</strong> ${client.uvMachinesCount || 0} devices</span>
+          <span><strong>Contract Value:</strong> ${client.contractValue ? `${client.contractValue.toLocaleString()} ${client.contractCurrency || 'USD'}` : 'N/A'}</span>
           <span><strong>Monthly Target Visits:</strong> ${client.monthlyVisits || 0} visits</span>
         </div>
-        <div style="margin-top:1.5rem;">
-          <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-dark);margin-bottom:0.75rem;border-bottom:2px solid var(--primary-red);padding-bottom:0.25rem;">Operational Service Summary</h3>
-          <table class="data-table" style="width:100%;"><thead><tr><th>Date</th><th>Day</th><th>Service</th><th>Team Leader</th><th>Time Window</th><th>Duration</th></tr></thead><tbody>${summaryRows}</tbody></table>
+        
+        <div style="margin-top: 1.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.75rem; border-bottom: 2px solid var(--primary-red); padding-bottom: 0.25rem;">
+            Operational Service Summary
+          </h3>
+          <table class="data-table" id="reports-table" style="width: 100%;">
+            <thead id="reports-table-header">
+              <tr>
+                <th>Date Conducted</th>
+                <th>Day</th>
+                <th>Service Name</th>
+                <th>Team Leader in Charge</th>
+                <th>Time Window</th>
+                <th>Duration Spent</th>
+              </tr>
+            </thead>
+            <tbody id="reports-table-body">
+              ${summaryRows}
+            </tbody>
+          </table>
         </div>
-        <div style="margin-top:1.5rem;">
-          <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-dark);margin-bottom:0.75rem;border-bottom:2px solid var(--primary-red);padding-bottom:0.25rem;">Visit Detailed Highlights</h3>
+        
+        <div style="margin-top: 1.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.75rem; border-bottom: 2px solid var(--primary-red); padding-bottom: 0.25rem;">
+            Visit Detailed Highlights
+          </h3>
           ${detailedLogsHTML}
         </div>
-      </div>`;
-    }).join('');
+        
+        ${detailedSectionHTML}
+      </div>
+    `;
+ 
+    if (reportType === 'detailed') {
+      const auditLogs = logs.filter(log => log.baitStationsAudit || log.uvMachinesAudit);
+      if (auditLogs.length > 0) {
+        let detailedBaitChart = null;
+        let detailedUvChart = null;
 
-    outputContainer.innerHTML = clientSections || '<p style="text-align:center;color:var(--text-muted);padding:2rem;">No data found for selected clients and date range.</p>';
+        const renderAuditData = (log) => {
+          const contentDiv = document.getElementById('detailed-audit-content');
+          if (!contentDiv) return;
 
-    const emailBtn = document.getElementById('btn-email-report');
-    if (emailBtn) {
-      emailBtn.style.display = 'inline-flex';
-      emailBtn.onclick = () => {
-        const firstClientId = selectedClientIds[0];
-        const fc = allClients.find(c => c.id === firstClientId);
-        if (!fc || !fc.email) { showToast('No email address on file for first selected client.', 'warning'); return; }
-        const subject = encodeURIComponent(`IPM Report â€” ${fc.name} â€” ${startDate} to ${endDate}`);
-        const body = encodeURIComponent(`Dear ${fc.contact || fc.name},\n\nPlease find your Sanitation & IPM report for ${startDate} to ${endDate}.\n\nBest regards,\nBuckler Operations Team`);
-        window.open(`mailto:${fc.email}?subject=${subject}&body=${body}`, '_blank');
-      };
+          let baitRows = '';
+          const baitAudit = log.baitStationsAudit || [];
+          baitAudit.forEach(st => {
+            const actClass = st.activity.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            baitRows += `
+              <tr>
+                <td>${st.number}</td>
+                <td>${st.location}</td>
+                <td><span class="badge-activity badge-activity-${actClass}">${st.activity}</span></td>
+                <td>${st.comments || '-'}</td>
+              </tr>
+            `;
+          });
+
+          if (!baitRows) {
+            baitRows = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:1rem;">No bait stations audit logged.</td></tr>`;
+          }
+
+          let uvRows = '';
+          const uvAudit = log.uvMachinesAudit || [];
+          uvAudit.forEach(m => {
+            uvRows += `
+              <tr>
+                <td>${m.number}</td>
+                <td>${m.location}</td>
+                <td><strong>${m.catchRate}%</strong></td>
+              </tr>
+            `;
+          });
+
+          if (!uvRows) {
+            uvRows = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:1rem;">No UV machines audit logged.</td></tr>`;
+          }
+
+          contentDiv.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+              <div class="card" style="padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem; text-align: center;">Bait Stations Activity Analysis</h4>
+                <div style="height: 220px; position: relative;">
+                  <canvas id="detailed-bait-chart"></canvas>
+                </div>
+              </div>
+              <div class="card" style="padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem; text-align: center;">UV Fly Trap Catch Rates</h4>
+                <div style="height: 220px; position: relative;">
+                  <canvas id="detailed-uv-chart"></canvas>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.5rem;">Bait Stations Audit Registry</h4>
+                <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+                  <table class="data-table" style="width: 100%;">
+                    <thead>
+                      <tr>
+                        <th>Bait stations no</th>
+                        <th>Bait station location</th>
+                        <th>Activity</th>
+                        <th>Comments</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${baitRows}
+                    </tbody>
+                  </table>
+                </div>
+                <div style="margin-top: 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--text-dark);">
+                  <span style="background:var(--primary-red-light); color:var(--primary-red); padding:2px 8px; border-radius:4px; font-family:monospace; margin-right:4px;">${log.baitStickersReplaced || 0}</span>
+                  bait stations stickers & poisons were replaced
+                </div>
+              </div>
+              
+              <div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.5rem;">UV Fly Traps Catch Rate Registry</h4>
+                <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+                  <table class="data-table" style="width: 100%;">
+                    <thead>
+                      <tr>
+                        <th>Machine no</th>
+                        <th>Machine location</th>
+                        <th>Catch rate %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${uvRows}
+                    </tbody>
+                  </table>
+                </div>
+                <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-dark);">
+                  <div><strong>Total no of UV machines:</strong> <span>${uvAudit.length}</span></div>
+                  <div><strong>Total no. of flies' stickers replaced:</strong> <span style="background:var(--info-blue-light); color:var(--info-blue); padding:2px 8px; border-radius:4px; font-family:monospace; margin-left:4px;">${log.uvStickersReplaced || 0}</span></div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          // Redraw Charts
+          const activityCounts = { 'No Activity': 0, 'Captured & Replaced': 0, 'Eaten': 0 };
+          baitAudit.forEach(st => {
+            if (activityCounts[st.activity] !== undefined) {
+              activityCounts[st.activity]++;
+            }
+          });
+
+          const uvLabels = [];
+          const uvRates = [];
+          uvAudit.forEach(m => {
+            uvLabels.push(`Trap ${m.number}`);
+            uvRates.push(m.catchRate);
+          });
+
+          const ctxBait = document.getElementById('detailed-bait-chart');
+          if (ctxBait) {
+            if (detailedBaitChart) detailedBaitChart.destroy();
+            detailedBaitChart = new Chart(ctxBait.getContext('2d'), {
+              type: 'pie',
+              data: {
+                labels: Object.keys(activityCounts),
+                datasets: [{
+                  data: Object.values(activityCounts),
+                  backgroundColor: ['#10B981', '#3B82F6', '#EF4444'],
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 9 } } }
+                }
+              }
+            });
+          }
+
+          const ctxUv = document.getElementById('detailed-uv-chart');
+          if (ctxUv) {
+            if (detailedUvChart) detailedUvChart.destroy();
+            detailedUvChart = new Chart(ctxUv.getContext('2d'), {
+              type: 'bar',
+              data: {
+                labels: uvLabels,
+                datasets: [{
+                  label: 'Catch Rate %',
+                  data: uvRates,
+                  backgroundColor: '#3B82F6',
+                  borderRadius: 4
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false }
+                },
+                scales: {
+                  y: { min: 0, max: 100, ticks: { font: { size: 8 } } },
+                  x: { ticks: { font: { size: 8 } } }
+                }
+              }
+            });
+          }
+        };
+
+        // Render first audit by default
+        renderAuditData(auditLogs[0]);
+
+        // Wire selector listener if date selector exists
+        const dateSelect = document.getElementById('report-audit-date-select');
+        if (dateSelect) {
+          dateSelect.addEventListener('change', (e) => {
+            const selectedLog = auditLogs.find(l => l.id === e.target.value);
+            if (selectedLog) {
+              renderAuditData(selectedLog);
+            }
+          });
+        }
+
+        // Store charts in state if needed
+        state.charts.detailedBaitChart = detailedBaitChart;
+        state.charts.detailedUvChart = detailedUvChart;
+      }
     }
   }
-
 
   function renderReports() {
     populateReportClientSelect();
@@ -7498,15 +7597,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let actionHTML = '';
 
     if (!todayRecord) {
-      statusHTML = `<span class="shift-status-pill shift-status-inactive">ðŸ”´ Off Duty</span>
-                    <span style="font-size:0.75rem; color:#FCA5A5; font-weight:600;">âš ï¸ Check-In required before logging visits</span>`;
+      statusHTML = `<span class="shift-status-pill shift-status-inactive">🔴 Off Duty</span>
+                    <span style="font-size:0.75rem; color:#FCA5A5; font-weight:600;">⚠️ Check-In required before logging visits</span>`;
       actionHTML = `<button type="button" class="btn btn-shift-checkin" id="btn-shift-start">Start Day (Check-In)</button>`;
     } else if (!todayRecord.checkOut) {
-      statusHTML = `<span class="shift-status-pill shift-status-active">ðŸŸ¢ Active Duty</span>
+      statusHTML = `<span class="shift-status-pill shift-status-active">🟢 Active Duty</span>
                     <span class="shift-time-display">Started: <strong>${todayRecord.checkIn}</strong></span>`;
       actionHTML = `<button type="button" class="btn btn-shift-checkout" id="btn-shift-end">End Day (Check-Out)</button>`;
     } else {
-      statusHTML = `<span class="shift-status-pill shift-status-inactive">ðŸ”´ Checked Out</span>
+      statusHTML = `<span class="shift-status-pill shift-status-inactive">🔴 Checked Out</span>
                     <span class="shift-time-display">Started: <strong>${todayRecord.checkIn}</strong> | Finished: <strong>${todayRecord.checkOut}</strong></span>`;
       actionHTML = `<button type="button" class="btn" style="background:#e2e8f0; color:#64748b; cursor:not-allowed;" disabled>Shift Completed</button>`;
     }
@@ -7575,7 +7674,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = `
       <div class="tl-pill ${isAllSelected ? 'active' : ''}" data-value="All">
-        <span class="pill-avatar">â˜…</span>
+        <span class="pill-avatar">★</span>
         <span>All</span>
       </div>
     `;
@@ -7635,7 +7734,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = `
       <div class="tl-pill ${isAllSelected ? 'active' : ''}" data-value="All">
-        <span class="pill-avatar">â˜…</span>
+        <span class="pill-avatar">★</span>
         <span>All</span>
       </div>
     `;
@@ -7828,7 +7927,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = `
       <div class="tl-pill ${isAllSelected ? 'active' : ''}" data-value="All">
-        <span class="pill-avatar">â˜…</span>
+        <span class="pill-avatar">★</span>
         <span>All</span>
       </div>
     `;
@@ -7889,7 +7988,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = `
       <div class="tl-pill ${isAllSelected ? 'active' : ''}" data-value="All">
-        <span class="pill-avatar">â˜…</span>
+        <span class="pill-avatar">★</span>
         <span>All</span>
       </div>
     `;
@@ -7948,7 +8047,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = `
       <div class="tl-pill ${isAllSelected ? 'active' : ''}" data-value="All">
-        <span class="pill-avatar">â˜…</span>
+        <span class="pill-avatar">★</span>
         <span>All</span>
       </div>
     `;
@@ -8207,8 +8306,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }).filter(Boolean);
 
       const catBadge = s.category === 'Local'
-        ? `<span style="background:#EFF6FF;color:#3B82F6;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">ðŸ¢ Local</span>`
-        : `<span style="background:#ECFDF5;color:#10B981;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">ðŸŒ International</span>`;
+        ? `<span style="background:#EFF6FF;color:#3B82F6;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">🏢 Local</span>`
+        : `<span style="background:#ECFDF5;color:#10B981;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">🌍 International</span>`;
 
       const itemTags = suppliedItems.length
         ? suppliedItems.map(n => `<span style="background:#F8FAFC;border:1px solid var(--border-color);padding:1px 6px;border-radius:3px;margin:1px;display:inline-block;font-size:0.75rem;">${n}</span>`).join('')
@@ -8282,7 +8381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.4rem;border-radius:4px;cursor:pointer;font-size:0.82rem;transition:background 0.15s;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
               <input type="checkbox" name="sup-product-cb" value="${item.id}" ${currentProductIds.includes(item.id) ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--primary-red);">
               <span style="flex:1;color:var(--text-dark);">${item.name}</span>
-              <span style="color:var(--text-muted);font-size:0.72rem;">${item.itemCode || ''} Â· ${item.unit || ''}</span>
+              <span style="color:var(--text-muted);font-size:0.72rem;">${item.itemCode || ''} · ${item.unit || ''}</span>
             </label>
           `).join('')}
         </div>`;
@@ -8298,8 +8397,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div>
             <label for="sup-modal-category">Category <span style="color:var(--primary-red);">*</span></label>
             <select id="sup-modal-category" class="form-control" required>
-              <option value="Local"         ${!supplier || supplier.category === 'Local'          ? 'selected' : ''}>ðŸ¢ Local</option>
-              <option value="International" ${supplier  && supplier.category === 'International'  ? 'selected' : ''}>ðŸŒ International</option>
+              <option value="Local"         ${!supplier || supplier.category === 'Local'          ? 'selected' : ''}>🏢 Local</option>
+              <option value="International" ${supplier  && supplier.category === 'International'  ? 'selected' : ''}>🌍 International</option>
             </select>
           </div>
         </div>
