@@ -9934,22 +9934,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function canEditOrDeleteDeal(deal) {
     if (!state.currentUser) return true;
     const role = state.currentUser.role.toLowerCase();
-    
-    // GMs, Sales Managers, and Operations Managers have full permissions
-    if (role === 'gm' || role === 'sales manager' || role === 'operations manager') {
-      return true;
-    }
-    
-    // Sales Representatives/Reps can edit/delete any deal in the Prospecting stage
-    if (role === 'sales representative' || role === 'sales rep') {
-      if (deal.stage === 'Prospecting') {
-        return true;
-      }
-      // For other stages, they must be the assigned representative
-      return deal.assignedSalesRepId === state.currentUser.id;
-    }
-    
-    return false;
+    const allowedRoles = ['gm', 'sales manager', 'operations manager', 'sales rep', 'sales representative'];
+    return allowedRoles.includes(role);
   }
 
   function openDealModal(id = null) {
@@ -10277,16 +10263,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius: var(--radius-md); padding:1rem; margin-bottom:1rem;">
-          <h4 style="font-size:0.85rem; font-weight:700; color:#B45309; margin-bottom:0.75rem; border-bottom:1px dashed #FCD34D; padding-bottom:4px;">Rate Settings & Markup</h4>
+          <h4 style="font-size:0.85rem; font-weight:700; color:#B45309; margin-bottom:0.75rem; border-bottom:1px dashed #FCD34D; padding-bottom:4px;">Rate Settings</h4>
           <div class="form-group row-split">
             <div>
               <label for="rate-labor">Labor Hourly Rate (<span class="currency-symbol">$</span>/hr)</label>
               <input type="number" id="rate-labor" class="form-control calc-trigger" value="${cs.laborRatePerHour || 15}" min="0">
             </div>
-            <div>
-              <label for="rate-margin">Desired Profit Margin (%)</label>
-              <input type="number" id="rate-margin" class="form-control calc-trigger" value="${cs.profitMargin || 30}" min="0" max="95">
-            </div>
+            <div></div>
           </div>
         </div>
       `;
@@ -10373,7 +10356,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const hours = parseFloat(document.getElementById('cost-hours').value) || 0;
       const additional = parseFloat(document.getElementById('cost-additional').value) || 0;
       const laborRate = parseFloat(document.getElementById('rate-labor').value) || 0;
-      const margin = parseFloat(document.getElementById('rate-margin').value) || 0;
 
       let laborCost = visits * hours * laborRate;
       let stickersCost = 0;
@@ -10395,8 +10377,20 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const baseTotal = laborCost + stickersCost + additional + customCostsTotal;
-      const markupValue = baseTotal * (margin / 100);
-      const sellingPrice = baseTotal + markupValue;
+
+      const elPriceInput = document.getElementById('calc-selling-price-input');
+      let currentPrice = elPriceInput ? parseFloat(elPriceInput.value) : null;
+      if (currentPrice === null || isNaN(currentPrice)) {
+        if (deal.expectedValue) {
+          currentPrice = deal.expectedValue;
+        } else {
+          const defaultMargin = cs.profitMargin || 30;
+          currentPrice = Math.round(baseTotal * (1 + defaultMargin / 100));
+        }
+      }
+
+      const markupValue = currentPrice - baseTotal;
+      const marginPercent = baseTotal > 0 ? Math.round((markupValue / baseTotal) * 100) : 0;
 
       const elLabor = document.getElementById('calc-lbl-labor');
       const elAdd = document.getElementById('calc-lbl-additional');
@@ -10407,16 +10401,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (elLabor) elLabor.textContent = formatCurrency(laborCost, curVal);
       if (elAdd) elAdd.textContent = formatCurrency(additional + customCostsTotal, curVal);
       if (elBase) elBase.textContent = formatCurrency(baseTotal, curVal);
-      if (elMarkup) elMarkup.textContent = `${margin}% (${formatCurrency(markupValue, curVal)})`;
+      if (elMarkup) elMarkup.textContent = `${marginPercent}% (${formatCurrency(markupValue, curVal)})`;
 
       // Update final selling price input ONLY if user is not manually focused on it
-      const elPriceInput = document.getElementById('calc-selling-price-input');
       if (elPriceInput && document.activeElement !== elPriceInput) {
-        elPriceInput.value = Math.round(sellingPrice);
+        elPriceInput.value = Math.round(currentPrice);
       }
 
-      const finalPrice = elPriceInput ? (parseFloat(elPriceInput.value) || 0) : sellingPrice;
-      const annualValue = finalPrice * 12;
+      const annualValue = currentPrice * 12;
       if (elAnn) elAnn.textContent = `Annual: ${formatCurrency(annualValue, curVal)}`;
     };
 
@@ -10497,12 +10489,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const markupValue = currentPrice - baseTotal;
           const marginPercent = baseTotal > 0 ? Math.round((markupValue / baseTotal) * 100) : 0;
 
-          // Update margin input field
-          const marginInput = document.getElementById('rate-margin');
-          if (marginInput) {
-            marginInput.value = marginPercent;
-          }
-
           // Update markup label
           const elMarkup = document.getElementById('calc-lbl-markup');
           if (elMarkup) {
@@ -10528,7 +10514,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const hours = parseFloat(document.getElementById('cost-hours').value) || 0;
         const additional = parseFloat(document.getElementById('cost-additional').value) || 0;
         const laborRate = parseFloat(document.getElementById('rate-labor').value) || 0;
-        const margin = parseFloat(document.getElementById('rate-margin').value) || 0;
         const costLabel = document.getElementById('cost-label').value.trim();
 
         let laborCost = visits * hours * laborRate;
@@ -10556,9 +10541,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const baseTotal = laborCost + stickersCost + additional + customCostsTotal;
         const elPriceInput = document.getElementById('calc-selling-price-input');
-        const sellingPrice = elPriceInput 
-          ? Math.round(parseFloat(elPriceInput.value) || baseTotal + (baseTotal * (margin / 100)))
-          : Math.round(baseTotal + (baseTotal * (margin / 100)));
+        const sellingPrice = elPriceInput ? Math.round(parseFloat(elPriceInput.value) || baseTotal) : Math.round(baseTotal);
+
+        const markupValue = sellingPrice - baseTotal;
+        const calculatedMargin = baseTotal > 0 ? Math.round((markupValue / baseTotal) * 100) : 0;
 
         const structure = {
           visitsPerMonth: visits,
@@ -10568,7 +10554,7 @@ document.addEventListener('DOMContentLoaded', () => {
           additionalCost: additional,
           laborRatePerHour: laborRate,
           costPerSticker: stickerRate,
-          profitMargin: margin,
+          profitMargin: calculatedMargin,
           label: costLabel
         };
 
