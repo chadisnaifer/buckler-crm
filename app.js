@@ -663,7 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto-redirect if on a blocked tab
     if (!hasAccessPermission(state.activeTab)) {
-      const allTabs = ['dashboard', 'schedules', 'clients', 'items', 'suppliers', 'complaints', 'messages', 'uv-sales', 'reports', 'users'];
+      const allTabs = ['dashboard', 'sales', 'schedules', 'clients', 'items', 'suppliers', 'complaints', 'messages', 'uv-sales', 'reports', 'users', 'forms'];
       const allowed = allTabs.find(t => hasAccessPermission(t));
       if (allowed) {
         switchTab(allowed);
@@ -806,6 +806,12 @@ document.addEventListener('DOMContentLoaded', () => {
     switch (state.activeTab) {
       case 'dashboard':
         renderDashboard();
+        break;
+      case 'sales':
+        renderSalesCRM();
+        break;
+      case 'forms':
+        renderFormsAndTemplates();
         break;
       case 'schedules':
         renderSchedules();
@@ -5194,17 +5200,179 @@ document.addEventListener('DOMContentLoaded', () => {
         const itemsList = log.itemsConsumed && log.itemsConsumed.length
           ? log.itemsConsumed.map(c => { const it = items.find(i => i.id === c.itemId); return `${it ? it.name : c.itemId}: ${c.qty} ${it ? it.unit : ''}`; }).join(', ')
           : 'None';
+
+        // ── GENERATE PDF ATTACHMENT ──
+        if (window.jspdf) {
+          try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Draw header banner
+            doc.setFillColor(194, 24, 91); // Primary red
+            doc.rect(0, 0, 210, 40, 'F');
+
+            // Brand text
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(22);
+            doc.text('BUCKLER PEST CONTROL', 15, 25);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text('Operations & Quality Control Audit Report', 15, 33);
+
+            // Reset text color to dark grey
+            doc.setTextColor(51, 51, 51);
+
+            // Visit Summary Header
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Visit Audit Summary', 15, 55);
+
+            // Draw line
+            doc.setDrawColor(226, 232, 240);
+            doc.line(15, 58, 195, 58);
+
+            // Details
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            let pdfY = 65;
+            const drawDetailRow = (label, val) => {
+              doc.setFont('helvetica', 'bold');
+              doc.text(label + ':', 15, pdfY);
+              doc.setFont('helvetica', 'normal');
+              doc.text(String(val || 'N/A'), 55, pdfY);
+              pdfY += 7;
+            };
+
+            drawDetailRow('Client Name', client ? client.name : 'N/A');
+            drawDetailRow('Client Code', client ? (client.clientCode || client.id) : 'N/A');
+            drawDetailRow('Service Performed', sch ? sch.service : 'N/A');
+            drawDetailRow('Visit Date', log.dateConducted);
+            drawDetailRow('Time In / Out', `${log.timeIn || 'N/A'} - ${log.timeOut || 'N/A'} (${log.timeSpent || 'N/A'})`);
+            drawDetailRow('Team Leader(s)', tlNames);
+            drawDetailRow('Site Location', log.geoLocation || 'N/A');
+
+            pdfY += 5;
+            // Materials Section
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Materials & Pesticides Consumed', 15, pdfY);
+            pdfY += 3;
+            doc.line(15, pdfY, 195, pdfY);
+            pdfY += 6;
+
+            doc.setFontSize(10);
+            if (log.itemsConsumed && log.itemsConsumed.length) {
+              log.itemsConsumed.forEach(c => {
+                const it = items.find(i => i.id === c.itemId);
+                const itemName = it ? it.name : c.itemId;
+                const qtyText = `${c.qty} ${it ? it.unit : ''}`;
+                doc.setFont('helvetica', 'normal');
+                doc.text(itemName, 15, pdfY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(qtyText, 150, pdfY);
+                pdfY += 6;
+              });
+            } else {
+              doc.setFont('helvetica', 'italic');
+              doc.text('No chemical/materials consumed during this service.', 15, pdfY);
+              pdfY += 6;
+            }
+
+            pdfY += 5;
+            // Observations and Checklist Section
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Observations & Corrective Actions', 15, pdfY);
+            pdfY += 3;
+            doc.line(15, pdfY, 195, pdfY);
+            pdfY += 6;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Technician Comments / Notes:', 15, pdfY);
+            pdfY += 5;
+            doc.setFont('helvetica', 'normal');
+            const commentsLines = doc.splitTextToSize(log.comments || 'No comment notes provided.', 180);
+            doc.text(commentsLines, 15, pdfY);
+            pdfY += (commentsLines.length * 5) + 3;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Client Feedback / Sign-Off Comments:', 15, pdfY);
+            pdfY += 5;
+            doc.setFont('helvetica', 'normal');
+            const feedbackLines = doc.splitTextToSize(log.clientComments || 'No client feedback provided.', 180);
+            doc.text(feedbackLines, 15, pdfY);
+            pdfY += (feedbackLines.length * 5) + 5;
+
+            // Signatures block
+            if (pdfY > 230) {
+              doc.addPage();
+              pdfY = 30;
+            }
+
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Verification & Signatures', 15, pdfY);
+            pdfY += 3;
+            doc.line(15, pdfY, 195, pdfY);
+            pdfY += 10;
+
+            if (log.clientSignature && log.clientSignature.startsWith('data:image')) {
+              try {
+                // If it's SVG or SVG in data URI, jsPDF might prefer PNG, but let's try to add it
+                doc.addImage(log.clientSignature, 'PNG', 15, pdfY, 50, 20);
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'italic');
+                doc.text('Client Authorized Sign-Off', 15, pdfY + 25);
+              } catch (err) {
+                console.error('Error drawing client signature in PDF:', err);
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'italic');
+                doc.text('Client Signature Captured (Inline Image)', 15, pdfY + 15);
+              }
+            } else {
+              doc.setFontSize(9);
+              doc.setFont('helvetica', 'italic');
+              doc.text('(Client signature not captured)', 15, pdfY + 15);
+            }
+
+            // Tech signature label
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'italic');
+            doc.text(`Assigned Operator: ${tlNames}`, 110, pdfY + 25);
+
+            // Save PDF
+            const pdfName = `Visit-Report-${client ? client.name.replace(/\s+/g, '-') : 'Client'}-${log.dateConducted}.pdf`;
+            doc.save(pdfName);
+            showToast('PDF visit report generated and downloaded ✓', 'success');
+          } catch (e) {
+            console.error('Error generating PDF:', e);
+            showToast('PDF generation failed, drafting email summary instead.', 'warning');
+          }
+        }
+
+        // ── OPEN MAIL CLIENT ──
         const subject = encodeURIComponent(`Visit Report — ${client ? client.name : ''} — ${log.dateConducted}`);
         const body = encodeURIComponent(
           `Dear ${client ? (client.contact || client.name) : 'Valued Client'},\n\n` +
           `Please find the summary of our recent visit to your premises.\n\n` +
-          `Client: ${client ? client.name : ''}\nDate: ${log.dateConducted}\nService: ${sch ? sch.service : 'N/A'}\n` +
-          `Time In: ${log.timeIn || 'N/A'}  |  Time Out: ${log.timeOut || 'N/A'}\n` +
-          `Duration: ${log.timeSpent || 'N/A'}\nTeam Leader: ${tlNames}\n` +
-          `Materials Used: ${itemsList}\nNotes: ${log.comments || 'N/A'}\n` +
+          `We have generated and downloaded a PDF report of this visit onto your computer. Please attach the downloaded PDF file to this email before sending.\n\n` +
+          `─────────────────────────────\n` +
+          `VISIT SUMMARY\n` +
+          `─────────────────────────────\n` +
+          `Client: ${client ? client.name : ''}\n` +
+          `Date: ${log.dateConducted}\n` +
+          `Service: ${sch ? sch.service : 'N/A'}\n` +
+          `Time In / Out: ${log.timeIn || 'N/A'} - ${log.timeOut || 'N/A'}\n` +
+          `Team Leader: ${tlNames}\n` +
+          `Materials Consumed: ${itemsList}\n` +
+          `Technician Notes: ${log.comments || 'N/A'}\n` +
           `Client Feedback: ${log.clientComments || 'None'}\n\n` +
-          `Full interactive report:\n${reportUrl}\n\n` +
-          `Thank you for choosing Buckler Pest Control.\nBest regards,\nBuckler Operations Team`
+          `For the full interactive dashboard report, visit:\n${reportUrl}\n\n` +
+          `Thank you for choosing Buckler Pest Control.\n\n` +
+          `Best regards,\n` +
+          `Buckler Operations Team`
         );
         window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
         if (!clientEmail) showToast('No email address on file for this client.', 'warning');
@@ -8937,6 +9105,1190 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   // SIGN-OUT / SWITCH USER BUTTON
   // ============================================================
+  // ============================================================
+  // SALES CRM MANAGEMENT
+  // ============================================================
+  function _ensureSalesDealsArray() {
+    const d = window.BucklerDB.getData();
+    if (!Array.isArray(d.salesDeals)) {
+      d.salesDeals = [];
+      window.BucklerDB.saveData(d);
+    }
+  }
+
+  function renderSalesCRM() {
+    _ensureSalesDealsArray();
+    const deals = window.BucklerDB.get('salesDeals') || [];
+
+    // KPI Counters
+    const prospectsCount = deals.filter(d => d.stage === 'Prospecting').length;
+    const proposalsCount = deals.filter(d => d.stage === 'Proposal Sent').length;
+    const negotiationsCount = deals.filter(d => d.stage === 'Negotiation').length;
+    const wonValue = deals.filter(d => d.stage === 'Closed Won').reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
+
+    const elProspects = document.getElementById('stat-sales-prospects');
+    const elProposals = document.getElementById('stat-sales-proposals');
+    const elNegotiations = document.getElementById('stat-sales-negotiations');
+    const elWonValue = document.getElementById('stat-sales-won-value');
+
+    if (elProspects) elProspects.textContent = prospectsCount;
+    if (elProposals) elProposals.textContent = proposalsCount;
+    if (elNegotiations) elNegotiations.textContent = negotiationsCount;
+    if (elWonValue) elWonValue.textContent = `$${wonValue.toLocaleString()}`;
+
+    // Stages Config
+    const stagesConfig = [
+      { key: 'Prospecting', containerId: 'kanban-prospecting', countId: 'count-deal-prospecting' },
+      { key: 'Qualification', containerId: 'kanban-qualification', countId: 'count-deal-qualification' },
+      { key: 'Proposal Sent', containerId: 'kanban-proposal', countId: 'count-deal-proposal' },
+      { key: 'Negotiation', containerId: 'kanban-negotiation', countId: 'count-deal-negotiation' },
+      { key: 'Closed Won', containerId: 'kanban-won', countId: 'count-deal-won' },
+      { key: 'Closed Lost', containerId: 'kanban-lost', countId: 'count-deal-lost' }
+    ];
+
+    stagesConfig.forEach(cfg => {
+      const colDeals = deals.filter(d => d.stage === cfg.key);
+      const countEl = document.getElementById(cfg.countId);
+      if (countEl) countEl.textContent = colDeals.length;
+
+      const container = document.getElementById(cfg.containerId);
+      if (!container) return;
+
+      container.innerHTML = colDeals.length ? colDeals.map(d => {
+        let valText = `$${(d.expectedValue || 0).toLocaleString()}`;
+        let costingBadge = d.costStructure 
+          ? `<span style="background:#D1FAE5; color:#065F46; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:10px; display:inline-block; margin-top:4px;">📊 Costed</span>`
+          : `<span style="background:#FFE4E6; color:#9F1239; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:10px; display:inline-block; margin-top:4px;">⚠️ Price Pending</span>`;
+
+        return `
+          <div class="card" style="padding:0.75rem; border:1px solid var(--border-color); background:white; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:0.5rem; display:flex; flex-direction:column; gap:4px;">
+            <div style="font-weight:700; color:var(--text-dark); font-size:0.85rem; line-height:1.2;">${d.name}</div>
+            <div style="font-size:0.75rem; color:var(--text-medium); margin-top:2px;">Prospect: <strong>${d.prospectName}</strong></div>
+            <div style="font-size:0.72rem; color:var(--text-muted);">Service: ${d.serviceType}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem; border-top:1px dashed #F1F5F9; padding-top:4px;">
+              <span style="font-weight:800; font-size:0.85rem; color:var(--primary-red);">${valText}</span>
+              ${costingBadge}
+            </div>
+            <div style="display:flex; gap:0.25rem; margin-top:0.5rem; justify-content:flex-end;">
+              <button class="btn btn-secondary btn-sm edit-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem;">Edit</button>
+              <button class="btn btn-secondary btn-sm cost-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem; background:#EFF6FF; color:#1D4ED8; border-color:#BFDBFE;">Costing</button>
+              <button class="btn btn-danger btn-sm delete-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem;">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('') : `<div style="text-align:center; color:var(--text-muted); font-size:0.75rem; padding:1.5rem; border:1px dashed #E2E8F0; border-radius:6px;">Empty</div>`;
+    });
+
+    // Bind Edit button click
+    document.querySelectorAll('.edit-deal-btn').forEach(btn => {
+      btn.onclick = () => openDealModal(btn.getAttribute('data-id'));
+    });
+
+    // Bind Cost Calculator button click
+    document.querySelectorAll('.cost-deal-btn').forEach(btn => {
+      btn.onclick = () => openCostCalculatorModal(btn.getAttribute('data-id'));
+    });
+
+    // Bind Delete button click
+    document.querySelectorAll('.delete-deal-btn').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-id');
+        const deal = (window.BucklerDB.get('salesDeals') || []).find(d => d.id === id);
+        if (deal && confirm(`Delete deal "${deal.name}"?`)) {
+          window.BucklerDB.delete('salesDeals', id);
+          showToast('Sales opportunity removed ✓', 'success');
+          renderSalesCRM();
+        }
+      };
+    });
+
+    // Bind Add Deal button once
+    const btnAddDeal = document.getElementById('btn-add-deal');
+    if (btnAddDeal && !btnAddDeal._bound) {
+      btnAddDeal._bound = true;
+      btnAddDeal.addEventListener('click', () => openDealModal());
+    }
+  }
+
+  function openDealModal(id = null) {
+    _ensureSalesDealsArray();
+    const isEdit = !!id;
+    const deal = isEdit ? (window.BucklerDB.get('salesDeals') || []).find(d => d.id === id) : null;
+    const services = window.BucklerDB.get('services') || ['pest control', 'termite treatment'];
+
+    state.editingRecord = { entity: 'salesDeals', id: id };
+
+    const html = `
+      <form id="deal-form" onsubmit="event.preventDefault();">
+        <div class="form-group">
+          <label for="deal-modal-name">Opportunity Name *</label>
+          <input type="text" id="deal-modal-name" class="form-control" required value="${deal ? deal.name : ''}" placeholder="e.g. Erbil Mall Pest Control Contract">
+        </div>
+        <div class="form-group row-split">
+          <div>
+            <label for="deal-modal-prospect">Prospect / Client Name *</label>
+            <input type="text" id="deal-modal-prospect" class="form-control" required value="${deal ? deal.prospectName : ''}" placeholder="e.g. Erbil Mall Ltd">
+          </div>
+          <div>
+            <label for="deal-modal-service">Target Service *</label>
+            <select id="deal-modal-service" class="form-control" required>
+              ${services.map(s => `<option value="${s}" ${deal && deal.serviceType === s ? 'selected' : ''}>${s.toUpperCase()}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group row-split">
+          <div>
+            <label for="deal-modal-stage">Pipeline Stage *</label>
+            <select id="deal-modal-stage" class="form-control" required>
+              <option value="Prospecting" ${!deal || deal.stage === 'Prospecting' ? 'selected' : ''}>🔍 Prospecting</option>
+              <option value="Qualification" ${deal && deal.stage === 'Qualification' ? 'selected' : ''}>📋 Qualification</option>
+              <option value="Proposal Sent" ${deal && deal.stage === 'Proposal Sent' ? 'selected' : ''}>📄 Proposal Sent</option>
+              <option value="Negotiation" ${deal && deal.stage === 'Negotiation' ? 'selected' : ''}>🤝 Negotiation</option>
+              <option value="Closed Won" ${deal && deal.stage === 'Closed Won' ? 'selected' : ''}>🎉 Closed Won</option>
+              <option value="Closed Lost" ${deal && deal.stage === 'Closed Lost' ? 'selected' : ''}>❌ Closed Lost</option>
+            </select>
+          </div>
+          <div>
+            <label for="deal-modal-value">Expected Deal Value (USD/mo) *</label>
+            <input type="number" id="deal-modal-value" class="form-control" required value="${deal ? (deal.expectedValue || '') : ''}" placeholder="Calculated or estimated value">
+          </div>
+        </div>
+      </form>
+    `;
+
+    showModal(isEdit ? 'Edit Sales Opportunity' : 'Add New Sales Opportunity', html, true);
+
+    const saveBtn = document.getElementById('modal-save-btn');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        const form = document.getElementById('deal-form');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const fields = {
+          name: document.getElementById('deal-modal-name').value.trim(),
+          prospectName: document.getElementById('deal-modal-prospect').value.trim(),
+          serviceType: document.getElementById('deal-modal-service').value,
+          stage: document.getElementById('deal-modal-stage').value,
+          expectedValue: parseFloat(document.getElementById('deal-modal-value').value) || 0,
+          costStructure: deal ? deal.costStructure : null,
+          dateCreated: deal ? deal.dateCreated : new Date().toISOString().split('T')[0]
+        };
+
+        if (isEdit) {
+          window.BucklerDB.update('salesDeals', id, fields);
+          showToast('Opportunity updated successfully ✓', 'success');
+        } else {
+          window.BucklerDB.insert('salesDeals', fields);
+          showToast('New opportunity created ✓', 'success');
+        }
+
+        els.modalBackdrop.style.display = 'none';
+        state.editingRecord = null;
+        renderSalesCRM();
+      };
+    }
+  }
+
+  function openCostCalculatorModal(dealId) {
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const deal = deals.find(d => d.id === dealId);
+    if (!deal) return;
+
+    const cs = deal.costStructure || {};
+    const isPest = deal.serviceType.toLowerCase().includes('pest');
+
+    let formHTML = '';
+
+    if (isPest) {
+      formHTML = `
+        <div style="background:#F8FAFC; border:1px solid var(--border-color); border-radius: var(--radius-md); padding:1rem; margin-bottom:1rem;">
+          <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.75rem; border-bottom:1px dashed var(--border-color); padding-bottom:4px;">Pest Control Cost Factors</h4>
+          <div class="form-group row-split">
+            <div>
+              <label for="cost-visits">Visits per Month *</label>
+              <input type="number" id="cost-visits" class="form-control calc-trigger" required value="${cs.visitsPerMonth || 4}" min="1">
+            </div>
+            <div>
+              <label for="cost-hours">Hours per Visit *</label>
+              <input type="number" id="cost-hours" class="form-control calc-trigger" required value="${cs.hoursPerVisit || 2}" min="0.5" step="0.5">
+            </div>
+          </div>
+          <div class="form-group row-split">
+            <div>
+              <label for="cost-stations">Rodent Bait Stations Used *</label>
+              <input type="number" id="cost-stations" class="form-control calc-trigger" required value="${cs.baitStations || 10}" min="0">
+            </div>
+            <div>
+              <label for="cost-stickers">Monthly Stickers Needed *</label>
+              <input type="number" id="cost-stickers" class="form-control calc-trigger" required value="${cs.stickersPerMonth || 10}" min="0">
+            </div>
+          </div>
+          <div class="form-group row-split">
+            <div>
+              <label for="cost-additional">Additional Material/Other Cost ($) *</label>
+              <input type="number" id="cost-additional" class="form-control calc-trigger" required value="${cs.additionalCost || 0}" min="0">
+            </div>
+            <div>
+              <label for="cost-label">Costing Description / Reference</label>
+              <input type="text" id="cost-label" class="form-control" value="${cs.label || 'Standard Monthly Service Plan'}" placeholder="e.g. Premium warehouse checklist">
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius: var(--radius-md); padding:1rem; margin-bottom:1rem;">
+          <h4 style="font-size:0.85rem; font-weight:700; color:#B45309; margin-bottom:0.75rem; border-bottom:1px dashed #FCD34D; padding-bottom:4px;">Rate Settings & Markup</h4>
+          <div class="form-group row-split">
+            <div>
+              <label for="rate-labor">Labor Hourly Rate ($/hr)</label>
+              <input type="number" id="rate-labor" class="form-control calc-trigger" value="${cs.laborRatePerHour || 15}" min="0">
+            </div>
+            <div>
+              <label for="rate-station">Unit Cost per Bait Station ($)</label>
+              <input type="number" id="rate-station" class="form-control calc-trigger" value="${cs.costPerBaitStation || 8}" min="0">
+            </div>
+          </div>
+          <div class="form-group row-split">
+            <div>
+              <label for="rate-sticker">Unit Cost per Sticker ($)</label>
+              <input type="number" id="rate-sticker" class="form-control calc-trigger" value="${cs.costPerSticker || 0.50}" min="0" step="0.05">
+            </div>
+            <div>
+              <label for="rate-margin">Desired Profit Margin (%)</label>
+              <input type="number" id="rate-margin" class="form-control calc-trigger" value="${cs.profitMargin || 30}" min="0" max="95">
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      formHTML = `
+        <div style="background:#F8FAFC; border:1px solid var(--border-color); border-radius: var(--radius-md); padding:1rem; margin-bottom:1rem;">
+          <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.75rem; border-bottom:1px dashed var(--border-color); padding-bottom:4px;">General Service Cost Factors</h4>
+          <p style="font-size:0.78rem; color:var(--text-medium); margin-bottom:0.75rem;">(Price structure for non-pest services is general. Specific structures will be added later.)</p>
+          <div class="form-group row-split">
+            <div>
+              <label for="cost-visits">Visits per Month *</label>
+              <input type="number" id="cost-visits" class="form-control calc-trigger" required value="${cs.visitsPerMonth || 4}" min="1">
+            </div>
+            <div>
+              <label for="cost-hours">Hours per Visit *</label>
+              <input type="number" id="cost-hours" class="form-control calc-trigger" required value="${cs.hoursPerVisit || 2}" min="0.5" step="0.5">
+            </div>
+          </div>
+          <div class="form-group row-split">
+            <div>
+              <label for="cost-additional">Additional Cost ($) *</label>
+              <input type="number" id="cost-additional" class="form-control calc-trigger" required value="${cs.additionalCost || 0}" min="0">
+            </div>
+            <div>
+              <label for="cost-label">Costing Description / Reference</label>
+              <input type="text" id="cost-label" class="form-control" value="${cs.label || 'General monthly service plan'}" placeholder="e.g. Lawn care costing">
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius: var(--radius-md); padding:1rem; margin-bottom:1rem;">
+          <h4 style="font-size:0.85rem; font-weight:700; color:#B45309; margin-bottom:0.75rem; border-bottom:1px dashed #FCD34D; padding-bottom:4px;">Rate Settings & Markup</h4>
+          <div class="form-group row-split">
+            <div>
+              <label for="rate-labor">Labor Hourly Rate ($/hr)</label>
+              <input type="number" id="rate-labor" class="form-control calc-trigger" value="${cs.laborRatePerHour || 15}" min="0">
+            </div>
+            <div>
+              <label for="rate-margin">Desired Profit Margin (%)</label>
+              <input type="number" id="rate-margin" class="form-control calc-trigger" value="${cs.profitMargin || 30}" min="0" max="95">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const calculatorHTML = `
+      <form id="costing-form" onsubmit="event.preventDefault();" style="display:grid; grid-template-columns:1.8fr 1.2fr; gap:1.5rem; align-items:start; padding:5px;">
+        <div>
+          ${formHTML}
+        </div>
+        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius: var(--radius-md); padding:1.25rem; display:flex; flex-direction:column; gap:0.85rem; box-shadow: var(--shadow-sm); position:sticky; top:10px;">
+          <h4 style="font-size:0.9rem; font-weight:800; color:#1E40AF; border-bottom:1.5px solid #BFDBFE; padding-bottom:4px; margin-bottom:2px;">Pricing Structure Summary</h4>
+          
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
+            <span>Labor Cost/mo:</span>
+            <span id="calc-lbl-labor" style="font-weight:700;">$0.00</span>
+          </div>
+
+          ${isPest ? `
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
+              <span>Bait Stations (Amortized):</span>
+              <span id="calc-lbl-stations" style="font-weight:700;">$0.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
+              <span>Stickers Cost/mo:</span>
+              <span id="calc-lbl-stickers" style="font-weight:700;">$0.00</span>
+            </div>
+          ` : ''}
+
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#475569;">
+            <span>Additional Costs:</span>
+            <span id="calc-lbl-additional" style="font-weight:700;">$0.00</span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:800; border-top:1px dashed #BFDBFE; padding-top:6px; color:#1E3A8A; margin-top:2px;">
+            <span>Total Base Cost/mo:</span>
+            <span id="calc-lbl-base-total">$0.00</span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#059669; font-weight:600;">
+            <span>Markup Value:</span>
+            <span id="calc-lbl-markup">$0.00</span>
+          </div>
+
+          <div style="background:white; border:1.5px solid #1E40AF; border-radius:6px; padding:0.65rem; display:flex; flex-direction:column; align-items:center; margin-top:5px;">
+            <span style="font-size:0.7rem; text-transform:uppercase; font-weight:800; color:#1E40AF; letter-spacing:0.05em; margin-bottom:2px;">Recommended Price / mo</span>
+            <span id="calc-lbl-selling-price" style="font-size:1.6rem; font-weight:900; color:var(--primary-red);">$0.00</span>
+            <span id="calc-lbl-annual-value" style="font-size:0.72rem; color:var(--text-medium); margin-top:1px;">Annual: $0.00</span>
+          </div>
+        </div>
+      </form>
+    `;
+
+    showModal(`Price Costing Structure — ${deal.name}`, calculatorHTML, true, 'modal-xl');
+
+    const updatePricingSummary = () => {
+      const visits = parseFloat(document.getElementById('cost-visits').value) || 0;
+      const hours = parseFloat(document.getElementById('cost-hours').value) || 0;
+      const additional = parseFloat(document.getElementById('cost-additional').value) || 0;
+      const laborRate = parseFloat(document.getElementById('rate-labor').value) || 0;
+      const margin = parseFloat(document.getElementById('rate-margin').value) || 0;
+
+      let laborCost = visits * hours * laborRate;
+      let stationsCost = 0;
+      let stickersCost = 0;
+
+      if (isPest) {
+        const stations = parseFloat(document.getElementById('cost-stations').value) || 0;
+        const stickers = parseFloat(document.getElementById('cost-stickers').value) || 0;
+        const stationRate = parseFloat(document.getElementById('rate-station').value) || 0;
+        const stickerRate = parseFloat(document.getElementById('rate-sticker').value) || 0;
+
+        stationsCost = (stations * stationRate) / 12;
+        stickersCost = stickers * stickerRate;
+
+        const elStations = document.getElementById('calc-lbl-stations');
+        const elStickers = document.getElementById('calc-lbl-stickers');
+        if (elStations) elStations.textContent = `$${stationsCost.toFixed(2)}`;
+        if (elStickers) elStickers.textContent = `$${stickersCost.toFixed(2)}`;
+      }
+
+      const baseTotal = laborCost + stationsCost + stickersCost + additional;
+      const markupValue = baseTotal * (margin / 100);
+      const sellingPrice = baseTotal + markupValue;
+      const annualValue = sellingPrice * 12;
+
+      const elLabor = document.getElementById('calc-lbl-labor');
+      const elAdd = document.getElementById('calc-lbl-additional');
+      const elBase = document.getElementById('calc-lbl-base-total');
+      const elMarkup = document.getElementById('calc-lbl-markup');
+      const elSell = document.getElementById('calc-lbl-selling-price');
+      const elAnn = document.getElementById('calc-lbl-annual-value');
+
+      if (elLabor) elLabor.textContent = `$${laborCost.toFixed(2)}`;
+      if (elAdd) elAdd.textContent = `$${additional.toFixed(2)}`;
+      if (elBase) elBase.textContent = `$${baseTotal.toFixed(2)}`;
+      if (elMarkup) elMarkup.textContent = `$${markupValue.toFixed(2)}`;
+      if (elSell) elSell.textContent = `$${sellingPrice.toFixed(2)}`;
+      if (elAnn) elAnn.textContent = `Annual: $${annualValue.toFixed(2)}`;
+    };
+
+    setTimeout(() => {
+      document.querySelectorAll('.calc-trigger').forEach(inp => {
+        inp.addEventListener('input', updatePricingSummary);
+        inp.addEventListener('change', updatePricingSummary);
+      });
+      updatePricingSummary();
+    }, 100);
+
+    const saveBtn = document.getElementById('modal-save-btn');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        const visits = parseFloat(document.getElementById('cost-visits').value) || 0;
+        const hours = parseFloat(document.getElementById('cost-hours').value) || 0;
+        const additional = parseFloat(document.getElementById('cost-additional').value) || 0;
+        const laborRate = parseFloat(document.getElementById('rate-labor').value) || 0;
+        const margin = parseFloat(document.getElementById('rate-margin').value) || 0;
+        const costLabel = document.getElementById('cost-label').value.trim();
+
+        let laborCost = visits * hours * laborRate;
+        let stationsCost = 0;
+        let stickersCost = 0;
+        let stations = 0;
+        let stickers = 0;
+        let stationRate = 0;
+        let stickerRate = 0;
+
+        if (isPest) {
+          stations = parseFloat(document.getElementById('cost-stations').value) || 0;
+          stickers = parseFloat(document.getElementById('cost-stickers').value) || 0;
+          stationRate = parseFloat(document.getElementById('rate-station').value) || 0;
+          stickerRate = parseFloat(document.getElementById('rate-sticker').value) || 0;
+          stationsCost = (stations * stationRate) / 12;
+          stickersCost = stickers * stickerRate;
+        }
+
+        const baseTotal = laborCost + stationsCost + stickersCost + additional;
+        const sellingPrice = Math.round(baseTotal + (baseTotal * (margin / 100)));
+
+        const structure = {
+          visitsPerMonth: visits,
+          hoursPerVisit: hours,
+          baitStations: stations,
+          stickersPerMonth: stickers,
+          additionalCost: additional,
+          laborRatePerHour: laborRate,
+          costPerBaitStation: stationRate,
+          costPerSticker: stickerRate,
+          profitMargin: margin,
+          label: costLabel
+        };
+
+        const updatedFields = {
+          expectedValue: sellingPrice,
+          costStructure: structure
+        };
+
+        window.BucklerDB.update('salesDeals', dealId, updatedFields);
+        showToast('Pricing structure saved to opportunity Expected Value ✓', 'success');
+
+        els.modalBackdrop.style.display = 'none';
+        renderSalesCRM();
+      };
+    }
+  }
+
+  // ============================================================
+  // FORMS & TEMPLATES tab MANAGEMENT
+  // ============================================================
+  let insSigCanvas = null;
+  let insSigCtx = null;
+  let isInsDrawing = false;
+  let insLastX = 0;
+  let insLastY = 0;
+  let selectedTmplFile = null;
+
+  function renderFormsAndTemplates() {
+    _ensureFormsCollections();
+
+    // ── SUBTAB SWITCHING ──
+    const btnInspect = document.getElementById('btn-subtab-inspect');
+    const btnRisk = document.getElementById('btn-subtab-risk');
+    const btnTmpls = document.getElementById('btn-subtab-templates');
+
+    const contentInspect = document.getElementById('subtab-content-inspect');
+    const contentRisk = document.getElementById('subtab-content-risk');
+    const contentTmpls = document.getElementById('subtab-content-templates');
+
+    const switchSubtab = (activeBtn, activeContent) => {
+      [btnInspect, btnRisk, btnTmpls].forEach(btn => {
+        if (btn) {
+          btn.classList.remove('active');
+          btn.style.fontWeight = '600';
+          btn.style.color = 'var(--text-muted)';
+          btn.style.borderBottomColor = 'transparent';
+        }
+      });
+      [contentInspect, contentRisk, contentTmpls].forEach(box => { if (box) box.style.display = 'none'; });
+
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.fontWeight = '700';
+        activeBtn.style.color = 'var(--text-dark)';
+        activeBtn.style.borderBottomColor = 'var(--primary-red)';
+      }
+      if (activeContent) activeContent.style.display = 'block';
+
+      // Re-initialize signature canvas if inspect subtab is shown
+      if (activeContent === contentInspect) {
+        setTimeout(initInspectSignatureCanvas, 100);
+      }
+    };
+
+    if (btnInspect && !btnInspect._bound) {
+      btnInspect._bound = true;
+      btnInspect.onclick = () => switchSubtab(btnInspect, contentInspect);
+      btnRisk.onclick = () => switchSubtab(btnRisk, contentRisk);
+      btnTmpls.onclick = () => switchSubtab(btnTmpls, contentTmpls);
+    }
+
+    // ── POPULATE CLIENT / PROSPECT SELECTS ──
+    const clients = window.BucklerDB.get('clients') || [];
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const prospects = deals.filter(d => ['Prospecting', 'Qualification'].includes(d.stage));
+
+    let optionsHTML = '<option value="" disabled selected>Select Client / Prospect...</option>';
+    clients.forEach(c => {
+      optionsHTML += `<option value="client:${c.id}">🏢 Client: ${c.name} (${c.clientCode || c.id})</option>`;
+    });
+    prospects.forEach(p => {
+      optionsHTML += `<option value="prospect:${p.id}">🔍 Prospect: ${p.name} (${p.prospectName})</option>`;
+    });
+
+    const selectInspectClient = document.getElementById('ins-client');
+    const selectRisk = document.getElementById('risk-client');
+
+    if (selectInspectClient) selectInspectClient.innerHTML = optionsHTML;
+    if (selectRisk) selectRisk.innerHTML = optionsHTML;
+
+    // ── RENDER INSPECTIONS LIST ──
+    renderSavedInspections();
+
+    // ── RENDER RISK ASSESSMENTS LIST ──
+    renderSavedRisks();
+
+    // ── RENDER TEMPLATES LIBRARY ──
+    renderSavedTemplates();
+
+    // ── WIRE FORM ACTIONS ──
+    setupFormsActions();
+  }
+
+  function _ensureFormsCollections() {
+    const d = window.BucklerDB.getData();
+    let updated = false;
+    if (!Array.isArray(d.inspections)) { d.inspections = []; updated = true; }
+    if (!Array.isArray(d.riskAssessments)) { d.riskAssessments = []; updated = true; }
+    if (!Array.isArray(d.formTemplates)) { d.formTemplates = []; updated = true; }
+    if (updated) window.BucklerDB.saveData(d);
+  }
+
+  // ── INSPECTION SIGNATURE CANVAS ──
+  function initInspectSignatureCanvas() {
+    const canvas = document.getElementById('ins-sig-canvas');
+    if (!canvas) return;
+    insSigCanvas = canvas;
+    insSigCtx = canvas.getContext('2d');
+    insSigCtx.strokeStyle = '#1E293B';
+    insSigCtx.lineWidth = 2.5;
+    insSigCtx.lineCap = 'round';
+
+    const getMousePos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    };
+
+    const startDraw = (e) => {
+      isInsDrawing = true;
+      const pos = getMousePos(e);
+      insLastX = pos.x;
+      insLastY = pos.y;
+    };
+
+    const draw = (e) => {
+      if (!isInsDrawing) return;
+      e.preventDefault();
+      const pos = getMousePos(e);
+      insSigCtx.beginPath();
+      insSigCtx.moveTo(insLastX, insLastY);
+      insSigCtx.lineTo(pos.x, pos.y);
+      insSigCtx.stroke();
+      insLastX = pos.x;
+      insLastY = pos.y;
+    };
+
+    const stopDraw = () => { isInsDrawing = false; };
+
+    canvas.onmousedown = startDraw;
+    canvas.onmousemove = draw;
+    canvas.onmouseup = stopDraw;
+    canvas.onmouseleave = stopDraw;
+
+    canvas.ontouchstart = startDraw;
+    canvas.ontouchmove = draw;
+    canvas.ontouchend = stopDraw;
+
+    const btnClear = document.getElementById('btn-ins-sig-clear');
+    if (btnClear) {
+      btnClear.onclick = () => {
+        insSigCtx.clearRect(0, 0, canvas.width, canvas.height);
+      };
+    }
+  }
+
+  function renderSavedInspections() {
+    const list = window.BucklerDB.get('inspections') || [];
+    const clients = window.BucklerDB.get('clients') || [];
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const tbody = document.getElementById('inspections-table-body');
+    if (!tbody) return;
+
+    const getRefName = (refId) => {
+      if (!refId) return 'Unknown';
+      const [type, id] = refId.split(':');
+      if (type === 'client') {
+        const c = clients.find(x => x.id === id);
+        return c ? `🏢 ${c.name}` : `🏢 Client (#${id})`;
+      } else {
+        const d = deals.find(x => x.id === id);
+        return d ? `🔍 Prospect: ${d.name}` : `🔍 Prospect (#${id})`;
+      }
+    };
+
+    tbody.innerHTML = list.length ? list.map(item => {
+      const pestBadge = item.pestActivity === 'None' ? '<span class="badge-status badge-status-conducted">None</span>'
+                      : item.pestActivity === 'Low' ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">Low</span>'
+                      : item.pestActivity === 'Medium' ? '<span class="badge-status badge-status-scheduled" style="background:#FFEDD5;color:#EA580C;">Medium</span>'
+                      : '<span class="badge-status badge-status-cancelled">High</span>';
+
+      const hygieneBadge = item.hygiene === 'Good' ? '<span class="badge-status badge-status-conducted">Good</span>'
+                         : item.hygiene === 'Fair' ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">Fair</span>'
+                         : '<span class="badge-status badge-status-cancelled">Poor</span>';
+
+      return `
+        <tr>
+          <td><strong>${getRefName(item.clientRef)}</strong></td>
+          <td>${item.date}</td>
+          <td>${item.inspector}</td>
+          <td>${pestBadge}</td>
+          <td>${hygieneBadge}</td>
+          <td>
+            <div class="table-cell-actions">
+              <button class="btn btn-secondary btn-sm dl-ins-pdf" data-id="${item.id}">Download PDF</button>
+              <button class="btn btn-danger btn-sm del-ins" data-id="${item.id}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No inspection records found.</td></tr>`;
+
+    tbody.querySelectorAll('.dl-ins-pdf').forEach(btn => {
+      btn.onclick = () => downloadInspectionPDF(btn.getAttribute('data-id'));
+    });
+
+    tbody.querySelectorAll('.del-ins').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm('Delete this inspection record permanently?')) {
+          window.BucklerDB.delete('inspections', id);
+          showToast('Inspection record deleted ✓', 'success');
+          renderSavedInspections();
+        }
+      };
+    });
+  }
+
+  function downloadInspectionPDF(id) {
+    if (!window.jspdf) { showToast('jsPDF library loading...', 'warning'); return; }
+    const list = window.BucklerDB.get('inspections') || [];
+    const item = list.find(x => x.id === id);
+    if (!item) return;
+
+    const clients = window.BucklerDB.get('clients') || [];
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const getRefName = (refId) => {
+      if (!refId) return 'Unknown';
+      const [type, i] = refId.split(':');
+      if (type === 'client') {
+        const c = clients.find(x => x.id === i);
+        return c ? c.name : `Client (${i})`;
+      } else {
+        const d = deals.find(x => x.id === i);
+        return d ? d.name : `Prospect (${i})`;
+      }
+    };
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('FIELD INSPECTION REPORT', 15, 22);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Buckler Pest Control operations audit framework', 15, 29);
+
+    doc.setTextColor(51, 51, 51);
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Inspection Metadata', 15, 48);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, 51, 195, 51);
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    let y = 58;
+    const drawRow = (label, val) => {
+      doc.setFont('helvetica', 'bold');
+      doc.text(label + ':', 15, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(val || '-'), 55, y);
+      y += 7;
+    };
+
+    drawRow('Client / Prospect', getRefName(item.clientRef));
+    drawRow('Date surveyed', item.date);
+    drawRow('Inspector', item.inspector);
+    drawRow('Pest Activity', item.pestActivity);
+    drawRow('Hygiene Standard', item.hygiene);
+
+    y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Areas Inspected', 15, y);
+    y += 3;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    const areas = item.areasInspected || [];
+    doc.text(areas.length ? areas.join(', ') : 'None specified', 15, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Observations / Structural Defects', 15, y);
+    y += 3;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    const obsLines = doc.splitTextToSize(item.observations || 'No observations documented.', 180);
+    doc.text(obsLines, 15, y);
+    y += (obsLines.length * 5) + 8;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Recommendations & Treatment Plan', 15, y);
+    y += 3;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    const recsLines = doc.splitTextToSize(item.recommendations || 'No recommendations documented.', 180);
+    doc.text(recsLines, 15, y);
+    y += (recsLines.length * 5) + 12;
+
+    if (y > 230) { doc.addPage(); y = 30; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Verification Sign-Off', 15, y);
+    y += 3;
+    doc.line(15, y, 195, y);
+    y += 10;
+
+    if (item.signature && item.signature.startsWith('data:image')) {
+      try {
+        doc.addImage(item.signature, 'PNG', 15, y, 50, 20);
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'italic');
+        doc.text('Inspector Signature', 15, y + 25);
+      } catch (err) {
+        console.error('Error drawing inspection signature:', err);
+      }
+    } else {
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'italic');
+      doc.text('(Signature not captured)', 15, y + 15);
+    }
+
+    doc.save(`Inspection-Report-${getRefName(item.clientRef).replace(/\s+/g, '-')}-${item.date}.pdf`);
+    showToast('Inspection PDF downloaded ✓', 'success');
+  }
+
+  function renderSavedRisks() {
+    const list = window.BucklerDB.get('riskAssessments') || [];
+    const clients = window.BucklerDB.get('clients') || [];
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const tbody = document.getElementById('risks-table-body');
+    if (!tbody) return;
+
+    const getRefName = (refId) => {
+      if (!refId) return 'Unknown';
+      const [type, id] = refId.split(':');
+      if (type === 'client') {
+        const c = clients.find(x => x.id === id);
+        return c ? `🏢 ${c.name}` : `🏢 Client (#${id})`;
+      } else {
+        const d = deals.find(x => x.id === id);
+        return d ? `🔍 Prospect: ${d.name}` : `🔍 Prospect (#${id})`;
+      }
+    };
+
+    tbody.innerHTML = list.length ? list.map(item => {
+      const riskBadge = item.riskLevel === 'Low' ? '<span class="badge-status badge-status-conducted">Low Risk</span>'
+                      : item.riskLevel === 'Medium' ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">Medium Risk</span>'
+                      : '<span class="badge-status badge-status-cancelled">High Risk</span>';
+
+      return `
+        <tr>
+          <td><strong>${getRefName(item.clientRef)}</strong></td>
+          <td>${item.date}</td>
+          <td>${item.assessor}</td>
+          <td>${riskBadge}</td>
+          <td style="font-size:0.75rem; max-width:200px;">${(item.hazards || []).join(', ') || '-'}</td>
+          <td>
+            <div class="table-cell-actions">
+              <button class="btn btn-secondary btn-sm dl-risk-pdf" data-id="${item.id}">Download PDF</button>
+              <button class="btn btn-danger btn-sm del-risk" data-id="${item.id}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No risk assessment records found.</td></tr>`;
+
+    tbody.querySelectorAll('.dl-risk-pdf').forEach(btn => {
+      btn.onclick = () => downloadRiskPDF(btn.getAttribute('data-id'));
+    });
+
+    tbody.querySelectorAll('.del-risk').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm('Delete this risk assessment permanently?')) {
+          window.BucklerDB.delete('riskAssessments', id);
+          showToast('Risk assessment deleted ✓', 'success');
+          renderSavedRisks();
+        }
+      };
+    });
+  }
+
+  function downloadRiskPDF(id) {
+    if (!window.jspdf) { showToast('jsPDF library loading...', 'warning'); return; }
+    const list = window.BucklerDB.get('riskAssessments') || [];
+    const item = list.find(x => x.id === id);
+    if (!item) return;
+
+    const clients = window.BucklerDB.get('clients') || [];
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const getRefName = (refId) => {
+      if (!refId) return 'Unknown';
+      const [type, i] = refId.split(':');
+      if (type === 'client') {
+        const c = clients.find(x => x.id === i);
+        return c ? c.name : `Client (${i})`;
+      } else {
+        const d = deals.find(x => x.id === i);
+        return d ? d.name : `Prospect (${i})`;
+      }
+    };
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFillColor(15, 118, 110);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('SITE RISK ASSESSMENT (HSE)', 15, 22);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Buckler Safety Framework & Pre-Task Risk Analysis', 15, 29);
+
+    doc.setTextColor(51, 51, 51);
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Assessment Information', 15, 48);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, 51, 195, 51);
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    let y = 58;
+    const drawRow = (label, val) => {
+      doc.setFont('helvetica', 'bold');
+      doc.text(label + ':', 15, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(val || '-'), 55, y);
+      y += 7;
+    };
+
+    drawRow('Client / Prospect', getRefName(item.clientRef));
+    drawRow('Date Checked', item.date);
+    drawRow('Assessor Name', item.assessor);
+    drawRow('Overall Risk Rating', item.riskLevel.toUpperCase());
+
+    y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Hazards Identified on Site', 15, y);
+    y += 3;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    const hazards = item.hazards || [];
+    doc.text(hazards.length ? hazards.join(', ') : 'No specific hazards checked', 15, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Mandatory PPE Required', 15, y);
+    y += 3;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    const ppe = item.ppeRequired || [];
+    doc.text(ppe.length ? ppe.join(', ') : 'Standard workwear only', 15, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Specific Safety Controls / Preventive Actions', 15, y);
+    y += 3;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    const controlsLines = doc.splitTextToSize(item.controlMeasures || 'No specific controls specified.', 180);
+    doc.text(controlsLines, 15, y);
+
+    doc.save(`Risk-Assessment-${getRefName(item.clientRef).replace(/\s+/g, '-')}-${item.date}.pdf`);
+    showToast('Risk Assessment PDF downloaded ✓', 'success');
+  }
+
+  function renderSavedTemplates() {
+    const list = window.BucklerDB.get('formTemplates') || [];
+    const tbody = document.getElementById('templates-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = list.length ? list.map(item => {
+      return `
+        <tr>
+          <td><strong style="color:var(--text-dark);">${item.title}</strong></td>
+          <td><span style="background:#F1F5F9; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:700;">${item.category}</span></td>
+          <td>${item.description || '-'}</td>
+          <td><code>${item.filename}</code></td>
+          <td>${item.dateAdded}</td>
+          <td>
+            <div class="table-cell-actions">
+              <button class="btn btn-secondary btn-sm dl-tmpl-btn" data-id="${item.id}">Download</button>
+              <button class="btn btn-danger btn-sm del-tmpl-btn" data-id="${item.id}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No templates uploaded yet. Use the uploader above to add templates.</td></tr>`;
+
+    tbody.querySelectorAll('.dl-tmpl-btn').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-id');
+        const tmpl = (window.BucklerDB.get('formTemplates') || []).find(x => x.id === id);
+        if (!tmpl || !tmpl.fileData) return;
+
+        const link = document.createElement('a');
+        link.href = tmpl.fileData;
+        link.download = tmpl.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast(`Downloading template: ${tmpl.filename} ✓`, 'success');
+      };
+    });
+
+    tbody.querySelectorAll('.del-tmpl-btn').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-id');
+        if (confirm('Delete this template permanently?')) {
+          window.BucklerDB.delete('formTemplates', id);
+          showToast('Template deleted ✓', 'success');
+          renderSavedTemplates();
+        }
+      };
+    });
+  }
+
+  function setupFormsActions() {
+    const btnSaveInspect = document.getElementById('btn-save-inspection');
+    if (btnSaveInspect) {
+      btnSaveInspect.onclick = () => {
+        const form = document.getElementById('inspect-form');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const clientRef = document.getElementById('ins-client').value;
+        const inspector = document.getElementById('ins-inspector').value.trim();
+        const date = document.getElementById('ins-date').value;
+        const pest = document.getElementById('ins-pest-activity').value;
+        const hygiene = document.getElementById('ins-hygiene').value;
+        const obs = document.getElementById('ins-observations').value.trim();
+        const recs = document.getElementById('ins-recommendations').value.trim();
+
+        let sigData = null;
+        if (insSigCanvas) {
+          const blank = document.createElement('canvas');
+          blank.width = insSigCanvas.width;
+          blank.height = insSigCanvas.height;
+          if (insSigCanvas.toDataURL() !== blank.toDataURL()) {
+            sigData = insSigCanvas.toDataURL();
+          }
+        }
+
+        if (!sigData) {
+          showToast('Please sign the inspection report verification.', 'error');
+          return;
+        }
+
+        const checkedAreas = Array.from(document.querySelectorAll('input[name="ins-area-cb"]:checked')).map(cb => cb.value);
+
+        const record = {
+          clientRef,
+          inspector,
+          date,
+          pestActivity: pest,
+          hygiene,
+          areasInspected: checkedAreas,
+          observations: obs,
+          recommendations: recs,
+          signature: sigData
+        };
+
+        window.BucklerDB.insert('inspections', record);
+        showToast('Field inspection report saved successfully ✓', 'success');
+
+        form.reset();
+        if (insSigCtx && insSigCanvas) insSigCtx.clearRect(0, 0, insSigCanvas.width, insSigCanvas.height);
+        renderSavedInspections();
+      };
+    }
+
+    const btnResetInspect = document.getElementById('btn-reset-inspection');
+    if (btnResetInspect) {
+      btnResetInspect.onclick = () => {
+        document.getElementById('inspect-form').reset();
+        if (insSigCtx && insSigCanvas) insSigCtx.clearRect(0, 0, insSigCanvas.width, insSigCanvas.height);
+      };
+    }
+
+    const btnSaveRisk = document.getElementById('btn-save-risk');
+    if (btnSaveRisk) {
+      btnSaveRisk.onclick = () => {
+        const form = document.getElementById('risk-form');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const clientRef = document.getElementById('risk-client').value;
+        const assessor = document.getElementById('risk-assessor').value.trim();
+        const date = document.getElementById('risk-date').value;
+        const riskLevel = document.getElementById('risk-level').value;
+        const controls = document.getElementById('risk-controls').value.trim();
+
+        const checkedHazards = Array.from(document.querySelectorAll('input[name="risk-hazard-cb"]:checked')).map(cb => cb.value);
+        const checkedPPE = Array.from(document.querySelectorAll('input[name="risk-ppe-cb"]:checked')).map(cb => cb.value);
+
+        const record = {
+          clientRef,
+          assessor,
+          date,
+          riskLevel,
+          hazards: checkedHazards,
+          ppeRequired: checkedPPE,
+          controlMeasures: controls
+        };
+
+        window.BucklerDB.insert('riskAssessments', record);
+        showToast('Site risk assessment logged ✓', 'success');
+
+        form.reset();
+        renderSavedRisks();
+      };
+    }
+
+    const btnResetRisk = document.getElementById('btn-reset-risk');
+    if (btnResetRisk) {
+      btnResetRisk.onclick = () => { document.getElementById('risk-form').reset(); };
+    }
+
+    const uploadZone = document.getElementById('upload-tmpl-zone');
+    const fileInput = document.getElementById('tmpl-file-input');
+    const filenameLabel = document.getElementById('tmpl-filename-label');
+
+    if (uploadZone && fileInput) {
+      if (!uploadZone._bound) {
+        uploadZone._bound = true;
+        uploadZone.onclick = () => fileInput.click();
+
+        uploadZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          uploadZone.style.borderColor = 'var(--primary-red)';
+          uploadZone.style.background = '#FEF2F2';
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+          uploadZone.style.borderColor = 'var(--border-color)';
+          uploadZone.style.background = 'transparent';
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          uploadZone.style.borderColor = 'var(--border-color)';
+          uploadZone.style.background = 'transparent';
+          if (e.dataTransfer.files.length) {
+            handleTemplateFileSelect(e.dataTransfer.files[0]);
+          }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+          if (fileInput.files.length) {
+            handleTemplateFileSelect(fileInput.files[0]);
+          }
+        });
+      }
+    }
+
+    const btnSaveTmpl = document.getElementById('btn-save-template');
+    if (btnSaveTmpl) {
+      btnSaveTmpl.onclick = () => {
+        const title = document.getElementById('tmpl-title').value.trim();
+        const cat = document.getElementById('tmpl-category').value;
+        const desc = document.getElementById('tmpl-desc').value.trim();
+
+        if (!title) { showToast('Please enter a template title.', 'error'); return; }
+        if (!selectedTmplFile) { showToast('Please select a template file to upload.', 'error'); return; }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const fileData = e.target.result;
+
+          const record = {
+            title,
+            category: cat,
+            description: desc,
+            filename: selectedTmplFile.name,
+            dateAdded: new Date().toISOString().split('T')[0],
+            fileData: fileData
+          };
+
+          window.BucklerDB.insert('formTemplates', record);
+          showToast('Template uploaded successfully to library ✓', 'success');
+
+          document.getElementById('template-upload-form').reset();
+          selectedTmplFile = null;
+          if (filenameLabel) {
+            filenameLabel.style.display = 'none';
+            filenameLabel.textContent = '';
+          }
+          renderSavedTemplates();
+        };
+        reader.readAsDataURL(selectedTmplFile);
+      };
+    }
+  }
+
+  function handleTemplateFileSelect(file) {
+    selectedTmplFile = file;
+    const label = document.getElementById('tmpl-filename-label');
+    if (label) {
+      label.textContent = `Selected file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      label.style.display = 'block';
+    }
+  }
+
   function setupSignOutButton() {
     const btn = document.getElementById('btn-sign-out');
     if (!btn) return;

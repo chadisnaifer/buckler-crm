@@ -12,6 +12,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Supabase client library for real-time secure database syncing -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- jsPDF for client-side PDF visit reports generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -79,6 +81,10 @@
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
           Operations Dashboard
         </a>
+        <a class="nav-link" data-tab="sales">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Sales CRM
+        </a>
         <a class="nav-link" data-tab="schedules">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
           Schedule
@@ -110,6 +116,10 @@
         <a class="nav-link" data-tab="reports">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 2v-6m-9-9h12a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path></svg>
           Sanitation IPM Reports
+        </a>
+        <a class="nav-link" data-tab="forms">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          Forms & Templates
         </a>
         <a class="nav-link" data-tab="users">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -529,6 +539,99 @@
 
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: SALES CRM -->
+      <section class="tab-content" id="sales-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Sales CRM & Pipeline</h1>
+            <p>Track sales opportunities from prospecting to closing, with custom costing and pricing generators.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-primary" id="btn-add-deal" style="display:inline-flex; align-items:center; gap:0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+              Add New Deal
+            </button>
+          </div>
+        </div>
+
+        <!-- Sales KPI Cards Row -->
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem;">
+          <div class="stat-card" style="border-left:4px solid #94A3B8;">
+            <span class="stat-label">👥 Prospects</span>
+            <div class="stat-value" id="stat-sales-prospects">0</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #3B82F6;">
+            <span class="stat-label">📄 Proposals Sent</span>
+            <div class="stat-value" id="stat-sales-proposals">0</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #F59E0B;">
+            <span class="stat-label">🤝 Negotiations</span>
+            <div class="stat-value" id="stat-sales-negotiations">0</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #10B981;">
+            <span class="stat-label">💰 Closed Won (USD)</span>
+            <div class="stat-value" id="stat-sales-won-value">$0</div>
+          </div>
+        </div>
+
+        <!-- Kanban Board Container -->
+        <div style="display:flex; gap:1rem; overflow-x:auto; padding-bottom:1rem; align-items:stretch; min-height:500px;">
+          <!-- Column: Prospecting -->
+          <div class="card" style="flex:1; min-width:250px; background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.75rem;">
+            <div style="font-weight:700; font-size:0.85rem; color:#64748B; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+              <span>🔍 Prospecting</span>
+              <span id="count-deal-prospecting" style="background:#E2E8F0; padding:2px 8px; border-radius:10px; font-size:0.75rem;">0</span>
+            </div>
+            <div id="kanban-prospecting" style="display:flex; flex-direction:column; gap:0.5rem; flex:1; overflow-y:auto; max-height:450px;"></div>
+          </div>
+
+          <!-- Column: Qualification -->
+          <div class="card" style="flex:1; min-width:250px; background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.75rem;">
+            <div style="font-weight:700; font-size:0.85rem; color:#3B82F6; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+              <span>📋 Qualification</span>
+              <span id="count-deal-qualification" style="background:#DBEAFE; padding:2px 8px; border-radius:10px; font-size:0.75rem;">0</span>
+            </div>
+            <div id="kanban-qualification" style="display:flex; flex-direction:column; gap:0.5rem; flex:1; overflow-y:auto; max-height:450px;"></div>
+          </div>
+
+          <!-- Column: Proposal -->
+          <div class="card" style="flex:1; min-width:250px; background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.75rem;">
+            <div style="font-weight:700; font-size:0.85rem; color:#8B5CF6; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+              <span>📄 Proposal Sent</span>
+              <span id="count-deal-proposal" style="background:#EDE9FE; padding:2px 8px; border-radius:10px; font-size:0.75rem;">0</span>
+            </div>
+            <div id="kanban-proposal" style="display:flex; flex-direction:column; gap:0.5rem; flex:1; overflow-y:auto; max-height:450px;"></div>
+          </div>
+
+          <!-- Column: Negotiation -->
+          <div class="card" style="flex:1; min-width:250px; background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.75rem;">
+            <div style="font-weight:700; font-size:0.85rem; color:#F59E0B; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+              <span>🤝 Negotiation</span>
+              <span id="count-deal-negotiation" style="background:#FEF3C7; padding:2px 8px; border-radius:10px; font-size:0.75rem;">0</span>
+            </div>
+            <div id="kanban-negotiation" style="display:flex; flex-direction:column; gap:0.5rem; flex:1; overflow-y:auto; max-height:450px;"></div>
+          </div>
+
+          <!-- Column: Closed Won -->
+          <div class="card" style="flex:1; min-width:250px; background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.75rem;">
+            <div style="font-weight:700; font-size:0.85rem; color:#10B981; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+              <span>🎉 Closed Won</span>
+              <span id="count-deal-won" style="background:#D1FAE5; padding:2px 8px; border-radius:10px; font-size:0.75rem;">0</span>
+            </div>
+            <div id="kanban-won" style="display:flex; flex-direction:column; gap:0.5rem; flex:1; overflow-y:auto; max-height:450px;"></div>
+          </div>
+
+          <!-- Column: Closed Lost -->
+          <div class="card" style="flex:1; min-width:250px; background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.75rem;">
+            <div style="font-weight:700; font-size:0.85rem; color:#EF4444; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+              <span>❌ Closed Lost</span>
+              <span id="count-deal-lost" style="background:#FEE2E2; padding:2px 8px; border-radius:10px; font-size:0.75rem;">0</span>
+            </div>
+            <div id="kanban-lost" style="display:flex; flex-direction:column; gap:0.5rem; flex:1; overflow-y:auto; max-height:450px;"></div>
           </div>
         </div>
       </section>
@@ -1260,6 +1363,281 @@
         <!-- Sibling Output Display Area -->
         <div id="reports-output-container" style="display: none; margin-top: 1.5rem; margin-bottom: 2rem;">
           <!-- Content Injected dynamically in app.js -->
+        </div>
+      </section>
+
+      <!-- TAB: FORMS & TEMPLATES -->
+      <section class="tab-content" id="forms-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Inspection Forms & Templates</h1>
+            <p>Fill out field audit forms or download operations templates.</p>
+          </div>
+        </div>
+
+        <!-- Form Tab Switcher -->
+        <div style="display:flex; border-bottom:2px solid var(--border-color); margin-bottom:1.5rem; gap:1.5rem;">
+          <button class="nav-link active" id="btn-subtab-inspect" style="padding:0.75rem 0.5rem; border:none; background:none; font-weight:700; cursor:pointer; font-size:0.9rem; color:var(--text-dark); border-bottom:3px solid var(--primary-red); margin-bottom:-2px;">🔍 Inspection Form</button>
+          <button class="nav-link" id="btn-subtab-risk" style="padding:0.75rem 0.5rem; border:none; background:none; font-weight:600; cursor:pointer; font-size:0.9rem; color:var(--text-muted); border-bottom:3px solid transparent; margin-bottom:-2px;">⚠️ Risk Assessment</button>
+          <button class="nav-link" id="btn-subtab-templates" style="padding:0.75rem 0.5rem; border:none; background:none; font-weight:600; cursor:pointer; font-size:0.9rem; color:var(--text-muted); border-bottom:3px solid transparent; margin-bottom:-2px;">📁 My Templates</button>
+        </div>
+
+        <!-- SUBTAB 1: INSPECTION FORM -->
+        <div id="subtab-content-inspect" style="display:block;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">New Client Field Inspection Report</h3></div>
+            <div class="card-body">
+              <form id="inspect-form" onsubmit="event.preventDefault();">
+                <div class="form-group row-split">
+                  <div>
+                    <label for="ins-client">Client / Prospect Name *</label>
+                    <select id="ins-client" class="form-control" required>
+                      <!-- Populated dynamically with clients and deals -->
+                    </select>
+                  </div>
+                  <div>
+                    <label for="ins-inspector">Inspector / Surveyor Name *</label>
+                    <input type="text" id="ins-inspector" class="form-control" required placeholder="Full Name">
+                  </div>
+                </div>
+                <div class="form-group row-split">
+                  <div>
+                    <label for="ins-date">Date of Inspection *</label>
+                    <input type="date" id="ins-date" class="form-control" required value="2026-07-10">
+                  </div>
+                  <div>
+                    <label>Areas Inspected (Select all that apply)</label>
+                    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.4rem; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Kitchen / Canteen"> Kitchen/Canteen</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Storage / Warehouse"> Storage/Warehouse</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Production Lines"> Production Lines</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Offices / Corridors"> Offices/Corridors</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Outer Perimeter"> Outer Perimeter</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Waste Disposal Area"> Waste Area</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group row-split">
+                  <div>
+                    <label for="ins-pest-activity">Pest Activity Level *</label>
+                    <select id="ins-pest-activity" class="form-control" required>
+                      <option value="None">🟢 None</option>
+                      <option value="Low">🟡 Low</option>
+                      <option value="Medium">🟠 Medium</option>
+                      <option value="High">🔴 High</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="ins-hygiene">Hygiene / Sanitation Standard *</label>
+                    <select id="ins-hygiene" class="form-control" required>
+                      <option value="Good">🟢 Good / Compliant</option>
+                      <option value="Fair">🟡 Fair / Needs Action</option>
+                      <option value="Poor">🔴 Poor / High Risk</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="ins-observations">Observations & Structural Defects</label>
+                  <textarea id="ins-observations" class="form-control" placeholder="Describe any gaps, cracks, pooling water, active infestations, bait placement spots, etc." style="min-height:80px;"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="ins-recommendations">Recommendations & Corrective Actions</label>
+                  <textarea id="ins-recommendations" class="form-control" placeholder="What the client needs to fix (sealing doors, improving waste handling) and suggested treatment plan..." style="min-height:80px;"></textarea>
+                </div>
+                <div class="form-group" style="max-width:320px;">
+                  <label>Inspector Signature *</label>
+                  <div style="border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA; position:relative; overflow:hidden;">
+                    <canvas id="ins-sig-canvas" width="300" height="120" style="display:block; cursor:crosshair;"></canvas>
+                    <button type="button" class="btn btn-sm btn-secondary" id="btn-ins-sig-clear" style="position:absolute; bottom:5px; right:5px; padding:2px 8px; font-size:0.7rem;">Clear</button>
+                  </div>
+                </div>
+                <div style="margin-top:1.5rem; display:flex; gap:0.5rem;">
+                  <button type="button" class="btn btn-primary" id="btn-save-inspection">Save Inspection Report</button>
+                  <button type="button" class="btn btn-secondary" id="btn-reset-inspection">Reset Form</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- List of Saved Inspections -->
+          <div class="card" style="margin-top:1.5rem;">
+            <div class="card-header"><h3 class="card-title">Saved Inspection History</h3></div>
+            <div class="card-body" style="padding:0;">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Client / Prospect</th>
+                      <th>Date</th>
+                      <th>Inspector</th>
+                      <th>Pest Activity</th>
+                      <th>Hygiene</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inspections-table-body">
+                    <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No inspection records found.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 2: RISK ASSESSMENT FORM -->
+        <div id="subtab-content-risk" style="display:none;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Site Risk Assessment (Pre-Task Safety Review)</h3></div>
+            <div class="card-body">
+              <form id="risk-form" onsubmit="event.preventDefault();">
+                <div class="form-group row-split">
+                  <div>
+                    <label for="risk-client">Client / Prospect Name *</label>
+                    <select id="risk-client" class="form-control" required>
+                      <!-- Populated dynamically with clients and deals -->
+                    </select>
+                  </div>
+                  <div>
+                    <label for="risk-assessor">Assessor Name *</label>
+                    <input type="text" id="risk-assessor" class="form-control" required placeholder="Full Name">
+                  </div>
+                </div>
+                <div class="form-group row-split">
+                  <div>
+                    <label for="risk-date">Assessment Date *</label>
+                    <input type="date" id="risk-date" class="form-control" required value="2026-07-10">
+                  </div>
+                  <div>
+                    <label for="risk-level">Overall Residual Risk Level *</label>
+                    <select id="risk-level" class="form-control" required>
+                      <option value="Low">🟢 Low Risk</option>
+                      <option value="Medium">🟡 Medium Risk</option>
+                      <option value="High">🔴 High Risk (Strict Controls Needed)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Hazards Identified on Site</label>
+                  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.4rem; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Chemical Exposure"> Chemical Exposure</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Slips, Trips & Falls"> Slips, Trips & Falls</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Working at Heights"> Working at Heights</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Electrical Hazards"> Electrical Hazards</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Confined Spaces"> Confined Spaces</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Biological / Animal bites"> Biological Hazards</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Mandatory PPE Required (Checkboxes)</label>
+                  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.4rem; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Safety Goggles"> Safety Goggles</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Nitrile / Chemical Gloves"> Protective Gloves</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Respirator / Face Mask"> Respirator / Mask</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Steel-Toe Boots"> Steel-Toe Boots</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="High-Vis Vest"> High-Vis Vest</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Hard Hat"> Hard Hat</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="risk-controls">Specific Safety Control Measures / Action Plan *</label>
+                  <textarea id="risk-controls" class="form-control" required placeholder="e.g. Cordons placed, ventilation of room, isolation of electrical box, safety harnesses used..." style="min-height:80px;"></textarea>
+                </div>
+                <div style="margin-top:1.5rem; display:flex; gap:0.5rem;">
+                  <button type="button" class="btn btn-primary" id="btn-save-risk">Save Risk Assessment</button>
+                  <button type="button" class="btn btn-secondary" id="btn-reset-risk">Reset Form</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- List of Saved Risk Assessments -->
+          <div class="card" style="margin-top:1.5rem;">
+            <div class="card-header"><h3 class="card-title">Saved Risk Assessment Logs</h3></div>
+            <div class="card-body" style="padding:0;">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Client / Prospect</th>
+                      <th>Date</th>
+                      <th>Assessor</th>
+                      <th>Overall Risk Level</th>
+                      <th>Hazards Identified</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="risks-table-body">
+                    <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No risk assessment records found.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 3: MY TEMPLATES -->
+        <div id="subtab-content-templates" style="display:none;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Upload Custom Document Template / Form</h3></div>
+            <div class="card-body">
+              <form id="template-upload-form" onsubmit="event.preventDefault();">
+                <div class="form-group row-split">
+                  <div>
+                    <label for="tmpl-title">Template Title *</label>
+                    <input type="text" id="tmpl-title" class="form-control" required placeholder="e.g. Fumigation Audit Checklist">
+                  </div>
+                  <div>
+                    <label for="tmpl-category">Category *</label>
+                    <select id="tmpl-category" class="form-control" required>
+                      <option value="Inspection">Inspection Form</option>
+                      <option value="Safety">Safety / HSE</option>
+                      <option value="Audit">IPM Audit</option>
+                      <option value="Contract">Contract / Sales</option>
+                      <option value="Other">Other Operational</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="tmpl-desc">Description</label>
+                  <input type="text" id="tmpl-desc" class="form-control" placeholder="Short description of document contents, file type, or instructions">
+                </div>
+                <div class="form-group">
+                  <label>Select Template File *</label>
+                  <div class="csv-upload-zone" id="upload-tmpl-zone" style="height:120px; min-height:120px;">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:32px;height:32px;margin-bottom:0.5rem;color:var(--text-muted);"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <p class="primary-msg" style="font-size:0.8rem; font-weight:600; color:var(--text-dark); margin:0;">Click or Drag template to upload</p>
+                    <span id="tmpl-filename-label" style="font-size:0.75rem; color:var(--primary-red); font-weight:700; margin-top:4px; display:none;">No file selected</span>
+                    <input type="file" id="tmpl-file-input" class="hidden-file-input" style="display:none;">
+                  </div>
+                </div>
+                <div style="margin-top:1.5rem;">
+                  <button type="button" class="btn btn-primary" id="btn-save-template">Upload Template</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Template Library Grid -->
+          <div class="card" style="margin-top:1.5rem;">
+            <div class="card-header"><h3 class="card-title">Templates & Custom Forms Library</h3></div>
+            <div class="card-body" style="padding:0;">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Description</th>
+                      <th>Filename</th>
+                      <th>Upload Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="templates-table-body">
+                    <!-- Dynamic templates populated in app.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

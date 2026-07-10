@@ -608,25 +608,25 @@ class Database {
             return {
               dashboard: 'edit', schedules: 'edit', clients: 'edit', items: 'edit',
               complaints: 'edit', messages: 'edit', 'uv-sales': 'edit',
-              reports: 'edit', users: 'edit'
+              reports: 'edit', users: 'edit', sales: 'edit', forms: 'edit'
             };
           } else if (r === 'tech manager' || r === 'operations manager' || r === 'admin coordinator') {
             return {
               dashboard: 'see', schedules: 'edit', clients: 'edit', items: 'edit',
               complaints: 'edit', messages: 'edit', 'uv-sales': 'see',
-              reports: 'see', users: 'see'
+              reports: 'see', users: 'see', sales: 'edit', forms: 'edit'
             };
           } else if (r === 'tech supervisor') {
             return {
               dashboard: 'see', schedules: 'see', clients: 'see', items: 'see',
               complaints: 'edit', messages: 'edit', 'uv-sales': 'see',
-              reports: 'see', users: 'none'
+              reports: 'see', users: 'none', sales: 'see', forms: 'edit'
             };
           } else { // team leader
             return {
               dashboard: 'none', schedules: 'edit', clients: 'none', items: 'none',
               complaints: 'see', messages: 'edit', 'uv-sales': 'none',
-              reports: 'none', users: 'none'
+              reports: 'none', users: 'none', sales: 'none', forms: 'none'
             };
           }
         };
@@ -678,6 +678,31 @@ class Database {
 
       if (!data.suppliers) {
         data.suppliers = [];
+        updated = true;
+      }
+
+      if (!data.salesDeals) {
+        data.salesDeals = [
+          { id: 'deal-1', name: 'Erbil International Hotel Full Treatment', prospectName: 'Erbil Intl Hotel', stage: 'Prospecting', expectedValue: 3500, serviceType: 'Pest Control', dateCreated: '2026-07-01' },
+          { id: 'deal-2', name: 'Basra Oil Terminal Baiting Contract', prospectName: 'South Oil Co.', stage: 'Proposal Sent', expectedValue: 4800, serviceType: 'Pest Control', costStructure: { visitsPerMonth: 4, hoursPerVisit: 3, baitStations: 50, stickersPerMonth: 50, additionalCost: 200, label: 'Standard Rodent Treatment Plan' }, dateCreated: '2026-07-03' }
+        ];
+        updated = true;
+      }
+
+      if (!data.inspections) {
+        data.inspections = [];
+        updated = true;
+      }
+
+      if (!data.riskAssessments) {
+        data.riskAssessments = [];
+        updated = true;
+      }
+
+      if (!data.formTemplates) {
+        data.formTemplates = [
+          { id: 'tmpl-d1', title: 'Fumigation Safety Checklist', category: 'Safety', description: 'Mandatory standard procedure checklist for phosphine gas fumigations.', filename: 'fumigation_safety_v2.pdf', dateAdded: '2026-07-05', fileData: 'data:application/pdf;base64,JVBERi0xLjQKJ...' }
+        ];
         updated = true;
       }
 
