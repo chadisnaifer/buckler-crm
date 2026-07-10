@@ -9396,17 +9396,17 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const approvalHTML = `
-          <div style="margin-top:6px; padding-top:4px; border-top:1px dashed #E2E8F0; display:flex; flex-direction:column; gap:4px;">
-            <div style="font-size:0.65rem; font-weight:800; color:var(--text-medium); margin-bottom:2px; text-transform:uppercase; letter-spacing:0.02em;">Quotation Approvals:</div>
-            <div style="display:flex; gap:0.25rem;">
-              <span class="app-sm-pill" data-deal="${d.id}" style="padding:1px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.salesManager)}" title="Toggle Sales Manager Approval">
-                👤 SM: ${approvals.salesManager ? '✅' : '❌'}
+          <div style="margin-top:4px; padding-top:3px; border-top:1px dashed #E2E8F0; display:flex; flex-direction:column; gap:2px;">
+            <div style="font-size:0.6rem; font-weight:800; color:var(--text-medium); margin-bottom:1px; text-transform:uppercase; letter-spacing:0.02em;">Quotation Approvals:</div>
+            <div style="display:flex; gap:0.2rem; flex-wrap:wrap;">
+              <span class="app-sm-pill" data-deal="${d.id}" style="padding:1px 4px; border-radius:3px; font-size:0.56rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.salesManager)}" title="Toggle Sales Manager Approval">
+                SM: ${approvals.salesManager ? '✅' : '❌'}
               </span>
-              <span class="app-ops-pill" data-deal="${d.id}" style="padding:1px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.opsManager)}" title="Toggle Operations Manager Approval">
-                ⚙️ OM: ${approvals.opsManager ? '✅' : '❌'}
+              <span class="app-ops-pill" data-deal="${d.id}" style="padding:1px 4px; border-radius:3px; font-size:0.56rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.opsManager)}" title="Toggle Operations Manager Approval">
+                OM: ${approvals.opsManager ? '✅' : '❌'}
               </span>
-              <span class="app-gm-pill" data-deal="${d.id}" style="padding:1px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.gm)}" title="Toggle GM Approval">
-                👑 GM: ${approvals.gm ? '✅' : '❌'}
+              <span class="app-gm-pill" data-deal="${d.id}" style="padding:1px 4px; border-radius:3px; font-size:0.56rem; font-weight:700; cursor:pointer; ${getApprovalStyle(approvals.gm)}" title="Toggle GM Approval">
+                GM: ${approvals.gm ? '✅' : '❌'}
               </span>
             </div>
           </div>
@@ -9414,7 +9414,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Expiry Date Badge for Closed Won
         const expiryBadge = (d.stage === 'Closed Won' && d.contractExpiryDate)
-          ? `<div style="font-size:0.68rem; color:#D97706; font-weight:700; margin-top:4px; background:#FEF3C7; padding:2px 6px; border-radius:4px; border:1px solid #FCD34D; display:inline-block;">📅 Expires: ${d.contractExpiryDate}</div>`
+          ? `<div style="font-size:0.65rem; color:#D97706; font-weight:700; margin-top:2px; background:#FEF3C7; padding:1px 4px; border-radius:3px; border:1px solid #FCD34D; display:inline-block;">📅 Exp: ${d.contractExpiryDate}</div>`
           : '';
 
         const clients = window.BucklerDB.get('clients') || [];
@@ -9423,46 +9423,46 @@ document.addEventListener('DOMContentLoaded', () => {
         let clientRegistryHTML = '';
         if (client) {
           clientRegistryHTML = `
-            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:0.25rem;">
-              <span>📇 Registry:</span>
-              <a href="#" class="btn-open-client-registry-edit" data-id="${client.id}" style="color:#1D4ED8; font-weight:700; text-decoration:underline;">${client.clientCode} (Edit Client)</a>
+            <div style="font-size:0.68rem; color:var(--text-muted); margin-top:1px; display:flex; align-items:center; gap:0.25rem;">
+              <span>📇 Reg:</span>
+              <a href="#" class="btn-open-client-registry-edit" data-id="${client.id}" style="color:#1D4ED8; font-weight:700; text-decoration:underline;">${client.clientCode}</a>
             </div>
           `;
         } else {
           clientRegistryHTML = `
-            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; gap:0.25rem;">
-              <span>📇 Registry:</span>
-              <a href="#" class="btn-open-client-registry-create" data-deal-id="${d.id}" style="color:#64748B; font-style:italic; text-decoration:underline;">Prefill Client Profile</a>
+            <div style="font-size:0.68rem; color:var(--text-muted); margin-top:1px; display:flex; align-items:center; gap:0.25rem;">
+              <span>📇 Reg:</span>
+              <a href="#" class="btn-open-client-registry-create" data-deal-id="${d.id}" style="color:#64748B; font-style:italic; text-decoration:underline;">Prefill Profile</a>
             </div>
           `;
         }
 
         return `
-          <div class="card" style="padding:0.75rem; border:1px solid var(--border-color); background:white; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:0.5rem; display:flex; flex-direction:column; gap:4px;">
+          <div class="card" style="padding:0.5rem; border:1px solid var(--border-color); background:white; border-radius:5px; box-shadow:0 1px 2px rgba(0,0,0,0.04); margin-bottom:0.4rem; display:flex; flex-direction:column; gap:3px;">
             <div style="display:flex; justify-content:space-between; align-items:start; gap:4px;">
-              <div style="font-weight:700; color:var(--text-dark); font-size:0.85rem; line-height:1.2; flex:1;">${d.name}</div>
-              <span style="font-size:0.62rem; color:var(--text-muted); background:#F1F5F9; padding:1px 4px; border-radius:3px;">${d.dateCreated}</span>
+              <div style="font-weight:700; color:var(--text-dark); font-size:0.78rem; line-height:1.2; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.name}">${d.name}</div>
+              <span style="font-size:0.58rem; color:var(--text-muted); background:#F1F5F9; padding:1px 3px; border-radius:2px; white-space:nowrap;">${d.dateCreated}</span>
             </div>
-            <div style="font-size:0.75rem; color:var(--text-medium); margin-top:2px;">Prospect: <strong>${d.prospectName}</strong></div>
+            <div style="font-size:0.7rem; color:var(--text-medium); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Prop: <strong>${d.prospectName}</strong></div>
             ${clientRegistryHTML}
-            <div style="font-size:0.72rem; color:var(--text-muted); display:flex; justify-content:space-between;">
-              <span>Service: ${d.serviceType}</span>
+            <div style="font-size:0.68rem; color:var(--text-muted); display:flex; justify-content:space-between; gap:2px; flex-wrap:wrap;">
+              <span>Svc: ${d.serviceType}</span>
               <span>Rep: <strong>${d.assignedSalesRepName || 'Unassigned'}</strong></span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem; border-top:1px dashed #F1F5F9; padding-top:4px;">
-              <span style="font-weight:800; font-size:0.85rem; color:var(--primary-red);">${formattedVal}</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; border-top:1px dashed #F1F5F9; padding-top:2px;">
+              <span style="font-weight:800; font-size:0.78rem; color:var(--primary-red);">${formattedVal}</span>
               ${costingBadge}
             </div>
             ${expiryBadge}
             ${approvalHTML}
-            <div style="display:flex; gap:0.25rem; margin-top:0.5rem; justify-content:flex-end;">
-              <button class="btn btn-secondary btn-sm edit-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem;">Edit</button>
-              <button class="btn btn-secondary btn-sm cost-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem; background:#EFF6FF; color:#1D4ED8; border-color:#BFDBFE;">Costing</button>
-              <button class="btn btn-danger btn-sm delete-deal-btn" data-id="${d.id}" style="padding:2px 6px; font-size:0.7rem;">Delete</button>
+            <div style="display:flex; gap:0.2rem; margin-top:0.35rem; justify-content:flex-end;">
+              <button class="btn btn-secondary btn-sm edit-deal-btn" data-id="${d.id}" style="padding:1px 4px; font-size:0.65rem;">Edit</button>
+              <button class="btn btn-secondary btn-sm cost-deal-btn" data-id="${d.id}" style="padding:1px 4px; font-size:0.65rem; background:#EFF6FF; color:#1D4ED8; border-color:#BFDBFE;">Costing</button>
+              <button class="btn btn-danger btn-sm delete-deal-btn" data-id="${d.id}" style="padding:1px 4px; font-size:0.65rem;">Delete</button>
             </div>
           </div>
         `;
-      }).join('') : `<div style="text-align:center; color:var(--text-medium); font-size:0.75rem; padding:1.5rem; border:1px dashed #E2E8F0; border-radius:6px;">Empty</div>`;
+      }).join('') : `<div style="text-align:center; color:var(--text-medium); font-size:0.7rem; padding:1rem; border:1px dashed #E2E8F0; border-radius:5px;">Empty</div>`;
     });
 
     // Bind Edit button click and card double click
