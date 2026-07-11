@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
       brand_subtitle: "Operations CRM Portal",
       share_crm: "Share CRM",
       backup_crm: "Save & Backup",
+      restore_crm_btn: "Restore Backup",
       noti_center: "Notifications Center",
       mark_all_read: "Mark all read",
       active_session: "Active Session:",
@@ -55,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
       brand_subtitle: "بوابة إدارة العمليات CRM",
       share_crm: "مشاركة النظام",
       backup_crm: "حفظ ونسخ احتياطي",
+      restore_crm_btn: "استعادة النسخة الاحتياطية",
       noti_center: "مركز التنبيهات",
       mark_all_read: "تحديد الكل كمقروء",
       active_session: "الجلسة النشطة:",
@@ -255,6 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dbFileInput: document.getElementById('db-file-input'),
     btnShareCrm: document.getElementById('btn-share-crm'),
     btnBackupCrm: document.getElementById('btn-backup-crm'),
+    btnRestoreCrm: document.getElementById('btn-restore-crm'),
+    btnRestoreCrmInput: document.getElementById('btn-restore-crm-input'),
     btnSupabaseConfig: document.getElementById('btn-supabase-config'),
     
     // Reports Elements
@@ -6286,6 +6290,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const timestamp = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}_${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}`;
         downloadFile(dataStr, `buckler_db_backup_${timestamp}.json`, 'application/json');
         showToast(state.language === 'ar' ? 'تم تنزيل النسخة الاحتياطية! يرجى حفظها في سطح المكتب.' : 'Database backup downloaded! Please save it to your Desktop.', 'success');
+      });
+    }
+    if (els.btnRestoreCrm && els.btnRestoreCrmInput) {
+      els.btnRestoreCrm.addEventListener('click', () => {
+        els.btnRestoreCrmInput.click();
+      });
+      els.btnRestoreCrmInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const content = event.target.result;
+            const parsed = JSON.parse(content);
+            if (parsed && typeof parsed === 'object' && parsed.users && parsed.clients) {
+              window.localStorage.setItem('buckler_crm_data', content);
+              showToast(state.language === 'ar' ? 'تمت استعادة قاعدة البيانات بنجاح! جاري إعادة تحميل الصفحة...' : 'Database restored successfully! Reloading portal...', 'success');
+              setTimeout(() => {
+                window.location.reload();
+              }, 1200);
+            } else {
+              showToast(state.language === 'ar' ? 'ملف نسخة احتياطية غير صالح. الجداول الأساسية مفقودة.' : 'Invalid backup file. Missing critical CRM tables.', 'error');
+            }
+          } catch (err) {
+            console.error(err);
+            showToast(state.language === 'ar' ? 'فشل تحليل ملف النسخة الاحتياطية. يجب أن يكون بتنسيق JSON صالح.' : 'Failed to parse backup file. Must be a valid JSON structure.', 'error');
+          }
+        };
+        reader.readAsText(file);
+        els.btnRestoreCrmInput.value = ''; // Reset input to allow selecting same file again
       });
     }
     els.btnSupabaseConfig.addEventListener('click', () => openSupabaseConfigModal());

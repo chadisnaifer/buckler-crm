@@ -49,6 +49,12 @@
         💾 <span data-i18n="backup_crm">Save & Backup</span>
       </button>
 
+      <!-- Restore Backup Button -->
+      <button class="btn btn-secondary btn-sm" id="btn-restore-crm" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;" title="Restore Database from Backup File">
+        📂 <span data-i18n="restore_crm_btn">Restore Backup</span>
+      </button>
+      <input type="file" id="btn-restore-crm-input" accept=".json" style="display: none;">
+
       <!-- Notification Alerts Bell -->
       <div style="position: relative;">
         <button class="btn btn-secondary btn-sm" id="btn-noti-bell" style="padding: 0.5rem; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; border: 1px solid var(--border-color); background: white;">
