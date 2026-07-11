@@ -4931,7 +4931,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </table>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
-              <input type="number" id="log-modal-bait-replaced" class="form-control" value="0" min="0" style="width:70px; padding:0.25rem; margin:0; height:auto; min-height:auto;" />
+              <input type="number" id="log-modal-bait-replaced" class="form-control" value="" min="0" style="width:70px; padding:0.25rem; margin:0; height:auto; min-height:auto;" />
               <span style="font-size:0.8rem; font-weight:600; color:var(--text-medium);">bait stations stickers & poisons were replaced</span>
             </div>
           </div>
@@ -4968,7 +4968,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span style="font-size:0.8rem; font-weight:600; color:var(--text-medium);">Total no. of flies' stickers replaced:</span>
-              <input type="number" id="log-modal-uv-replaced" class="form-control" value="0" min="0" style="width:70px; padding:0.25rem; margin:0; height:auto; min-height:auto;" />
+              <input type="number" id="log-modal-uv-replaced" class="form-control" value="" min="0" style="width:70px; padding:0.25rem; margin:0; height:auto; min-height:auto;" />
             </div>
           </div>
         </div>
@@ -5014,7 +5014,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const div = document.createElement('div');
       div.className = 'consume-row';
       div.id = rowId;
-      div.style = 'display:flex; gap:0.5rem; margin-bottom:0.5rem; align-items:center;';
+      div.style = 'display:flex; gap:0.5rem; margin-bottom:0.5rem; align-items:center; flex-wrap:wrap;';
+      
+      const initialQtyVal = (initialQty !== undefined && initialQty !== null && initialQty !== 0 && initialQty !== '0' && initialQty !== '') ? initialQty : '';
+      
       div.innerHTML = `
         <select class="form-control consume-category-select" style="max-width:140px;">
           <option value="" disabled selected>Category...</option>
@@ -5023,19 +5026,26 @@ document.addEventListener('DOMContentLoaded', () => {
           <option value="UV Machines">UV Machines</option>
           <option value="Others">Others</option>
         </select>
-        <select class="form-control consume-item-select" required style="flex: 1;">
+        <select class="form-control consume-item-select" required style="flex: 1; min-width:180px;">
           <option value="" disabled selected>Select item...</option>
         </select>
-        <div style="display: flex; align-items: center; gap: 4px;">
-          <input type="number" class="form-control consume-qty-input" value="${initialQty}" min="0.001" step="any" required placeholder="Qty" style="max-width:90px;">
+        <div style="display: flex; align-items: center; gap: 4px; flex-wrap:wrap;">
+          <input type="number" class="form-control consume-qty-input" value="${initialQtyVal}" min="0.001" step="any" required placeholder="Qty" style="max-width:90px;">
           <span class="consume-uom-label" style="font-size:0.75rem; font-weight:700; color:var(--text-medium); min-width: 50px;"></span>
+          <span class="consume-stock-label" style="font-size:0.75rem; color:var(--text-muted); margin-left:4px; font-weight:700;"></span>
         </div>
         <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem; line-height:1;">✕</button>
+        <div class="consume-warning-container" style="width:100%; display:none; margin-top:-2px;">
+          <span class="consume-warning-label" style="color:red; font-size:0.72rem; font-weight:700;"></span>
+        </div>
       `;
       rowsContainer.appendChild(div);
 
       const catSelect = div.querySelector('.consume-category-select');
       const itemSelect = div.querySelector('.consume-item-select');
+      const qtyInput = div.querySelector('.consume-qty-input');
+      const warningContainer = div.querySelector('.consume-warning-container');
+      const warningLabel = div.querySelector('.consume-warning-label');
       const removeBtn = div.querySelector('.btn-danger');
 
       removeBtn.addEventListener('click', () => div.remove());
@@ -5044,20 +5054,49 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedId = itemSelect.value;
         const item = sortedItems.find(i => i.id === selectedId);
         const uomSpan = div.querySelector('.consume-uom-label');
-        if (item && uomSpan) {
-          uomSpan.textContent = item.unit || 'Units';
-        } else if (uomSpan) {
-          uomSpan.textContent = '';
+        const stockSpan = div.querySelector('.consume-stock-label');
+        
+        if (item) {
+          if (uomSpan) uomSpan.textContent = item.unit || 'Units';
+          if (stockSpan) stockSpan.textContent = `(Avail: ${item.stock})`;
+          qtyInput.setAttribute('max', item.stock);
+        } else {
+          if (uomSpan) uomSpan.textContent = '';
+          if (stockSpan) stockSpan.textContent = '';
+          qtyInput.removeAttribute('max');
+        }
+        validateQty();
+      };
+
+      const validateQty = () => {
+        const selectedId = itemSelect.value;
+        const item = sortedItems.find(i => i.id === selectedId);
+        const val = parseFloat(qtyInput.value) || 0;
+        
+        if (item && val > item.stock) {
+          qtyInput.style.borderColor = 'red';
+          warningLabel.textContent = `❌ Max available: ${item.stock} ${item.unit || 'Units'}`;
+          warningContainer.style.display = 'block';
+        } else {
+          qtyInput.style.borderColor = '';
+          warningLabel.textContent = '';
+          warningContainer.style.display = 'none';
         }
       };
 
-      const updateItems = () => {
+      const updateItems = (keepQty = false) => {
         const cat = catSelect.value;
         const catItems = sortedItems.filter(i => (i.category || 'Others') === cat);
+        
+        if (!keepQty) {
+          qtyInput.value = '';
+        }
+        
         if (catItems.length) {
-          itemSelect.innerHTML = catItems.map(i => `
-            <option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>
-          `).join('');
+          itemSelect.innerHTML = `
+            <option value="" disabled selected>Select item...</option>
+            ${catItems.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('')}
+          `;
           itemSelect.disabled = false;
         } else {
           itemSelect.innerHTML = `<option value="">No items in category</option>`;
@@ -5066,21 +5105,27 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUOM();
       };
 
-      catSelect.addEventListener('change', updateItems);
-      itemSelect.addEventListener('change', updateUOM);
+      catSelect.addEventListener('change', () => updateItems(false));
+      itemSelect.addEventListener('change', () => {
+        qtyInput.value = '';
+        updateUOM();
+      });
+      qtyInput.addEventListener('input', validateQty);
       
       if (initialItemId) {
         const matchingItem = sortedItems.find(i => i.id === initialItemId);
         if (matchingItem) {
           catSelect.value = matchingItem.category || 'Others';
-          updateItems();
+          updateItems(true);
           itemSelect.value = initialItemId;
           updateUOM();
+          qtyInput.value = initialQtyVal;
+          validateQty();
         } else {
-          updateItems();
+          updateItems(true);
         }
       } else {
-        updateItems();
+        updateItems(true);
       }
     };
 
@@ -5868,13 +5913,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const timeOut = document.getElementById('log-modal-time-out').value;
       
       const itemsConsumed = [];
+      let stockValidationOk = true;
       document.querySelectorAll('#items-consumed-rows .consume-row').forEach(row => {
         const itemId = row.querySelector('.consume-item-select').value;
-        const qty = parseFloat(row.querySelector('.consume-qty-input').value) || 0;
+        const qtyInput = row.querySelector('.consume-qty-input');
+        const qty = parseFloat(qtyInput.value) || 0;
         if (itemId) {
           itemsConsumed.push({ itemId, qty });
+          const item = window.BucklerDB.get('items').find(i => i.id === itemId);
+          if (item && qty > item.stock) {
+            showToast(state.language === 'ar' ? `⛔ لا يمكن استهلاك كمية أكبر من المتاحة في المخزن لـ ${item.name} (المتاح: ${item.stock} ${item.unit})` : `⛔ Cannot consume more than available stock for ${item.name} (Available: ${item.stock} ${item.unit}).`, 'error');
+            qtyInput.style.borderColor = 'red';
+            qtyInput.focus();
+            stockValidationOk = false;
+          }
         }
       });
+      if (!stockValidationOk) return;
 
       const baitStationsAudit = [];
       const logBaitCheckbox = document.getElementById('log-modal-enable-bait');
@@ -7850,18 +7905,35 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Show Email Report button and hide Copy Link button
-    if (els.btnCopyReportLink) els.btnCopyReportLink.style.display = 'none';
+    // Show both Copy Link and Email Report buttons for the dynamic Sanitation & IPM portal dashboard
+    const portalUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client-dashboard.html?clientId=${clientId}&dateFrom=${startDate}&dateTo=${endDate}`;
+
+    if (els.btnCopyReportLink) {
+      els.btnCopyReportLink.style.display = 'inline-flex';
+      els.btnCopyReportLink.onclick = () => {
+        navigator.clipboard.writeText(portalUrl).then(() => showToast('Interactive Portal link copied to clipboard!', 'success'));
+      };
+    }
+    
     if (els.btnEmailReport) {
       els.btnEmailReport.style.display = 'inline-flex';
       els.btnEmailReport.onclick = () => {
         const fc = window.BucklerDB.get('clients').find(c => c.id === clientId);
-        if (!fc || !fc.email) { showToast('No email address on file for this client.', 'warning'); return; }
-        const sd = els.reportStartDate ? els.reportStartDate.value : '';
-        const ed = els.reportEndDate ? els.reportEndDate.value : '';
-        const subject = encodeURIComponent(`IPM Report — ${fc.name} — ${sd} to ${ed}`);
-        const body = encodeURIComponent(`Dear ${fc.contact || fc.name},\n\nPlease find your Sanitation & IPM report for ${sd} to ${ed}.\n\nBest regards,\nBuckler Operations Team`);
-        window.open(`mailto:${fc.email}?subject=${subject}&body=${body}`, '_blank');
+        if (!fc) return;
+        const sd = startDate || '';
+        const ed = endDate || '';
+        const subject = encodeURIComponent(`Sanitation & IPM History Dashboard — ${fc.name}`);
+        const body = encodeURIComponent(
+          `Dear ${fc.contact || fc.name},\n\n` +
+          `We have generated a real-time Sanitation & IPM History Dashboard for your account covering the period from ${sd} to ${ed}.\n\n` +
+          `You can view your dynamic interactive dashboard, visit logs, material usage, and complaints status online at the link below:\n\n` +
+          `🔗 View Dashboard: ${portalUrl}\n\n` +
+          `Thank you for choosing Buckler Pest Control.\n\n` +
+          `Best regards,\n` +
+          `Buckler Operations Team`
+        );
+        window.open(`mailto:${fc.email || ''}?subject=${subject}&body=${body}`, '_blank');
+        if (!fc.email) showToast('No email address on file for this client.', 'warning');
       };
     }
   }
@@ -9804,6 +9876,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elNegotiations) elNegotiations.textContent = negotiationsCount;
     if (elWonValueUsd) elWonValueUsd.textContent = `$${wonUSD.toLocaleString()}`;
     if (elWonValueIqd) elWonValueIqd.textContent = `${wonIQD.toLocaleString()} IQD`;
+
+    // Bind click events to Sales KPI Cards to show detail tables
+    const bindSalesKpiClick = (cardId, filterFn, title) => {
+      const card = document.getElementById(cardId);
+      if (!card) return;
+      const newCard = card.cloneNode(true);
+      card.parentNode.replaceChild(newCard, card);
+      newCard.addEventListener('click', () => {
+        const matchingDeals = filteredDeals.filter(filterFn);
+        const users = window.BucklerDB.get('users') || [];
+        const rows = matchingDeals.map(d => {
+          const rep = users.find(u => u.id === d.assignedSalesRepId);
+          const repName = rep ? rep.name : 'Unknown';
+          const formattedVal = d.currency === 'IQD' ? `${parseFloat(d.expectedValue).toLocaleString()} IQD` : `$${parseFloat(d.expectedValue).toLocaleString()}`;
+          return [d.name, d.prospectName, (d.serviceType || '').toUpperCase(), formattedVal, repName, d.dateCreated || 'N/A'];
+        });
+        showDetailTableModal(title, ['Opportunity Name', 'Prospect/Client', 'Service', 'Value', 'Sales Rep', 'Date Created'], rows);
+      });
+    };
+
+    bindSalesKpiClick('card-sales-prospects', d => d.stage === 'Prospecting', 'Prospecting Deals');
+    bindSalesKpiClick('card-sales-proposals', d => d.stage === 'Proposal Sent', 'Proposals Sent');
+    bindSalesKpiClick('card-sales-negotiations', d => d.stage === 'Negotiation', 'Negotiation Deals');
+    bindSalesKpiClick('card-sales-won-usd', d => d.stage === 'Closed Won' && d.currency !== 'IQD', 'Closed Won Deals (USD)');
+    bindSalesKpiClick('card-sales-won-iqd', d => d.stage === 'Closed Won' && d.currency === 'IQD', 'Closed Won Deals (IQD)');
 
     // Render visual dashboard charts
     const salesDashPanel = document.getElementById('sales-dashboard-panel');
