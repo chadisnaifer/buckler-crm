@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     activeChatTarget: null,
     scheduleActiveView: 'list',
     calendarPeriod: 'Month',
-    calendarCurrentDate: new Date('2026-06-04'),
+    calendarCurrentDate: new Date(),
     uploadedPictures: [],
     dashFilters: {
       service: 'All',
@@ -24,8 +24,86 @@ document.addEventListener('DOMContentLoaded', () => {
       dateTo: '',
       preset: 'month' // 'month' | 'all' | 'custom'
     },
-    dashActivityServiceFilter: 'All'
+    dashActivityServiceFilter: 'All',
+    language: localStorage.getItem('buckler_lang') || 'en'
   };
+
+  const translations = {
+    en: {
+      brand_name: "Buckler - Iraq",
+      brand_subtitle: "Operations CRM Portal",
+      share_crm: "Share CRM",
+      noti_center: "Notifications Center",
+      mark_all_read: "Mark all read",
+      active_session: "Active Session:",
+      nav_dashboard: "Operations Dashboard",
+      nav_sales: "Sales CRM",
+      nav_schedules: "Schedule",
+      nav_clients: "Clients List",
+      nav_items: "Products List",
+      nav_suppliers: "Suppliers",
+      nav_complaints: "Complaints Tracker",
+      nav_messages: "Messages & Chat",
+      nav_uv_sales: "UV Machine Sales",
+      nav_reports: "Sanitation IPM Reports",
+      nav_forms: "Forms & Templates",
+      nav_users: "User & CRM Admin"
+    },
+    ar: {
+      brand_name: "باكلر - العراق",
+      brand_subtitle: "بوابة إدارة العمليات CRM",
+      share_crm: "مشاركة النظام",
+      noti_center: "مركز التنبيهات",
+      mark_all_read: "تحديد الكل كمقروء",
+      active_session: "الجلسة النشطة:",
+      nav_dashboard: "لوحة تحكم العمليات",
+      nav_sales: "إدارة المبيعات",
+      nav_schedules: "الجدول والزيارات",
+      nav_clients: "سجل العملاء",
+      nav_items: "قائمة المنتجات",
+      nav_suppliers: "الموردين",
+      nav_complaints: "متابعة الشكاوى",
+      nav_messages: "المحادثة والرسائل",
+      nav_uv_sales: "مبيعات أجهزة UV",
+      nav_reports: "تقارير الصحة والـ IPM",
+      nav_forms: "النماذج والقوالب",
+      nav_users: "المستخدمين وإدارة النظام"
+    }
+  };
+
+  function t(key) {
+    const lang = state.language || 'en';
+    if (translations[lang] && translations[lang][key]) {
+      return translations[lang][key];
+    }
+    return key;
+  }
+
+  function translatePage() {
+    const lang = state.language || 'en';
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    
+    const langBtnText = document.getElementById('btn-toggle-lang-text');
+    if (langBtnText) {
+      langBtnText.textContent = lang === 'ar' ? 'English' : 'العربية';
+    }
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const translation = t(key);
+      if (translation !== key) {
+        el.textContent = translation;
+      }
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      const translation = t(key);
+      if (translation !== key) {
+        el.placeholder = translation;
+      }
+    });
+  }
 
   // DOM Elements
   const els = {
@@ -192,6 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
     reportsOutputContainer: document.getElementById('reports-output-container'),
     btnGenerateReport: document.getElementById('btn-generate-report'),
     btnExportReportCsv: document.getElementById('btn-export-report-csv'),
+    btnCopyReportLink: document.getElementById('btn-copy-report-link'),
+    btnEmailReport: document.getElementById('btn-email-report'),
     
     // UV Sales visual elements
     uvSalesVisualContainer: document.getElementById('uv-sales-visual-container'),
@@ -312,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (role === 'team leader') {
-      return ['schedules', 'complaints', 'messages', 'suppliers'].includes(tabId);
+      return ['schedules', 'complaints', 'messages'].includes(tabId);
     }
     return true;
   }
@@ -321,7 +401,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state.currentUser) return true;
     const role = state.currentUser.role.toLowerCase();
     if (role === 'gm') return true;
-    if (tabId === 'suppliers') return true; // Allow all roles to manage suppliers
+    if (role === 'team leader' && tabId === 'suppliers') return false;
+    if (tabId === 'suppliers') return true; // Allow other roles to manage suppliers
     
     if (state.currentUser.permissions && state.currentUser.permissions[tabId] !== undefined) {
       return state.currentUser.permissions[tabId] === 'edit';
@@ -447,6 +528,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize
   function init() {
+    translatePage();
+    const btnToggleLang = document.getElementById('btn-toggle-lang');
+    if (btnToggleLang) {
+      btnToggleLang.addEventListener('click', () => {
+        state.language = state.language === 'ar' ? 'en' : 'ar';
+        localStorage.setItem('buckler_lang', state.language);
+        translatePage();
+        renderActiveTab();
+      });
+    }
     setupRoleSelector();
     setupNavigation();
     setupCSVUpload();
@@ -777,6 +868,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function switchTab(tabId) {
     state.activeTab = tabId;
+    
+    if (tabId === 'schedules') {
+      state.calendarCurrentDate = new Date();
+      if (els.filterScheduleDate) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        els.filterScheduleDate.value = todayStr;
+      }
+    }
     
     els.navLinks.forEach(link => {
       if (link.getAttribute('data-tab') === tabId) {
@@ -2462,7 +2561,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isTL = role === 'team leader';
       const isSupervisor = role === 'tech supervisor';
       const isGM = role === 'gm';
-      const canEdit = !isTL && !isSupervisor && !isGM;
+      const canEdit = hasEditPermission('schedules');
 
       const isAssignedTL = sch.teamLeaderId && sch.teamLeaderId.split(',').map(x => x.trim()).includes(state.currentUser.id);
 
@@ -2490,7 +2589,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <!-- Clickable client details -->
               <span class="sch-client"><a href="#" class="client-click" data-id="${sch.clientId}" style="color:inherit; font-weight:700; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${clientName}</a></span>
               <span style="font-size:0.8rem; color:var(--text-medium);">${address}</span>
-              <span class="sch-service-tag">${sch.service}</span>
+              <span class="sch-service-tag">${(sch.service || '').split(',').map(s => s.trim().charAt(0).toUpperCase() + s.trim().slice(1)).join(', ')}</span>
             </div>
           </div>
           <div class="schedule-strip-assignments">
@@ -2834,7 +2933,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="cal-week-card" data-id="${s.id}" style="background-color: ${statusStyle.bg}; color: ${statusStyle.text}; border-left: 4px solid ${statusStyle.border};" ${isTL ? '' : 'draggable="true"'}>
                   <span class="cal-week-card-time" style="color: ${statusStyle.text}; opacity: 0.85;">⏰ ${s.time}</span>
                   <span class="cal-week-card-client" style="color: ${statusStyle.text}; font-weight: 700;">${cName}</span>
-                  <span class="cal-week-card-service" style="color: ${statusStyle.text}; opacity: 0.8;">${s.service} (${s.status})</span>
+                  <span class="cal-week-card-service" style="color: ${statusStyle.text}; opacity: 0.8;">${(s.service || '').split(',').map(x => x.trim().charAt(0).toUpperCase() + x.trim().slice(1)).join(', ')} (${s.status})</span>
                 </div>
               `;
             }).join('')}
@@ -2942,7 +3041,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <span class="cal-day-card-time" style="color: ${statusStyle.text}; opacity: 0.85;">⏰ ${s.time}</span>
                   <div class="cal-day-card-details">
                     <span class="cal-day-card-client" style="color: ${statusStyle.text}; font-weight: 700;">${cName}</span>
-                    <span class="cal-day-card-service" style="color: ${statusStyle.text}; opacity: 0.8;">${s.service} (${s.status})</span>
+                    <span class="cal-day-card-service" style="color: ${statusStyle.text}; opacity: 0.8;">${(s.service || '').split(',').map(x => x.trim().charAt(0).toUpperCase() + x.trim().slice(1)).join(', ')} (${s.status})</span>
                     <span class="cal-day-card-tl" style="color: ${statusStyle.text}; opacity: 0.7;">TL: ${tlName}</span>
                   </div>
                 </div>
@@ -3952,9 +4051,19 @@ document.addEventListener('DOMContentLoaded', () => {
       <option value="${c.id}" ${schedule && schedule.clientId === c.id ? 'selected' : ''}>${c.name} (${c.region})</option>
     `).join('');
 
-    const serviceOptions = services.map(s => `
-      <option value="${s}" ${schedule && schedule.service === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>
-    `).join('');
+    const serviceCheckboxes = services.map(s => {
+      const isChecked = schedule && (
+        Array.isArray(schedule.service)
+          ? schedule.service.includes(s)
+          : (schedule.service || '').split(',').map(x => x.trim()).includes(s)
+      );
+      return `
+        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; cursor:pointer; padding:0.2rem 0.4rem; border-radius:4px; transition:background 0.15s;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='transparent'">
+          <input type="checkbox" name="sch-modal-service-cb" value="${s}" ${isChecked ? 'checked' : ''} style="accent-color:var(--primary-red); width:14px; height:14px;">
+          <span style="text-transform:capitalize;">${s}</span>
+        </label>
+      `;
+    }).join('');
 
     const assignedTLs = schedule && schedule.teamLeaderId ? schedule.teamLeaderId.split(',').map(x => x.trim()) : [];
     const tlOptions = tls.map(t => `
@@ -3968,18 +4077,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const html = `
       <form id="schedule-form">
-        <div class="form-group row-split">
-          <div>
-            <label for="sch-modal-client">Client *</label>
-            <select id="sch-modal-client" class="form-control" required>
-              ${clientOptions}
-            </select>
-          </div>
-          <div>
-            <label for="sch-modal-service">Service Category *</label>
-            <select id="sch-modal-service" class="form-control" required>
-              ${serviceOptions}
-            </select>
+        <div class="form-group">
+          <label for="sch-modal-client">Client *</label>
+          <select id="sch-modal-client" class="form-control" required>
+            ${clientOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:block;">Service Category (Select one or several) *</label>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:0.4rem; padding:0.75rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;" id="sch-modal-services-container">
+            ${serviceCheckboxes}
           </div>
         </div>
         <div class="form-group row-split">
@@ -5264,212 +5371,8 @@ document.addEventListener('DOMContentLoaded', () => {
     showModal('Operation Visit Log Details', html, false);
     bindEntityClicks(document.getElementById('log-details-modal'));
 
-    // Inject "Share Report" button into the modal footer
+    // Removed shareable report buttons (only available in Reports tab when sending to client)
     const cancelBtn = document.getElementById('modal-cancel-btn');
-    if (cancelBtn && log) {
-      const reportUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client-report.html?logId=${log.id}`;
-      const shareBtn = document.createElement('button');
-      shareBtn.className = 'btn btn-secondary';
-      shareBtn.style.marginRight = 'auto';
-      shareBtn.innerHTML = '📤 Full Report';
-      shareBtn.title = 'Open shareable visit report in a new tab';
-      shareBtn.onclick = () => window.open(reportUrl, '_blank');
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'btn btn-secondary';
-      copyBtn.innerHTML = '🔗 Copy Link';
-      copyBtn.title = 'Copy report link to clipboard';
-      copyBtn.onclick = () => {
-        navigator.clipboard.writeText(reportUrl).then(() => showToast('Report link copied to clipboard', 'success'));
-      };
-      const emailBtn = document.createElement('button');
-      emailBtn.className = 'btn btn-secondary';
-      emailBtn.innerHTML = '📧 Email Report';
-      emailBtn.title = 'Send visit report to client by email';
-      emailBtn.onclick = () => {
-        const clientEmail = client ? client.email : '';
-        const tlNames = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => {
-          const u = users.find(x => x.id === tid.trim());
-          return u ? u.name : tid;
-        }).join(', ') : 'N/A';
-        const itemsList = log.itemsConsumed && log.itemsConsumed.length
-          ? log.itemsConsumed.map(c => { const it = items.find(i => i.id === c.itemId); return `${it ? it.name : c.itemId}: ${c.qty} ${it ? it.unit : ''}`; }).join(', ')
-          : 'None';
-
-        // ── GENERATE PDF ATTACHMENT ──
-        if (window.jspdf) {
-          try {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Draw header banner
-            doc.setFillColor(194, 24, 91); // Primary red
-            doc.rect(0, 0, 210, 40, 'F');
-
-            // Brand text
-            doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(22);
-            doc.text('BUCKLER PEST CONTROL', 15, 25);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.text('Operations & Quality Control Audit Report', 15, 33);
-
-            // Reset text color to dark grey
-            doc.setTextColor(51, 51, 51);
-
-            // Visit Summary Header
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Visit Audit Summary', 15, 55);
-
-            // Draw line
-            doc.setDrawColor(226, 232, 240);
-            doc.line(15, 58, 195, 58);
-
-            // Details
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            let pdfY = 65;
-            const drawDetailRow = (label, val) => {
-              doc.setFont('helvetica', 'bold');
-              doc.text(label + ':', 15, pdfY);
-              doc.setFont('helvetica', 'normal');
-              doc.text(String(val || 'N/A'), 55, pdfY);
-              pdfY += 7;
-            };
-
-            drawDetailRow('Client Name', client ? client.name : 'N/A');
-            drawDetailRow('Client Code', client ? (client.clientCode || client.id) : 'N/A');
-            drawDetailRow('Service Performed', sch ? sch.service : 'N/A');
-            drawDetailRow('Visit Date', log.dateConducted);
-            drawDetailRow('Time In / Out', `${log.timeIn || 'N/A'} - ${log.timeOut || 'N/A'} (${log.timeSpent || 'N/A'})`);
-            drawDetailRow('Team Leader(s)', tlNames);
-            drawDetailRow('Site Location', log.geoLocation || 'N/A');
-
-            pdfY += 5;
-            // Materials Section
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Materials & Pesticides Consumed', 15, pdfY);
-            pdfY += 3;
-            doc.line(15, pdfY, 195, pdfY);
-            pdfY += 6;
-
-            doc.setFontSize(10);
-            if (log.itemsConsumed && log.itemsConsumed.length) {
-              log.itemsConsumed.forEach(c => {
-                const it = items.find(i => i.id === c.itemId);
-                const itemName = it ? it.name : c.itemId;
-                const qtyText = `${c.qty} ${it ? it.unit : ''}`;
-                doc.setFont('helvetica', 'normal');
-                doc.text(itemName, 15, pdfY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(qtyText, 150, pdfY);
-                pdfY += 6;
-              });
-            } else {
-              doc.setFont('helvetica', 'italic');
-              doc.text('No chemical/materials consumed during this service.', 15, pdfY);
-              pdfY += 6;
-            }
-
-            pdfY += 5;
-            // Observations and Checklist Section
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Observations & Corrective Actions', 15, pdfY);
-            pdfY += 3;
-            doc.line(15, pdfY, 195, pdfY);
-            pdfY += 6;
-
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Technician Comments / Notes:', 15, pdfY);
-            pdfY += 5;
-            doc.setFont('helvetica', 'normal');
-            const commentsLines = doc.splitTextToSize(log.comments || 'No comment notes provided.', 180);
-            doc.text(commentsLines, 15, pdfY);
-            pdfY += (commentsLines.length * 5) + 3;
-
-            doc.setFont('helvetica', 'bold');
-            doc.text('Client Feedback / Sign-Off Comments:', 15, pdfY);
-            pdfY += 5;
-            doc.setFont('helvetica', 'normal');
-            const feedbackLines = doc.splitTextToSize(log.clientComments || 'No client feedback provided.', 180);
-            doc.text(feedbackLines, 15, pdfY);
-            pdfY += (feedbackLines.length * 5) + 5;
-
-            // Signatures block
-            if (pdfY > 230) {
-              doc.addPage();
-              pdfY = 30;
-            }
-
-            doc.setFontSize(11);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Verification & Signatures', 15, pdfY);
-            pdfY += 3;
-            doc.line(15, pdfY, 195, pdfY);
-            pdfY += 10;
-
-            if (log.clientSignature && log.clientSignature.startsWith('data:image')) {
-              try {
-                // If it's SVG or SVG in data URI, jsPDF might prefer PNG, but let's try to add it
-                doc.addImage(log.clientSignature, 'PNG', 15, pdfY, 50, 20);
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'italic');
-                doc.text('Client Authorized Sign-Off', 15, pdfY + 25);
-              } catch (err) {
-                console.error('Error drawing client signature in PDF:', err);
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'italic');
-                doc.text('Client Signature Captured (Inline Image)', 15, pdfY + 15);
-              }
-            } else {
-              doc.setFontSize(9);
-              doc.setFont('helvetica', 'italic');
-              doc.text('(Client signature not captured)', 15, pdfY + 15);
-            }
-
-            // Tech signature label
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'italic');
-            doc.text(`Assigned Operator: ${tlNames}`, 110, pdfY + 25);
-
-            // Save PDF
-            const pdfName = `Visit-Report-${client ? client.name.replace(/\s+/g, '-') : 'Client'}-${log.dateConducted}.pdf`;
-            doc.save(pdfName);
-            showToast('PDF visit report generated and downloaded ✓', 'success');
-          } catch (e) {
-            console.error('Error generating PDF:', e);
-            showToast('PDF generation failed, drafting email summary instead.', 'warning');
-          }
-        }
-
-        // ── OPEN MAIL CLIENT ──
-        const subject = encodeURIComponent(`Visit Report — ${client ? client.name : ''} — ${log.dateConducted}`);
-        const body = encodeURIComponent(
-          `Dear ${client ? (client.contact || client.name) : 'Valued Client'},\n\n` +
-          `Please find the summary of our recent visit to your premises.\n\n` +
-          `We have generated and downloaded a PDF report of this visit onto your computer. Please attach the downloaded PDF file to this email before sending.\n\n` +
-          `─────────────────────────────\n` +
-          `VISIT SUMMARY\n` +
-          `─────────────────────────────\n` +
-          `Client: ${client ? client.name : ''}\n` +
-          `Date: ${log.dateConducted}\n` +
-          `Service: ${sch ? sch.service : 'N/A'}\n` +
-          `Time In / Out: ${log.timeIn || 'N/A'} - ${log.timeOut || 'N/A'}\n` +
-          `Team Leader: ${tlNames}\n` +
-          `Materials Consumed: ${itemsList}\n` +
-          `Technician Notes: ${log.comments || 'N/A'}\n` +
-          `Client Feedback: ${log.clientComments || 'None'}\n\n` +
-          `For the full interactive dashboard report, visit:\n${reportUrl}\n\n` +
-          `Thank you for choosing Buckler Pest Control.\n\n` +
-          `Best regards,\n` +
-          `Buckler Operations Team`
-        );
-        window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
-        if (!clientEmail) showToast('No email address on file for this client.', 'warning');
       };
       const footer = cancelBtn.parentElement;
       if (footer) {
@@ -5559,12 +5462,17 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Please allocate at least one Team Leader.', 'error');
         return;
       }
+      const checkedServices = Array.from(document.querySelectorAll('input[name="sch-modal-service-cb"]:checked')).map(cb => cb.value);
+      if (checkedServices.length === 0) {
+        showToast('Please select at least one Service Category.', 'error');
+        return;
+      }
       
       const fields = {
         clientId: document.getElementById('sch-modal-client').value,
         region: document.getElementById('sch-modal-region').value,
         city: document.getElementById('sch-modal-city').value,
-        service: document.getElementById('sch-modal-service').value,
+        service: checkedServices.join(','),
         date: document.getElementById('sch-modal-date').value,
         time: document.getElementById('sch-modal-time').value,
         teamLeaderId: checkedTls.join(','),
@@ -7291,11 +7199,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     outputContainer.style.display = 'block';
     
+    // Reset report toolbar buttons display
+    if (els.btnExportReportCsv) els.btnExportReportCsv.style.display = 'none';
+    if (els.btnPrintReport) els.btnPrintReport.style.display = 'none';
+    if (els.btnEmailReport) els.btnEmailReport.style.display = 'none';
+    if (els.btnCopyReportLink) els.btnCopyReportLink.style.display = 'none';
+    
+    if (reportType === 'client-dashboard') {
+      generateClientHistoryDashboard(clientId);
+      return;
+    }
+    
     if (els.btnPrintReport) els.btnPrintReport.style.display = 'inline-flex';
     
     if (reportType === 'visit') {
-      if (els.btnExportReportCsv) els.btnExportReportCsv.style.display = 'none';
-      
       const logId = document.getElementById('report-visit-select').value;
       if (!logId) {
         outputContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem;">No visit selected or available.</p>';
@@ -7386,6 +7303,37 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
+      
+      // Configure single visit shareable buttons in reports toolbar
+      const reportUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client-report.html?logId=${log.id}`;
+      
+      if (els.btnPrintReport) els.btnPrintReport.style.display = 'inline-flex';
+      
+      if (els.btnCopyReportLink) {
+        els.btnCopyReportLink.style.display = 'inline-flex';
+        els.btnCopyReportLink.onclick = () => {
+          navigator.clipboard.writeText(reportUrl).then(() => showToast('Report link copied to clipboard', 'success'));
+        };
+      }
+      
+      if (els.btnEmailReport) {
+        els.btnEmailReport.style.display = 'inline-flex';
+        els.btnEmailReport.onclick = () => {
+          const clientEmail = client ? client.email : '';
+          const subject = encodeURIComponent(`Service Visit Report — ${client.name} — ${log.dateConducted}`);
+          const body = encodeURIComponent(
+            `Dear ${client.contact || client.name},\n\n` +
+            `Please find the interactive visit report for our service conducted on ${log.dateConducted} below:\n\n` +
+            `🔗 View Full Visit Report:\n${reportUrl}\n\n` +
+            `Thank you for choosing Buckler Pest Control.\n\n` +
+            `Best regards,\n` +
+            `Buckler Operations Team`
+          );
+          window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
+          if (!clientEmail) showToast('No email address on file for this client.', 'warning');
+        };
+      }
+      
       return;
     }
 
@@ -7838,11 +7786,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Show Email Report button
-    const emailReportBtn = document.getElementById('btn-email-report');
-    if (emailReportBtn) {
-      emailReportBtn.style.display = 'inline-flex';
-      emailReportBtn.onclick = () => {
+    // Show Email Report button and hide Copy Link button
+    if (els.btnCopyReportLink) els.btnCopyReportLink.style.display = 'none';
+    if (els.btnEmailReport) {
+      els.btnEmailReport.style.display = 'inline-flex';
+      els.btnEmailReport.onclick = () => {
         const fc = window.BucklerDB.get('clients').find(c => c.id === clientId);
         if (!fc || !fc.email) { showToast('No email address on file for this client.', 'warning'); return; }
         const sd = els.reportStartDate ? els.reportStartDate.value : '';
@@ -7851,6 +7799,464 @@ document.addEventListener('DOMContentLoaded', () => {
         const body = encodeURIComponent(`Dear ${fc.contact || fc.name},\n\nPlease find your Sanitation & IPM report for ${sd} to ${ed}.\n\nBest regards,\nBuckler Operations Team`);
         window.open(`mailto:${fc.email}?subject=${subject}&body=${body}`, '_blank');
       };
+    }
+  }
+
+  function generateClientHistoryDashboard(clientId) {
+    const client = window.BucklerDB.get('clients').find(c => c.id === clientId);
+    if (!client) return;
+
+    const startDate = document.getElementById('report-start-date').value;
+    const endDate = document.getElementById('report-end-date').value;
+    const outputContainer = document.getElementById('reports-output-container');
+    if (!outputContainer) return;
+
+    // Load data
+    const allLogs = window.BucklerDB.getLogs('All') || [];
+    const schedules = window.BucklerDB.get('schedules') || [];
+    const users = window.BucklerDB.get('users') || [];
+    const items = window.BucklerDB.get('items') || [];
+    const complaints = window.BucklerDB.get('complaints') || [];
+
+    // Filter logs for this client and date range
+    const clientLogs = allLogs.filter(l => {
+      if (l.clientId !== clientId) return false;
+      const ld = l.dateConducted;
+      return ld && (startDate ? ld >= startDate : true) && (endDate ? ld <= endDate : true);
+    });
+    // Sort chronologically (oldest first for trends)
+    clientLogs.sort((a, b) => new Date(a.dateConducted) - new Date(b.dateConducted));
+
+    // Calculate metrics
+    const totalVisits = clientLogs.length;
+    
+    let totalDurationHours = 0;
+    clientLogs.forEach(l => {
+      const match = (l.timeSpent || '').match(/([\d\.]+)\s*hour/);
+      if (match) {
+        totalDurationHours += parseFloat(match[1]);
+      } else {
+        if (l.timeIn && l.timeOut) {
+          const [h1, m1] = l.timeIn.split(':').map(Number);
+          const [h2, m2] = l.timeOut.split(':').map(Number);
+          const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+          if (diff > 0) totalDurationHours += diff / 60;
+        }
+      }
+    });
+    const avgDuration = totalVisits > 0 ? (totalDurationHours / totalVisits).toFixed(1) : '0';
+
+    // Materials Consumed Count
+    let totalMaterialsUsed = 0;
+    const materialConsMap = {};
+    clientLogs.forEach(l => {
+      if (l.itemsConsumed) {
+        l.itemsConsumed.forEach(c => {
+          totalMaterialsUsed += c.qty;
+          materialConsMap[c.itemId] = (materialConsMap[c.itemId] || 0) + c.qty;
+        });
+      }
+    });
+
+    // Complaints count
+    const clientComplaints = complaints.filter(c => c.clientId === clientId);
+    const activeComplaintsCount = clientComplaints.filter(c => c.status !== 'Resolved').length;
+
+    // Device Audits count
+    let totalBaitStations = client.baitStationsCount || 0;
+    let totalUVMachines = client.uvMachinesCount || 0;
+    let totalBaitReplaced = 0;
+    let totalUVReplaced = 0;
+    let totalBaitAuditsCount = 0;
+    let totalUVAuditsCount = 0;
+    let totalUVCatchSum = 0;
+    let baitActivityCount = 0;
+    let baitTotalChecked = 0;
+
+    clientLogs.forEach(l => {
+      if (l.baitStickersReplaced) totalBaitReplaced += l.baitStickersReplaced;
+      if (l.uvStickersReplaced) totalUVReplaced += l.uvStickersReplaced;
+      if (l.baitStationsAudit) {
+        l.baitStationsAudit.forEach(b => {
+          baitTotalChecked++;
+          if (b.activity !== 'No Activity') baitActivityCount++;
+        });
+        totalBaitAuditsCount++;
+      }
+      if (l.uvMachinesAudit) {
+        l.uvMachinesAudit.forEach(u => {
+          totalUVCatchSum += u.catchRate || 0;
+          totalUVAuditsCount++;
+        });
+      }
+    });
+
+    const baitActivityRate = baitTotalChecked > 0 ? Math.round((baitActivityCount / baitTotalChecked) * 100) : 0;
+    const avgUVCatchRate = totalUVAuditsCount > 0 ? Math.round(totalUVCatchSum / totalUVAuditsCount) : 0;
+
+    // Generate contract types service listing
+    const cTypes = (client.contractTypes && client.contractTypes.length) ? client.contractTypes.map(ct => {
+      const v = client.serviceVisits && client.serviceVisits[ct] !== undefined ? client.serviceVisits[ct] : '';
+      return `<span style="background:var(--primary-red-light); color:var(--primary-red); padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; margin-right:4px;">${ct}${v !== '' ? ` (${v} visits/mo)` : ''}</span>`;
+    }).join(' ') : '<span style="color:var(--text-muted); font-size:0.8rem;">None</span>';
+
+    // Standalone Share Link
+    const portalUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client-dashboard.html?clientId=${clientId}&dateFrom=${startDate}&dateTo=${endDate}`;
+
+    // Timeline Rows (Reverse sorted for table)
+    const timelineLogs = [...clientLogs].reverse();
+    const timelineRowsHTML = timelineLogs.map((log, idx) => {
+      const sch = schedules.find(s => s.id === log.scheduleId);
+      const tlNames = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => {
+        const u = users.find(x => x.id === tid.trim());
+        return u ? u.name : tid;
+      }).join(', ') : 'N/A';
+      const serviceName = sch ? (sch.service.charAt(0).toUpperCase() + sch.service.slice(1)) : 'N/A';
+      const mats = log.itemsConsumed && log.itemsConsumed.length ? log.itemsConsumed.map(c => {
+        const it = items.find(i => i.id === c.itemId);
+        return `${it ? it.name : c.itemId} (${c.qty})`;
+      }).join(', ') : 'None';
+      
+      const singleReportUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client-report.html?logId=${log.id}`;
+
+      return `
+        <tr>
+          <td><strong>${log.dateConducted}</strong></td>
+          <td><span style="font-weight:600; color:var(--text-dark);">${serviceName}</span></td>
+          <td>${tlNames}</td>
+          <td>${log.timeSpent}</td>
+          <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${log.comments || ''}"><em>${log.comments || 'N/A'}</em></td>
+          <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${mats}">${mats}</td>
+          <td style="text-align:right;">
+            <a href="${singleReportUrl}" target="_blank" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+              📄 View Report
+            </a>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Complaints Rows
+    const complaintsRowsHTML = clientComplaints.length ? clientComplaints.map(c => {
+      const assigned = users.find(u => u.id === c.assignedStaffId);
+      const statusClass = c.status === 'Resolved' ? 'sch-status-conducted' : 'sch-status-cancelled';
+      return `
+        <tr>
+          <td><code>${c.id}</code></td>
+          <td><strong>${c.dateLogged || c.timestamp?.split('T')[0] || '-'}</strong></td>
+          <td><span class="badge-region" style="background:${c.severity === 'High' ? '#FEE2E2' : c.severity === 'Medium' ? '#FEF3C7' : '#EFF6FF'}; color:${c.severity === 'High' ? '#991B1B' : c.severity === 'Medium' ? '#92400E' : '#1E40AF'}; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:700;">${c.severity}</span></td>
+          <td>${c.details}</td>
+          <td>${assigned ? assigned.name : 'Unassigned'}</td>
+          <td><span class="schedule-status-badge ${statusClass}">${c.status}</span></td>
+          <td>${c.resolutionDetails || '-'}</td>
+        </tr>
+      `;
+    }).join('') : `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:1rem;">No complaints registered for this client.</td></tr>`;
+
+    // Render the layout
+    outputContainer.innerHTML = `
+      <div class="sanitation-report-card print-area" style="background:white; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.05); border:1px solid var(--border-color); overflow:hidden;">
+        <div style="background: linear-gradient(135deg, #C62828 0%, #8B0000 100%); color: white; padding: 2rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="font-size: 1.5rem; font-weight: 800; margin: 0; display:flex; align-items:center; gap:0.5rem; color: white;">
+              🛡️ Customer Sanitation &amp; IPM History Portal
+            </h2>
+            <p style="font-size: 0.85rem; opacity: 0.85; margin-top: 5px;">Comprehensive Operational Quality Control &amp; Activity Trends</p>
+          </div>
+          <div class="no-print" style="display: flex; gap: 0.4rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-dash-open-portal" style="border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:white; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700;">🌐 Open Portal</button>
+            <button class="btn btn-secondary btn-sm" id="btn-dash-copy-link" style="border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:white; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700;">🔗 Copy Link</button>
+            <button class="btn btn-secondary btn-sm" id="btn-dash-email-client" style="border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:white; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700;">📧 Email Client</button>
+            <button class="btn btn-primary btn-sm" id="btn-dash-print" style="background:#FFFFFF; color:#C62828; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700; border:none;">🖨️ Print Dashboard</button>
+          </div>
+        </div>
+
+        <div style="background: #FAFAFA; border-bottom: 1px solid var(--border-color); padding: 1.25rem 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Client Profile</span>
+            <strong style="font-size:0.95rem; color:var(--text-dark);">${client.name} (<code>${client.clientCode || client.id}</code>)</strong>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Sector &amp; Address</span>
+            <span style="font-size:0.85rem; color:var(--text-medium); font-weight:500;">${client.sector} | ${client.address}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Region / City</span>
+            <span style="font-size:0.85rem; color:var(--text-medium); font-weight:500;">${client.region} / ${client.city}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Active Services &amp; Contracts</span>
+            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;">${cTypes}</div>
+          </div>
+        </div>
+
+        <div style="padding: 2rem;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+            <div style="background:#FAFBFD; border:1px solid var(--border-color); border-radius:10px; padding:1.25rem; display:flex; align-items:center; gap:1rem;">
+              <div style="background:#EFF6FF; color:#2563EB; width:45px; height:45px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.4rem;">📅</div>
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Visits Conducted</span>
+                <h3 style="font-size:1.5rem; font-weight:800; color:var(--text-dark); margin:0;">${totalVisits}</h3>
+              </div>
+            </div>
+            <div style="background:#FAFBFD; border:1px solid var(--border-color); border-radius:10px; padding:1.25rem; display:flex; align-items:center; gap:1rem;">
+              <div style="background:#F0FDF4; color:#16A34A; width:45px; height:45px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.4rem;">⏱️</div>
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Avg. Duration</span>
+                <h3 style="font-size:1.5rem; font-weight:800; color:var(--text-dark); margin:0;">${avgDuration} <span style="font-size:0.8rem; font-weight:400; color:var(--text-medium);">hrs</span></h3>
+              </div>
+            </div>
+            <div style="background:#FAFBFD; border:1px solid var(--border-color); border-radius:10px; padding:1.25rem; display:flex; align-items:center; gap:1rem;">
+              <div style="background:#FEF2F2; color:#DC2626; width:45px; height:45px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.4rem;">🧪</div>
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Materials Consumed</span>
+                <h3 style="font-size:1.5rem; font-weight:800; color:var(--text-dark); margin:0;">${totalMaterialsUsed} <span style="font-size:0.8rem; font-weight:400; color:var(--text-medium);">units</span></h3>
+              </div>
+            </div>
+            <div style="background:#FAFBFD; border:1px solid var(--border-color); border-radius:10px; padding:1.25rem; display:flex; align-items:center; gap:1rem;">
+              <div style="background:#FFFBEB; color:#D97706; width:45px; height:45px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.4rem;">⚠️</div>
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Open Complaints</span>
+                <h3 style="font-size:1.5rem; font-weight:800; color:${activeComplaintsCount > 0 ? 'var(--primary-red)' : 'var(--text-dark)'}; margin:0;">${activeComplaintsCount}</h3>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+            <div style="border: 1px solid var(--border-color); border-radius:10px; padding:1.25rem; background:#FAFBFD;">
+              <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); border-bottom:1px dashed var(--border-color); padding-bottom:0.5rem; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+                <span>🪤 Bait Station Auditing Status</span>
+                <span style="font-size:0.75rem; background:#EFF6FF; color:#1E40AF; padding:2px 8px; border-radius:10px; font-weight:700;">Total Stations: ${totalBaitStations}</span>
+              </h4>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                <div style="display:flex; flex-direction:column; gap:4px; text-align:center; background:white; padding:0.75rem; border-radius:6px; border:1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Average Activity Rate</span>
+                  <strong style="font-size:1.35rem; color:${baitActivityRate > 20 ? 'var(--primary-red)' : '#16A34A'};">${baitActivityRate}%</strong>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px; text-align:center; background:white; padding:0.75rem; border-radius:6px; border:1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Poisons &amp; Stickers Replaced</span>
+                  <strong style="font-size:1.35rem; color:var(--primary-red);">${totalBaitReplaced} blocks</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style="border: 1px solid var(--border-color); border-radius:10px; padding:1.25rem; background:#FAFBFD;">
+              <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); border-bottom:1px dashed var(--border-color); padding-bottom:0.5rem; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+                <span>⚡ UV Fly Machine Auditing Status</span>
+                <span style="font-size:0.75rem; background:#EFF6FF; color:#1E40AF; padding:2px 8px; border-radius:10px; font-weight:700;">Total Traps: ${totalUVMachines}</span>
+              </h4>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                <div style="display:flex; flex-direction:column; gap:4px; text-align:center; background:white; padding:0.75rem; border-radius:6px; border:1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Avg Trap Catch Rate</span>
+                  <strong style="font-size:1.35rem; color:${avgUVCatchRate > 30 ? 'var(--primary-red)' : '#2563EB'};">${avgUVCatchRate}%</strong>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px; text-align:center; background:white; padding:0.75rem; border-radius:6px; border:1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Glue Stickers Replaced</span>
+                  <strong style="font-size:1.35rem; color:#2563EB;">${totalUVReplaced} units</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom: 2rem;">
+            <div style="background:#FAFBFD; border: 1px solid var(--border-color); border-radius: 10px; padding:1.25rem; display:flex; flex-direction:column;">
+              <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); text-align:center; margin-bottom:0.75rem;">Pest Infestation &amp; Activity Trend (% active bait stations)</h4>
+              <div style="height:220px; position:relative; flex:1;">
+                <canvas id="dash-chart-pest-trend"></canvas>
+              </div>
+            </div>
+            <div style="background:#FAFBFD; border: 1px solid var(--border-color); border-radius: 10px; padding:1.25rem; display:flex; flex-direction:column;">
+              <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); text-align:center; margin-bottom:0.75rem;">UV Fly Catch Rates Trend (avg catch rate %)</h4>
+              <div style="height:220px; position:relative; flex:1;">
+                <canvas id="dash-chart-uv-trend"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#FAFBFD; border: 1px solid var(--border-color); border-radius: 10px; padding:1.25rem; margin-bottom:2.5rem; display:flex; flex-direction:column;">
+            <h4 style="font-size:0.85rem; font-weight:700; color:var(--text-dark); text-align:center; margin-bottom:0.75rem;">Chemical &amp; Bait Product Consumption Summary (Total volume used)</h4>
+            <div style="height:200px; position:relative;">
+              <canvas id="dash-chart-mats-bar"></canvas>
+            </div>
+          </div>
+
+          <div style="margin-top:2.5rem;">
+            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-dark); margin-bottom:0.75rem; border-bottom:2px solid var(--primary-red); padding-bottom:0.35rem;">
+              📅 Operational Visits Timeline &amp; Highlights
+            </h3>
+            <div class="table-wrapper" style="overflow-x:auto;">
+              <table class="data-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>Date Conducted</th>
+                    <th>Service Name</th>
+                    <th>Team Leader in Charge</th>
+                    <th>Duration</th>
+                    <th>Technician Notes</th>
+                    <th>Materials Used</th>
+                    <th style="text-align:right;">Single Visit Log</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${timelineRowsHTML || '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No visits conducted during the selected period.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="margin-top:2.5rem;">
+            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-dark); margin-bottom:0.75rem; border-bottom:2px solid var(--primary-red); padding-bottom:0.35rem;">
+              📋 Customer Complaints &amp; Service Corrections History
+            </h3>
+            <div class="table-wrapper" style="overflow-x:auto;">
+              <table class="data-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Date Logged</th>
+                    <th>Severity</th>
+                    <th>Complaint Details</th>
+                    <th>Assigned Representative</th>
+                    <th>Status</th>
+                    <th>Resolution Actions Taken</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${complaintsRowsHTML}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Hook CRM action buttons
+    document.getElementById('btn-dash-open-portal').onclick = () => window.open(portalUrl, '_blank');
+    document.getElementById('btn-dash-copy-link').onclick = () => {
+      navigator.clipboard.writeText(portalUrl).then(() => showToast('Shareable Portal link copied to clipboard!', 'success'));
+    };
+    document.getElementById('btn-dash-email-client').onclick = () => {
+      if (!client.email) { showToast('No email address registered for this client. Please update the client registry.', 'warning'); return; }
+      const subject = encodeURIComponent(`Sanitation & IPM History Portal — ${client.name}`);
+      const body = encodeURIComponent(`Dear ${client.contact || client.name},\n\nPlease find your real-time Sanitation & IPM History Dashboard portal link below:\n\n${portalUrl}\n\nBest regards,\nBuckler Operations Team`);
+      window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_blank');
+    };
+    document.getElementById('btn-dash-print').onclick = () => window.print();
+
+    // Render Charts
+    // 1. Pest Trend Line Chart (dates of audits)
+    const pestLabels = [];
+    const pestData = [];
+    clientLogs.forEach(l => {
+      if (l.baitStationsAudit && l.baitStationsAudit.length > 0) {
+        pestLabels.push(l.dateConducted);
+        const total = l.baitStationsAudit.length;
+        const active = l.baitStationsAudit.filter(b => b.activity !== 'No Activity').length;
+        pestData.push(Math.round((active / total) * 100));
+      }
+    });
+
+    const ctxPest = document.getElementById('dash-chart-pest-trend');
+    if (ctxPest) {
+      new Chart(ctxPest.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: pestLabels.length ? pestLabels : ['No Audits'],
+          datasets: [{
+            label: 'Bait Station Activity %',
+            data: pestData.length ? pestData : [0],
+            borderColor: '#C62828',
+            backgroundColor: 'rgba(198,40,40,0.05)',
+            fill: true,
+            tension: 0.25,
+            borderWidth: 2.5,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 100, ticks: { font: { size: 9 } } },
+            x: { ticks: { font: { size: 9 } } }
+          }
+        }
+      });
+    }
+
+    // 2. UV Catch Rates Trend
+    const uvLabels = [];
+    const uvData = [];
+    clientLogs.forEach(l => {
+      if (l.uvMachinesAudit && l.uvMachinesAudit.length > 0) {
+        uvLabels.push(l.dateConducted);
+        const sum = l.uvMachinesAudit.reduce((s, u) => s + (u.catchRate || 0), 0);
+        uvData.push(Math.round(sum / l.uvMachinesAudit.length));
+      }
+    });
+
+    const ctxUV = document.getElementById('dash-chart-uv-trend');
+    if (ctxUV) {
+      new Chart(ctxUV.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: uvLabels.length ? uvLabels : ['No Audits'],
+          datasets: [{
+            label: 'Avg Trap Catch Rate %',
+            data: uvData.length ? uvData : [0],
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37,99,235,0.05)',
+            fill: true,
+            tension: 0.25,
+            borderWidth: 2.5,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 100, ticks: { font: { size: 9 } } },
+            x: { ticks: { font: { size: 9 } } }
+          }
+        }
+      });
+    }
+
+    // 3. Materials Consumed Bar Chart
+    const matLabels = [];
+    const matValues = [];
+    Object.entries(materialConsMap).forEach(([itemId, qty]) => {
+      const itm = items.find(i => i.id === itemId);
+      matLabels.push(itm ? itm.itemCode : itemId);
+      matValues.push(qty);
+    });
+
+    const ctxMats = document.getElementById('dash-chart-mats-bar');
+    if (ctxMats) {
+      new Chart(ctxMats.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: matLabels.length ? matLabels : ['None'],
+          datasets: [{
+            data: matValues.length ? matValues : [0],
+            backgroundColor: '#DC2626',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+            x: { ticks: { font: { size: 9 } } }
+          }
+        }
+      });
     }
   }
 

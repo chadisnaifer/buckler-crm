@@ -27,16 +27,21 @@
       <img src="assets/logo-en.png" alt="Buckler Pest Control Logo" class="brand-logo">
       <div class="brand-divider"></div>
       <div class="brand-title">
-        <span>Buckler - Iraq</span>
-        <span class="brand-subtitle">Operations CRM Portal</span>
+        <span data-i18n="brand_name">Buckler - Iraq</span>
+        <span class="brand-subtitle" data-i18n="brand_subtitle">Operations CRM Portal</span>
       </div>
     </div>
     
     <!-- Right side: Notifications & Profile Switcher -->
     <div style="display: flex; align-items: center; gap: 1rem;">
+      <!-- Language Switcher -->
+      <button class="btn btn-secondary btn-sm" id="btn-toggle-lang" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;">
+        🌐 <span id="btn-toggle-lang-text">العربية</span>
+      </button>
+
       <!-- Share State Button -->
       <button class="btn btn-secondary btn-sm" id="btn-share-crm" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;">
-        🔗 Share CRM
+        🔗 <span data-i18n="share_crm">Share CRM</span>
       </button>
 
       <!-- Notification Alerts Bell -->
@@ -49,8 +54,8 @@
         <!-- Notifications dropdown list -->
         <div id="noti-dropdown" style="display: none; position: absolute; right: 0; top: 44px; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); width: 320px; max-height: 400px; overflow-y: auto; z-index: 1000; padding: 0.5rem 0;">
           <div style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color); font-weight: 700; font-size: 0.85rem; color: var(--text-dark); display: flex; justify-content: space-between; align-items: center;">
-            <span>Notifications Center</span>
-            <a href="#" id="noti-clear-all" style="font-size: 0.75rem; color: var(--primary-red); text-decoration: none; font-weight: 600;">Mark all read</a>
+            <span data-i18n="noti_center">Notifications Center</span>
+            <a href="#" id="noti-clear-all" style="font-size: 0.75rem; color: var(--primary-red); text-decoration: none; font-weight: 600;" data-i18n="mark_all_read">Mark all read</a>
           </div>
           <div id="noti-dropdown-list" style="display: flex; flex-direction: column; max-height: 320px; overflow-y: auto;">
             <!-- Injected via app.js -->
@@ -60,7 +65,7 @@
 
       <!-- Quick Role Switcher for demonstration testing -->
       <div class="user-switcher">
-        <label for="role-selector">Active Session:</label>
+        <label for="role-selector" data-i18n="active_session">Active Session:</label>
         <select id="role-selector">
           <!-- Injected via database.js & app.js -->
         </select>
@@ -79,51 +84,51 @@
       <div class="nav-links">
         <a class="nav-link active" data-tab="dashboard">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-          Operations Dashboard
+          <span data-i18n="nav_dashboard">Operations Dashboard</span>
         </a>
         <a class="nav-link" data-tab="sales">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          Sales CRM
+          <span data-i18n="nav_sales">Sales CRM</span>
         </a>
         <a class="nav-link" data-tab="schedules">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-          Schedule
+          <span data-i18n="nav_schedules">Schedule</span>
         </a>
         <a class="nav-link" data-tab="clients">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-          Clients List
+          <span data-i18n="nav_clients">Clients List</span>
         </a>
         <a class="nav-link" data-tab="items">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-          Products List
+          <span data-i18n="nav_items">Products List</span>
         </a>
         <a class="nav-link" data-tab="suppliers">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-          Suppliers
+          <span data-i18n="nav_suppliers">Suppliers</span>
         </a>
         <a class="nav-link" data-tab="complaints">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-          Complaints Tracker
+          <span data-i18n="nav_complaints">Complaints Tracker</span>
         </a>
         <a class="nav-link" data-tab="messages">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-          Messages & Chat
+          <span data-i18n="nav_messages">Messages & Chat</span>
         </a>
         <a class="nav-link" data-tab="uv-sales">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-          UV Machine Sales
+          <span data-i18n="nav_uv_sales">UV Machine Sales</span>
         </a>
         <a class="nav-link" data-tab="reports">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 2v-6m-9-9h12a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path></svg>
-          Sanitation IPM Reports
+          <span data-i18n="nav_reports">Sanitation IPM Reports</span>
         </a>
         <a class="nav-link" data-tab="forms">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-          Forms & Templates
+          <span data-i18n="nav_forms">Forms & Templates</span>
         </a>
         <a class="nav-link" data-tab="users">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-          User & CRM Admin
+          <span data-i18n="nav_users">User & CRM Admin</span>
         </a>
       </div>
       
@@ -1336,6 +1341,7 @@
               <option value="regular">1. Regular IPM Report</option>
               <option value="detailed">2. Detailed IPM Report</option>
               <option value="visit">3. Visit Audit Report</option>
+              <option value="client-dashboard">4. Client History Dashboard</option>
             </select>
           </div>
 
@@ -1376,6 +1382,10 @@
           
           <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; flex-wrap:wrap;">
             <button class="btn btn-primary" id="btn-generate-report">Generate Report</button>
+            <button class="btn btn-secondary" id="btn-copy-report-link" style="display: none; align-items: center; gap: 0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+              Copy Link
+            </button>
             <button class="btn btn-secondary" id="btn-email-report" style="display: none; align-items: center; gap: 0.5rem;">
               <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
               Email Report

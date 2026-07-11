@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buckler Customer Sanitation & IPM Portal</title>
+  <link rel="icon" href="assets/logo-en.png" type="image/png" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-red: #C62828;
+      --primary-red-hover: #B71C1C;
+      --primary-red-light: #FFEBEE;
+      --text-dark: #1E293B;
+      --text-medium: #475569;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --bg-light: #F8FAFC;
+      --bg-white: #FFFFFF;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+      --transition: all 0.2s ease;
+      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background: #F1F5F9;
+      color: var(--text-dark);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    [dir="rtl"] {
+      --font-family: 'Cairo', 'Inter', -apple-system, sans-serif;
+    }
+
+    [dir="rtl"] body {
+      font-family: var(--font-family);
+    }
+
+    .portal-wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* ACTION BAR */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-medium);
+      text-transform: uppercase;
+    }
+
+    .filter-input {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+      color: var(--text-dark);
+    }
+
+    .filter-input:focus {
+      border-color: var(--primary-red);
+    }
+
+    .preset-btn {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--border-color);
+      background: var(--bg-white);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-medium);
+      transition: var(--transition);
+    }
+
+    .preset-btn:hover, .preset-btn.active {
+      background: var(--primary-red-light);
+      color: var(--primary-red);
+      border-color: var(--primary-red);
+    }
+
+    .btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--primary-red);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-red-hover);
+    }
+
+    .btn-secondary {
+      background: white;
+      border: 1px solid var(--border-color);
+      color: var(--text-dark);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-light);
+      border-color: var(--text-muted);
+    }
+
+    /* PORTAL CARD */
+    .portal-card {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .portal-header {
+      background: linear-gradient(135deg, #C62828 0%, #8B0000 100%);
+      color: white;
+      padding: 2.25rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .portal-header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .portal-header p {
+      font-size: 0.88rem;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    .client-badge {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 0.4rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    .portal-meta {
+      background: #FAFAFA;
+      border-bottom: 1px solid var(--border-color);
+      padding: 1.5rem 2.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meta-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .meta-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .service-pill {
+      background: var(--primary-red-light);
+      color: var(--primary-red);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 4px;
+      margin-top: 2px;
+      display: inline-block;
+    }
+
+    /* BODY PANELS */
+    .portal-body {
+      padding: 2.5rem;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.25rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-light);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .kpi-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .kpi-card-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .kpi-card-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-top: 2px;
+    }
+
+    .devices-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2.25rem;
+    }
+
+    .device-card {
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.25rem;
+      background: var(--bg-light);
+    }
+
+    .device-header {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      border-bottom: 1px dashed var(--border-color);
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge-info {
+      font-size: 0.75rem;
+      background: #EFF6FF;
+      color: #1E40AF;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    .device-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .device-stat-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: center;
+      background: var(--bg-white);
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .chart-trend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2.25rem;
+    }
+
+    .chart-card {
+      background: var(--bg-light);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.25rem;
+      height: 280px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      text-align: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .chart-container {
+      position: relative;
+      flex: 1;
+      height: 100%;
+    }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-bottom: 0.75rem;
+      border-bottom: 2px solid var(--primary-red);
+      padding-bottom: 0.35rem;
+      margin-top: 2.5rem;
+    }
+
+    /* TABLES */
+    .table-wrapper {
+      background: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    [dir="rtl"] .data-table {
+      text-align: right;
+    }
+
+    .data-table th {
+      background: var(--bg-light);
+      padding: 0.75rem 1rem;
+      font-weight: 700;
+      color: var(--text-medium);
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .data-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-medium);
+      vertical-align: middle;
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .status-conducted { background: #ECFDF5; color: #047857; }
+    .status-scheduled { background: #EFF6FF; color: #1D4ED8; }
+    .status-cancelled { background: #FEF2F2; color: #B91C1C; }
+
+    /* LOADING & ERROR SCREEN */
+    .loading-screen {
+      min-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      color: var(--text-muted);
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid var(--border-color);
+      border-top-color: var(--primary-red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media print {
+      body { background: white; }
+      .action-bar, .no-print { display: none !important; }
+      .portal-wrapper { padding: 0; max-width: 100%; }
+      .portal-card { box-shadow: none; border: none; }
+    }
+
+    @media (max-width: 768px) {
+      .devices-summary-grid, .chart-trend-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-wrapper">
+    <!-- Action / Filter Bar -->
+    <div class="action-bar no-print" id="filter-bar" style="display:none;">
+      <div class="filter-group">
+        <span class="filter-label" id="lbl-filter-period">Filter Period:</span>
+        <input type="date" id="date-from" class="filter-input">
+        <span style="font-size:0.8rem; color:var(--text-muted);" id="lbl-to">to</span>
+        <input type="date" id="date-to" class="filter-input">
+        <button class="btn btn-secondary" id="btn-apply-filters" style="padding:0.4rem 1rem;">Apply</button>
+      </div>
+      <div class="filter-group">
+        <button class="preset-btn" data-days="30" id="btn-30-days">Last 30 Days</button>
+        <button class="preset-btn" data-days="180" id="btn-6-months">Last 6 Months</button>
+        <button class="preset-btn active" data-days="all" id="btn-all-time">All Time</button>
+      </div>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <button class="btn btn-secondary" id="btn-portal-toggle-lang" style="font-weight:700;">🌐 العربية</button>
+        <button class="btn btn-primary" id="btn-print-dashboard" onclick="window.print()">🖨️ Print Dashboard</button>
+      </div>
+    </div>
+
+    <!-- Output Content -->
+    <div id="portal-output">
+      <div class="loading-screen">
+        <div class="spinner"></div>
+        <p style="font-weight:600; letter-spacing:0.02em;" id="lbl-init">SECURELY INITIALIZING CUSTOMER PORTAL...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="database.js"></script>
+  <script>
+    let activeCharts = [];
+    let state = {
+      language: localStorage.getItem('buckler_lang') || 'en'
+    };
+
+    const translations = {
+      en: {
+        portal_title: "🛡️ Corporate Sanitation & IPM Client History",
+        portal_subtitle: "Quality Assurance Audit Logs & Operational Analytics Portal",
+        client_profile: "Client Profile",
+        sector_address: "Sector & Address",
+        region_city: "Region / City",
+        active_contracts: "Active Contracts",
+        visits_conducted: "Visits Conducted",
+        avg_duration: "Avg. Visit Duration",
+        materials_used: "Materials Used",
+        active_complaints: "Active Complaints",
+        bait_station_summary: "🪤 Bait Station Auditing Summary",
+        stations: "Stations",
+        activity_rate: "Activity Rate",
+        bait_replaced: "Bait Blocks Replaced",
+        uv_summary: "⚡ UV Fly Machine Auditing Summary",
+        traps: "Traps",
+        avg_catch: "Avg Catch Rate",
+        glue_replaced: "Glue Boards Replaced",
+        pest_trend: "Pest Activity Trend (% active bait stations)",
+        uv_trend: "UV Fly Catch Rates Trend (avg catch rate %)",
+        mats_chart: "Product & Materials Volume Consumed (item count)",
+        visit_history: "📅 Detailed Service Visit History",
+        complaints_history: "📋 Customer Complaints & Service Corrections",
+        date_conducted: "Date Conducted",
+        service_name: "Service Name",
+        team_leader: "Team Leader in Charge",
+        duration: "Duration",
+        tech_notes: "Technician Notes",
+        single_report: "Single Visit Log",
+        complaint_id: "ID",
+        date_logged: "Date Logged",
+        severity: "Severity",
+        complaint_details: "Complaint Details",
+        representative: "Representative",
+        status: "Status",
+        actions_taken: "Resolution Actions Taken",
+        print_dashboard: "🖨️ Print Dashboard",
+        last_30_days: "Last 30 Days",
+        last_6_months: "Last 6 Months",
+        all_time: "All Time",
+        filter_period: "Filter Period:",
+        to: "to",
+        apply: "Apply",
+        view_report: "📄 View Report",
+        no_visits: "No visits conducted during the selected period.",
+        no_complaints: "No customer complaints registered.",
+        init_portal: "SECURELY INITIALIZING CUSTOMER PORTAL...",
+        invalid_title: "Invalid Portal Link",
+        invalid_msg: "The shared client portal identifier is missing. Please contact your Buckler account manager.",
+        missing_title: "Client Record Not Found",
+        missing_msg: "The requested corporate account history could not be retrieved from the cloud vault.",
+        close_win: "Close Window"
+      },
+      ar: {
+        portal_title: "🛡️ سجل صحة البيئة ومكافحة الآفات للعميل",
+        portal_subtitle: "بوابة مراقبة جودة العمليات وتحليل نشاط مكافحة الآفات",
+        client_profile: "ملف العميل",
+        sector_address: "القطاع والعنوان",
+        region_city: "المنطقة / المدينة",
+        active_contracts: "العقود النشطة",
+        visits_conducted: "الزيارات المنجزة",
+        avg_duration: "معدل مدة الزيارة",
+        materials_used: "المواد المستخدمة",
+        active_complaints: "الشكاوى النشطة",
+        bait_station_summary: "🪤 ملخص تدقيق محطات الطعوم",
+        stations: "المحطات",
+        activity_rate: "معدل النشاط",
+        bait_replaced: "طعوم مستبدلة",
+        uv_summary: "⚡ ملخص تدقيق مصائد UV اللاصقة",
+        traps: "المصائد",
+        avg_catch: "معدل صيد الذباب",
+        glue_replaced: "لاصق مستبدل",
+        pest_trend: "مخطط نشاط الآفات (نسبة المحطات النشطة)",
+        uv_trend: "معدل صيد مصائد UV (نسبة الصيد المتوسطة)",
+        mats_chart: "كميات ومواد المكافحة المستهلكة (بالوحدة)",
+        visit_history: "📅 سجل زيارات الخدمة التفصيلي",
+        complaints_history: "📋 سجل شكاوى العملاء والإجراءات التصحيحية",
+        date_conducted: "تاريخ الزيارة",
+        service_name: "نوع الخدمة",
+        team_leader: "مسؤول الفريق",
+        duration: "المدة",
+        tech_notes: "ملاحظات الفني",
+        single_report: "تقرير الزيارة",
+        complaint_id: "المعرف",
+        date_logged: "تاريخ الشكوى",
+        severity: "الأهمية",
+        complaint_details: "تفاصيل الشكوى",
+        representative: "المندوب المتابع",
+        status: "الحالة",
+        actions_taken: "الإجراءات المتخذة للحل",
+        print_dashboard: "🖨️ طباعة اللوحة",
+        last_30_days: "آخر 30 يوم",
+        last_6_months: "آخر 6 أشهر",
+        all_time: "كل الأوقات",
+        filter_period: "تصفية الفترة:",
+        to: "إلى",
+        apply: "تطبيق",
+        view_report: "📄 عرض التقرير",
+        no_visits: "لا توجد زيارات مسجلة خلال الفترة المحددة.",
+        no_complaints: "لا توجد شكاوى مسجلة لهذا العميل.",
+        init_portal: "جاري تهيئة ملف عميل باكلر بشكل آمن...",
+        invalid_title: "رابط البوابة غير صالح",
+        invalid_msg: "معرّف بوابة العميل المشتركة مفقود. يرجى الاتصال بمسؤول حساب باكلر الخاص بك.",
+        missing_title: "تعذر العثور على سجل العميل",
+        missing_msg: "تعذر استرداد تاريخ حساب الشركة المطلوب من خوادم باكلر الآمنة.",
+        close_win: "إغلاق النافذة"
+      }
+    };
+
+    function t(key) {
+      const lang = state.language || 'en';
+      if (translations[lang] && translations[lang][key]) {
+        return translations[lang][key];
+      }
+      return key;
+    }
+
+    function translateStaticControls() {
+      const lang = state.language || 'en';
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      
+      const langBtn = document.getElementById('btn-portal-toggle-lang');
+      if (langBtn) {
+        langBtn.textContent = lang === 'ar' ? '🌐 English' : '🌐 العربية';
+      }
+
+      document.getElementById('lbl-filter-period').textContent = t('filter_period');
+      document.getElementById('lbl-to').textContent = t('to');
+      document.getElementById('btn-apply-filters').textContent = t('apply');
+      document.getElementById('btn-30-days').textContent = t('last_30_days');
+      document.getElementById('btn-6-months').textContent = t('last_6_months');
+      document.getElementById('btn-all-time').textContent = t('all_time');
+      document.getElementById('btn-print-dashboard').textContent = t('print_dashboard');
+      document.getElementById('lbl-init').textContent = t('init_portal');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      translateStaticControls();
+
+      // Wait for database engine load
+      setTimeout(() => {
+        const params = new URLSearchParams(window.location.search);
+        const clientId = params.get('clientId');
+        const defaultFrom = params.get('dateFrom') || '';
+        const defaultTo = params.get('dateTo') || '';
+
+        if (!clientId) {
+          showError(t('invalid_title'), t('invalid_msg'));
+          return;
+        }
+
+        const clients = window.BucklerDB.get('clients');
+        const client = clients.find(c => c.id === clientId);
+
+        if (!client) {
+          showError(t('missing_title'), t('missing_msg'));
+          return;
+        }
+
+        // Setup filter defaults
+        document.getElementById('date-from').value = defaultFrom;
+        document.getElementById('date-to').value = defaultTo;
+        document.getElementById('filter-bar').style.display = 'flex';
+
+        // Render dashboard initially
+        renderPortalDashboard(clientId);
+
+        // Bind filter events
+        document.getElementById('btn-apply-filters').onclick = () => {
+          document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+          renderPortalDashboard(clientId);
+        };
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+          btn.onclick = () => {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const days = btn.getAttribute('data-days');
+            if (days === 'all') {
+              document.getElementById('date-from').value = '';
+              document.getElementById('date-to').value = '';
+            } else {
+              const toDate = new Date();
+              const fromDate = new Date();
+              fromDate.setDate(toDate.getDate() - parseInt(days));
+
+              document.getElementById('date-from').value = fromDate.toISOString().split('T')[0];
+              document.getElementById('date-to').value = toDate.toISOString().split('T')[0];
+            }
+            renderPortalDashboard(clientId);
+          };
+        });
+
+        // Language Switcher Bind
+        document.getElementById('btn-portal-toggle-lang').onclick = () => {
+          state.language = state.language === 'ar' ? 'en' : 'ar';
+          localStorage.setItem('buckler_lang', state.language);
+          translateStaticControls();
+          renderPortalDashboard(clientId);
+        };
+
+      }, 300);
+    });
+
+    function showError(title, message) {
+      const output = document.getElementById('portal-output');
+      output.innerHTML = `
+        <div class="portal-card" style="margin-top:2rem;">
+          <div style="background:#C62828; color:white; padding:1.5rem 2.5rem;">
+            <h2 style="font-weight:800; color: white;">⚠️ ${title}</h2>
+          </div>
+          <div style="padding:2.5rem; text-align:center;">
+            <p style="color:var(--text-medium); font-size:1rem; margin-bottom:1.5rem;">${message}</p>
+            <button class="btn btn-secondary" onclick="window.close()">${t('close_win')}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPortalDashboard(clientId) {
+      const clients = window.BucklerDB.get('clients');
+      const client = clients.find(c => c.id === clientId);
+      const output = document.getElementById('portal-output');
+
+      const startDate = document.getElementById('date-from').value;
+      const endDate = document.getElementById('date-to').value;
+
+      // Clean old chart instances
+      activeCharts.forEach(c => c.destroy());
+      activeCharts = [];
+
+      // Query databases
+      const allLogs = window.BucklerDB.getLogs('All') || [];
+      const schedules = window.BucklerDB.get('schedules') || [];
+      const users = window.BucklerDB.get('users') || [];
+      const items = window.BucklerDB.get('items') || [];
+      const complaints = window.BucklerDB.get('complaints') || [];
+
+      // Filter operational logs
+      const clientLogs = allLogs.filter(l => {
+        if (l.clientId !== clientId) return false;
+        const ld = l.dateConducted;
+        return ld && (startDate ? ld >= startDate : true) && (endDate ? ld <= endDate : true);
+      });
+      clientLogs.sort((a, b) => new Date(a.dateConducted) - new Date(b.dateConducted));
+
+      // Calculations
+      const totalVisits = clientLogs.length;
+
+      let totalDurationHours = 0;
+      clientLogs.forEach(l => {
+        const match = (l.timeSpent || '').match(/([\d\.]+)\s*hour/);
+        if (match) {
+          totalDurationHours += parseFloat(match[1]);
+        } else {
+          if (l.timeIn && l.timeOut) {
+            const [h1, m1] = l.timeIn.split(':').map(Number);
+            const [h2, m2] = l.timeOut.split(':').map(Number);
+            const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+            if (diff > 0) totalDurationHours += diff / 60;
+          }
+        }
+      });
+      const avgDuration = totalVisits > 0 ? (totalDurationHours / totalVisits).toFixed(1) : '0';
+
+      let totalMaterialsUsed = 0;
+      const materialConsMap = {};
+      clientLogs.forEach(l => {
+        if (l.itemsConsumed) {
+          l.itemsConsumed.forEach(c => {
+            totalMaterialsUsed += c.qty;
+            materialConsMap[c.itemId] = (materialConsMap[c.itemId] || 0) + c.qty;
+          });
+        }
+      });
+
+      const clientComplaints = complaints.filter(c => c.clientId === clientId);
+      const activeComplaintsCount = clientComplaints.filter(c => c.status !== 'Resolved').length;
+
+      // Device Audits count
+      let totalBaitStations = client.baitStationsCount || 0;
+      let totalUVMachines = client.uvMachinesCount || 0;
+      let totalBaitReplaced = 0;
+      let totalUVReplaced = 0;
+      let totalBaitAuditsCount = 0;
+      let totalUVAuditsCount = 0;
+      let totalUVCatchSum = 0;
+      let baitActivityCount = 0;
+      let baitTotalChecked = 0;
+
+      clientLogs.forEach(l => {
+        if (l.baitStickersReplaced) totalBaitReplaced += l.baitStickersReplaced;
+        if (l.uvStickersReplaced) totalUVReplaced += l.uvStickersReplaced;
+        if (l.baitStationsAudit) {
+          l.baitStationsAudit.forEach(b => {
+            baitTotalChecked++;
+            if (b.activity !== 'No Activity') baitActivityCount++;
+          });
+          totalBaitAuditsCount++;
+        }
+        if (l.uvMachinesAudit) {
+          l.uvMachinesAudit.forEach(u => {
+            totalUVCatchSum += u.catchRate || 0;
+            totalUVAuditsCount++;
+          });
+        }
+      });
+
+      const baitActivityRate = baitTotalChecked > 0 ? Math.round((baitActivityCount / baitTotalChecked) * 100) : 0;
+      const avgUVCatchRate = totalUVAuditsCount > 0 ? Math.round(totalUVCatchSum / totalUVAuditsCount) : 0;
+
+      // Contract Services List
+      const cTypesHTML = (client.contractTypes && client.contractTypes.length) ? client.contractTypes.map(ct => {
+        const v = client.serviceVisits && client.serviceVisits[ct] !== undefined ? client.serviceVisits[ct] : '';
+        return `<span class="service-pill">${ct}${v !== '' ? ` (${v} visits/mo)` : ''}</span>`;
+      }).join(' ') : `<span style="color:var(--text-muted); font-size:0.85rem;">${t('all_time')}</span>`;
+
+      // Timeline Rows
+      const timelineLogs = [...clientLogs].reverse();
+      const timelineRowsHTML = timelineLogs.map((log, index) => {
+        const sch = schedules.find(s => s.id === log.scheduleId);
+        const tlNames = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => {
+          const u = users.find(x => x.id === tid.trim());
+          return u ? u.name : tid;
+        }).join(', ') : 'N/A';
+        const serviceName = sch ? sch.service.split(',').map(x => x.trim().charAt(0).toUpperCase() + x.trim().slice(1)).join(', ') : 'N/A';
+        const mats = log.itemsConsumed && log.itemsConsumed.length ? log.itemsConsumed.map(c => {
+          const it = items.find(i => i.id === c.itemId);
+          return `${it ? it.name : c.itemId} (${c.qty})`;
+        }).join(', ') : 'None';
+
+        const singleReportUrl = `client-report.html?logId=${log.id}`;
+
+        return `
+          <tr>
+            <td><strong>${log.dateConducted}</strong></td>
+            <td><span style="font-weight:600; color:var(--text-dark);">${serviceName}</span></td>
+            <td>${tlNames}</td>
+            <td>${log.timeSpent}</td>
+            <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${log.comments || ''}"><em>${log.comments || 'N/A'}</em></td>
+            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${mats}">${mats}</td>
+            <td style="text-align:right;">
+              <a href="${singleReportUrl}" target="_blank" class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem; border-radius:4px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                ${t('view_report')}
+              </a>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Complaints Rows
+      const complaintsRowsHTML = clientComplaints.length ? clientComplaints.map(c => {
+        const assigned = users.find(u => u.id === c.assignedStaffId);
+        const statusClass = c.status === 'Resolved' ? 'status-conducted' : 'status-cancelled';
+        return `
+          <tr>
+            <td><code>${c.id}</code></td>
+            <td><strong>${c.dateLogged || c.timestamp?.split('T')[0] || '-'}</strong></td>
+            <td><span class="badge-status" style="background:${c.severity === 'High' ? '#FEE2E2' : c.severity === 'Medium' ? '#FEF3C7' : '#EFF6FF'}; color:${c.severity === 'High' ? '#991B1B' : c.severity === 'Medium' ? '#92400E' : '#1E40AF'};">${c.severity}</span></td>
+            <td>${c.details}</td>
+            <td>${assigned ? assigned.name : 'Unassigned'}</td>
+            <td><span class="badge-status ${statusClass}">${c.status}</span></td>
+            <td>${c.resolutionDetails || '-'}</td>
+          </tr>
+        `;
+      }).join('') : `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:1.25rem;">${t('no_complaints')}</td></tr>`;
+
+      // Render Portal Layout
+      output.innerHTML = `
+        <div class="portal-card">
+          <!-- Gradient Header banner -->
+          <div class="portal-header">
+            <div>
+              <h1 style="color: white;">${t('portal_title')}</h1>
+              <p style="color: white; opacity: 0.9;">${t('portal_subtitle')}</p>
+            </div>
+            <div class="client-badge">
+              🏢 ${client.name}
+            </div>
+          </div>
+
+          <!-- Metadata -->
+          <div class="portal-meta">
+            <div class="meta-item">
+              <span class="meta-label">${t('client_profile')}</span>
+              <span class="meta-value"><code>${client.clientCode || client.id}</code></span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">${t('sector_address')}</span>
+              <span class="meta-value">${client.sector} | ${client.address}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">${t('region_city')}</span>
+              <span class="meta-value">${client.region} / ${client.city}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">${t('active_contracts')}</span>
+              <div class="meta-value">${cTypesHTML}</div>
+            </div>
+          </div>
+
+          <div class="portal-body">
+            <!-- KPIs -->
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-icon" style="background:#EFF6FF; color:#2563EB;">📅</div>
+                <div>
+                  <div class="kpi-card-title">${t('visits_conducted')}</div>
+                  <div class="kpi-card-value">${totalVisits}</div>
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon" style="background:#F0FDF4; color:#16A34A;">⏱️</div>
+                <div>
+                  <div class="kpi-card-title">${t('avg_duration')}</div>
+                  <div class="kpi-card-value">${avgDuration} <span style="font-size:0.8rem; font-weight:400; color:var(--text-muted);">hrs</span></div>
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon" style="background:#FEF2F2; color:#DC2626;">🧪</div>
+                <div>
+                  <div class="kpi-card-title">${t('materials_used')}</div>
+                  <div class="kpi-card-value">${totalMaterialsUsed} <span style="font-size:0.8rem; font-weight:400; color:var(--text-muted);">units</span></div>
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon" style="background:#FFFBEB; color:#D97706;">⚠️</div>
+                <div>
+                  <div class="kpi-card-title">${t('active_complaints')}</div>
+                  <div class="kpi-card-value" style="color:${activeComplaintsCount > 0 ? 'var(--primary-red)' : 'var(--text-dark)'};">${activeComplaintsCount}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Devices summaries -->
+            <div class="devices-summary-grid">
+              <div class="device-card">
+                <div class="device-header">
+                  <span>${t('bait_station_summary')}</span>
+                  <span class="badge-info">${t('stations')}: ${totalBaitStations}</span>
+                </div>
+                <div class="device-stats">
+                  <div class="device-stat-box">
+                    <span class="meta-label">${t('activity_rate')}</span>
+                    <strong style="font-size:1.35rem; color:${baitActivityRate > 20 ? 'var(--primary-red)' : '#16A34A'};">${baitActivityRate}%</strong>
+                  </div>
+                  <div class="device-stat-box">
+                    <span class="meta-label">${t('bait_replaced')}</span>
+                    <strong style="font-size:1.35rem; color:var(--primary-red);">${totalBaitReplaced}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="device-card">
+                <div class="device-header">
+                  <span>${t('uv_summary')}</span>
+                  <span class="badge-info">${t('traps')}: ${totalUVMachines}</span>
+                </div>
+                <div class="device-stats">
+                  <div class="device-stat-box">
+                    <span class="meta-label">${t('avg_catch')}</span>
+                    <strong style="font-size:1.35rem; color:${avgUVCatchRate > 30 ? 'var(--primary-red)' : '#2563EB'};">${avgUVCatchRate}%</strong>
+                  </div>
+                  <div class="device-stat-box">
+                    <span class="meta-label">${t('glue_replaced')}</span>
+                    <strong style="font-size:1.35rem; color:#2563EB;">${totalUVReplaced}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Charts Trend Grid -->
+            <div class="chart-trend-grid">
+              <div class="chart-card">
+                <div class="chart-title">${t('pest_trend')}</div>
+                <div class="chart-container">
+                  <canvas id="pest-trend-chart"></canvas>
+                </div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-title">${t('uv_trend')}</div>
+                <div class="chart-container">
+                  <canvas id="uv-trend-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Materials consumption chart -->
+            <div class="chart-card" style="height:250px; margin-bottom:2.25rem;">
+              <div class="chart-title">${t('mats_chart')}</div>
+              <div class="chart-container">
+                <canvas id="mats-bar-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Service Visits History Timeline -->
+            <div class="section-title">${t('visit_history')}</div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>${t('date_conducted')}</th>
+                    <th>${t('service_name')}</th>
+                    <th>${t('team_leader')}</th>
+                    <th>${t('duration')}</th>
+                    <th>${t('tech_notes')}</th>
+                    <th>${t('materials_used')}</th>
+                    <th style="text-align:right;">${t('single_report')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${timelineRowsHTML || `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">${t('no_visits')}</td></tr>`}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Complaints History Table -->
+            <div class="section-title">${t('complaints_history')}</div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>${t('complaint_id')}</th>
+                    <th>${t('date_logged')}</th>
+                    <th>${t('severity')}</th>
+                    <th>${t('complaint_details')}</th>
+                    <th>${t('representative')}</th>
+                    <th>${t('status')}</th>
+                    <th>${t('actions_taken')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${complaintsRowsHTML}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Render Chart.js
+      // 1. Pest Activity Trend line chart
+      const pestLabels = [];
+      const pestData = [];
+      clientLogs.forEach(l => {
+        if (l.baitStationsAudit && l.baitStationsAudit.length > 0) {
+          pestLabels.push(l.dateConducted);
+          const total = l.baitStationsAudit.length;
+          const active = l.baitStationsAudit.filter(b => b.activity !== 'No Activity').length;
+          pestData.push(Math.round((active / total) * 100));
+        }
+      });
+
+      const ctxPest = document.getElementById('pest-trend-chart');
+      if (ctxPest) {
+        const pestChart = new Chart(ctxPest.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: pestLabels.length ? pestLabels : ['No Audits'],
+            datasets: [{
+              label: 'Bait Station Activity %',
+              data: pestData.length ? pestData : [0],
+              borderColor: '#C62828',
+              backgroundColor: 'rgba(198,40,40,0.05)',
+              fill: true,
+              tension: 0.25,
+              borderWidth: 2.5,
+              pointRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { min: 0, max: 100, ticks: { font: { size: 9 } } },
+              x: { ticks: { font: { size: 9 } } }
+            }
+          }
+        });
+        activeCharts.push(pestChart);
+      }
+
+      // 2. UV Catch rates trend line chart
+      const uvLabels = [];
+      const uvData = [];
+      clientLogs.forEach(l => {
+        if (l.uvMachinesAudit && l.uvMachinesAudit.length > 0) {
+          uvLabels.push(l.dateConducted);
+          const sum = l.uvMachinesAudit.reduce((s, u) => s + (u.catchRate || 0), 0);
+          uvData.push(Math.round(sum / l.uvMachinesAudit.length));
+        }
+      });
+
+      const ctxUV = document.getElementById('uv-trend-chart');
+      if (ctxUV) {
+        const uvChart = new Chart(ctxUV.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: uvLabels.length ? uvLabels : ['No Audits'],
+            datasets: [{
+              label: 'Avg Trap Catch Rate %',
+              data: uvData.length ? uvData : [0],
+              borderColor: '#2563EB',
+              backgroundColor: 'rgba(37,99,235,0.05)',
+              fill: true,
+              tension: 0.25,
+              borderWidth: 2.5,
+              pointRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { min: 0, max: 100, ticks: { font: { size: 9 } } },
+              x: { ticks: { font: { size: 9 } } }
+            }
+          }
+        });
+        activeCharts.push(uvChart);
+      }
+
+      // 3. Materials volume chart
+      const matLabels = [];
+      const matValues = [];
+      Object.entries(materialConsMap).forEach(([itemId, qty]) => {
+        const itm = items.find(i => i.id === itemId);
+        matLabels.push(itm ? itm.itemCode : itemId);
+        matValues.push(qty);
+      });
+
+      const ctxMats = document.getElementById('mats-bar-chart');
+      if (ctxMats) {
+        const matsChart = new Chart(ctxMats.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: matLabels.length ? matLabels : ['None'],
+            datasets: [{
+              data: matValues.length ? matValues : [0],
+              backgroundColor: '#DC2626',
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+              x: { ticks: { font: { size: 9 } } }
+            }
+          }
+        });
+        activeCharts.push(matsChart);
+      }
+    }
+  </script>
+</body>
+</html>

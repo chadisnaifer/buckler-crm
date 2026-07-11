@@ -5,11 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Buckler Visit Report</title>
   <link rel="icon" href="assets/logo-en.png" type="image/png" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --primary-red: #C62828;
+      --font-family: 'Inter', sans-serif;
+    }
+
+    [dir="rtl"] {
+      --font-family: 'Cairo', 'Inter', sans-serif;
+    }
+
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: var(--font-family);
       background: #F4F6F8;
       color: #1E293B;
       min-height: 100vh;
@@ -133,6 +143,11 @@
       border-collapse: collapse;
       font-size: 0.85rem;
     }
+
+    [dir="rtl"] .products-table {
+      text-align: right;
+    }
+
     .products-table th {
       background: #F8FAFC;
       padding: 0.6rem 0.85rem;
@@ -143,274 +158,410 @@
       color: #64748B;
       border-bottom: 2px solid #E2E8F0;
     }
+
+    [dir="rtl"] .products-table th {
+      text-align: right;
+    }
+
     .products-table td {
       padding: 0.65rem 0.85rem;
       border-bottom: 1px solid #F1F5F9;
       color: #334155;
     }
 
-    /* Bait station grid */
-    .bait-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 0.5rem;
-    }
-    .bait-cell {
-      background: #F8FAFC;
-      border: 1px solid #E2E8F0;
-      border-radius: 6px;
-      padding: 0.5rem;
-      font-size: 0.75rem;
-    }
-    .bait-cell-num {
-      font-size: 1rem;
-      font-weight: 800;
-      color: #C62828;
-    }
-    .bait-cell-loc { color: #64748B; margin: 2px 0; }
-    .bait-cell-act {
-      font-weight: 700;
-      font-size: 0.7rem;
-    }
-    .bait-cell-act.active { color: #C62828; }
-    .bait-cell-act.clear { color: #10B981; }
-
-    /* Signature area */
-    .signature-area {
-      display: flex;
-      gap: 2rem;
-      flex-wrap: wrap;
-    }
-    .signature-box {
-      flex: 1;
-      min-width: 200px;
-    }
-    .sig-label {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #64748B;
-      margin-bottom: 0.5rem;
-    }
-    .sig-image {
-      border: 1px solid #E2E8F0;
-      border-radius: 6px;
-      padding: 0.5rem;
-      background: #FAFAFA;
-      min-height: 80px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .sig-image img {
-      max-height: 80px;
-      max-width: 100%;
-    }
-
-    /* Photos gallery */
-    .photos-gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 0.75rem;
-    }
-    .photos-gallery img {
-      width: 100%;
-      height: 130px;
-      object-fit: cover;
-      border-radius: 6px;
-      border: 1px solid #E2E8F0;
-    }
-
-    /* Report footer */
-    .report-footer {
-      background: #F8FAFC;
-      border-top: 1px solid #E2E8F0;
-      padding: 1.25rem 2.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      font-size: 0.72rem;
-      color: #64748B;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 12px;
-      font-size: 0.72rem;
-      font-weight: 700;
-    }
-    .status-conducted { background: #ECFDF5; color: #10B981; }
-
     .info-box {
       background: #F8FAFC;
       border: 1px solid #E2E8F0;
       border-radius: 8px;
       padding: 1rem 1.25rem;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       color: #475569;
       line-height: 1.6;
     }
 
-    /* Loading and error states */
-    .loading-screen {
-      min-height: 60vh;
+    /* Bait Audits */
+    .bait-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    [dir="rtl"] .bait-table {
+      text-align: right;
+    }
+
+    .bait-table th {
+      background: #F8FAFC;
+      padding: 0.6rem 0.85rem;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748B;
+      border-bottom: 2px solid #E2E8F0;
+    }
+
+    [dir="rtl"] .bait-table th {
+      text-align: right;
+    }
+
+    .bait-table td {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid #F1F5F9;
+      color: #334155;
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .badge-no-act { background: #F1F5F9; color: #475569; }
+    .badge-act { background: #FEF2F2; color: #C62828; }
+
+    /* Photo gallery */
+    .photos-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .photos-gallery img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .photos-gallery img:hover { opacity: 0.9; }
+
+    /* Signature Area */
+    .signature-area {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .signature-box {
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 1.25rem;
+      background: #FAFAFA;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
+      gap: 0.75rem;
+    }
+    .sig-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       color: #64748B;
     }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #E2E8F0;
-      border-top-color: #C62828;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    .sig-image {
+      background: white;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    .report-footer {
+      background: #FAFAFA;
+      border-top: 1px solid #E2E8F0;
+      padding: 1.5rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: #64748B;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .status-conducted { background: #ECFDF5; color: #047857; }
 
     @media print {
       body { background: white; }
-      .action-bar, .report-footer .print-hide { display: none !important; }
+      .print-hide, .action-bar { display: none !important; }
       .report-wrapper { padding: 0; max-width: 100%; }
+      .report-card { box-shadow: none; }
     }
   </style>
 </head>
 <body>
   <div class="report-wrapper">
-    <div class="action-bar" id="action-bar">
-      <button class="btn btn-secondary" onclick="window.close()">✕ Close</button>
-      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <!-- Action bar -->
+    <div class="action-bar print-hide">
+      <button class="btn btn-secondary" id="btn-report-toggle-lang">🌐 العربية</button>
+      <button class="btn btn-secondary" onclick="window.print()" id="btn-print-report">🖨️ Print Report</button>
     </div>
+
+    <!-- Output Content -->
     <div id="report-output">
-      <div class="loading-screen">
-        <div class="spinner"></div>
-        <p>Loading report data...</p>
+      <div style="padding: 3rem; text-align: center; color: #64748B;" id="lbl-loading">
+        Loading visit log report details...
       </div>
     </div>
   </div>
 
   <script src="database.js"></script>
   <script>
+    let state = {
+      language: localStorage.getItem('buckler_lang') || 'en'
+    };
+
+    const translations = {
+      en: {
+        report_title: "Operation Visit Report",
+        client: "Client",
+        service: "Service Category",
+        date_conducted: "Date Conducted",
+        team_leader: "Team Leader",
+        region_city: "Region / City",
+        time_in_out: "Time In / Out",
+        gps_location: "GPS Location",
+        conducted: "✓ Conducted",
+        observations_title: "Field Observations & Comments",
+        materials_title: "Products & Materials Used",
+        bait_title: "Bait Station Audit",
+        photos_title: "Visit Photos",
+        review_title: "Client Review & Sign-Off",
+        client_feedback: "Client Feedback",
+        client_signature: "Client Signature",
+        loading: "Loading visit log report details...",
+        no_signature: "No signature recorded.",
+        no_photos: "No photos attached.",
+        no_mats: "No chemical/materials consumed during this service.",
+        no_audits: "No device audits logged.",
+        station_no: "Station #",
+        location: "Location",
+        activity: "Activity Status",
+        notes: "Notes",
+        item_name: "Item Name",
+        item_code: "Code",
+        qty: "Qty",
+        print_report: "🖨️ Print Report",
+        share_email: "📧 Share via Email",
+        brand_footer: "Buckler Pest Control — Iraq Operations",
+        generated: "Generated"
+      },
+      ar: {
+        report_title: "تقرير زيارة عملية المكافحة",
+        client: "العميل",
+        service: "نوع الخدمة",
+        date_conducted: "تاريخ الخدمة",
+        team_leader: "مسؤول الفريق",
+        region_city: "المنطقة / المدينة",
+        time_in_out: "وقت الدخول / الخروج",
+        gps_location: "الموقع الجغرافي GPS",
+        conducted: "✓ منجزة",
+        observations_title: "ملاحظات وتوصيات الفني الميداني",
+        materials_title: "المنتجات والمواد المستخدمة",
+        bait_title: "تدقيق محطات الطعوم",
+        photos_title: "صور الزيارة الميدانية",
+        review_title: "مراجعة العميل والتوقيع المعتمد",
+        client_feedback: "ملاحظات العميل",
+        client_signature: "توقيع العميل",
+        loading: "جاري تحميل تفاصيل تقرير الزيارة...",
+        no_signature: "لا يوجد توقيع مسجل.",
+        no_photos: "لا توجد صور مرفقة.",
+        no_mats: "لم يتم استخدام أي مواد أو مبيدات خلال هذه الخدمة.",
+        no_audits: "لم يتم تسجيل أي تدقيق للأجهزة.",
+        station_no: "رقم المحطة",
+        location: "الموقع",
+        activity: "حالة النشاط",
+        notes: "ملاحظات",
+        item_name: "اسم المادة",
+        item_code: "الرمز",
+        qty: "الكمية",
+        print_report: "🖨️ طباعة التقرير",
+        share_email: "📧 مشاركة عبر البريد",
+        brand_footer: "شركة باكلر لمكافحة الآفات — عمليات العراق",
+        generated: "تم الإنشاء"
+      }
+    };
+
+    function t(key) {
+      const lang = state.language || 'en';
+      if (translations[lang] && translations[lang][key]) {
+        return translations[lang][key];
+      }
+      return key;
+    }
+
+    function translateStaticControls() {
+      const lang = state.language || 'en';
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      
+      const langBtn = document.getElementById('btn-report-toggle-lang');
+      if (langBtn) {
+        langBtn.textContent = lang === 'ar' ? '🌐 English' : '🌐 العربية';
+      }
+      
+      document.getElementById('btn-print-report').textContent = t('print_report');
+      document.getElementById('lbl-loading').textContent = t('loading');
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      translateStaticControls();
+
       const params = new URLSearchParams(window.location.search);
       const logId = params.get('logId');
       const schedId = params.get('schedId');
 
-      // Wait for BucklerDB to initialize
+      // Wait for database engine load
       setTimeout(() => {
         renderReport(logId, schedId);
+
+        // Language Switcher Bind
+        document.getElementById('btn-report-toggle-lang').onclick = () => {
+          state.language = state.language === 'ar' ? 'en' : 'ar';
+          localStorage.setItem('buckler_lang', state.language);
+          translateStaticControls();
+          renderReport(logId, schedId);
+        };
       }, 300);
     });
 
     function renderReport(logId, schedId) {
       const output = document.getElementById('report-output');
-
-      // Load data
-      const schedules = window.BucklerDB.get('schedules');
-      const logs = window.BucklerDB.get('operationLogs');
-      const clients = window.BucklerDB.get('clients');
-      const users = window.BucklerDB.get('users');
-      const items = window.BucklerDB.get('items');
+      const allLogs = window.BucklerDB.getLogs('All') || [];
+      const schedules = window.BucklerDB.get('schedules') || [];
+      const clients = window.BucklerDB.get('clients') || [];
+      const items = window.BucklerDB.get('items') || [];
+      const users = window.BucklerDB.get('users') || [];
 
       let log = null;
       let sch = null;
 
       if (logId) {
-        log = logs.find(l => l.id === logId);
-        if (log) sch = schedules.find(s => s.id === log.scheduleId);
+        log = allLogs.find(l => l.id === logId);
+        if (log) {
+          sch = schedules.find(s => s.id === log.scheduleId);
+        }
       } else if (schedId) {
         sch = schedules.find(s => s.id === schedId);
-        if (sch) log = logs.find(l => l.scheduleId === schedId);
+        log = allLogs.find(l => l.scheduleId === schedId);
       }
 
-      if (!sch && !log) {
+      if (!sch) {
         output.innerHTML = `
-          <div class="loading-screen">
-            <div style="font-size:3rem;">⚠️</div>
-            <h2 style="color:#1E293B; font-size:1.1rem; font-weight:700;">Report Not Found</h2>
-            <p>The requested visit log or schedule could not be found. Please check the link and try again.</p>
-          </div>`;
+          <div style="padding:4rem; text-align:center; color:#C62828; font-weight:700;">
+            ⚠️ Operational schedule log not found.
+          </div>
+        `;
         return;
       }
 
-      const client = clients.find(c => c.id === (sch ? sch.clientId : log.clientId));
+      const client = clients.find(c => c.id === sch.clientId);
       const clientName = client ? client.name : 'Unknown Client';
-
-      const tlIds = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(x => x.trim()) : [];
+      const region = sch.region;
+      const city = sch.city || 'N/A';
+      const service = sch.service;
+      const dateStr = log ? log.dateConducted : sch.date;
+      
+      const tlIds = sch.teamLeaderId ? sch.teamLeaderId.split(',').map(x => x.trim()) : [];
       const tlNames = tlIds.map(id => {
         const u = users.find(x => x.id === id);
-        return u ? u.name : 'Unknown';
+        return u ? u.name : id;
       }).join(', ') || 'Unassigned';
 
-      const dateStr = (log && log.dateConducted) || (sch && sch.date) || 'N/A';
-      const service = sch ? sch.service : 'N/A';
-      const region = sch ? sch.region : (client ? client.region : 'N/A');
-      const city = sch ? sch.city : (client ? client.city : 'N/A');
-
-      // Products consumed
-      let productsHTML = '<p style="color:#94A3B8; font-style:italic; font-size:0.85rem;">No products recorded.</p>';
+      // 1. Products HTML
+      let productsHTML = `<p style="color:#64748B; font-style:italic; font-size:0.85rem;">${t('no_mats')}</p>`;
       if (log && log.itemsConsumed && log.itemsConsumed.length) {
+        const rows = log.itemsConsumed.map(cons => {
+          const itm = items.find(i => i.id === cons.itemId);
+          const itmName = itm ? itm.name : cons.itemId;
+          const itmCode = itm ? (itm.itemCode || '-') : '-';
+          const itmUnit = itm ? itm.unit : '';
+          return `
+            <tr>
+              <td><strong>${itmName}</strong></td>
+              <td><code>${itmCode}</code></td>
+              <td><strong>${cons.qty} ${itmUnit}</strong></td>
+            </tr>
+          `;
+        }).join('');
         productsHTML = `
-          <table class="products-table">
-            <thead>
-              <tr>
-                <th>Product Name</th>
-                <th>Item Code</th>
-                <th>Category</th>
-                <th style="text-align:right;">Qty Used</th>
-                <th>Unit</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${log.itemsConsumed.map(consumed => {
-                const item = items.find(i => i.id === consumed.itemId);
-                return `<tr>
-                  <td><strong>${item ? item.name : 'Unknown'}</strong></td>
-                  <td><code>${item ? (item.itemCode || item.id) : '-'}</code></td>
-                  <td><span style="background:#F1F5F9; padding:1px 6px; border-radius:4px; font-size:0.72rem;">${item ? (item.category || '-') : '-'}</span></td>
-                  <td style="text-align:right; font-weight:700; color:#C62828;">${consumed.qty}</td>
-                  <td style="color:#64748B;">${item ? item.unit : '-'}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>`;
+          <div class="table-wrapper">
+            <table class="products-table">
+              <thead>
+                <tr>
+                  <th>${t('item_name')}</th>
+                  <th>${t('item_code')}</th>
+                  <th>${t('qty')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+        `;
       }
 
-      // Bait stations
-      let baitHTML = '<p style="color:#94A3B8; font-style:italic; font-size:0.85rem;">No bait station audit recorded.</p>';
+      // 2. Bait Station Audit HTML
+      let baitHTML = `<p style="color:#64748B; font-style:italic; font-size:0.85rem;">${t('no_audits')}</p>`;
       if (log && log.baitStationsAudit && log.baitStationsAudit.length) {
-        baitHTML = `<div class="bait-grid">
-          ${log.baitStationsAudit.map(b => {
-            const isActive = b.activity !== 'No Activity';
-            return `<div class="bait-cell">
-              <div class="bait-cell-num">#${b.number}</div>
-              <div class="bait-cell-loc">${b.location || 'N/A'}</div>
-              <div class="bait-cell-act ${isActive ? 'active' : 'clear'}">${b.activity}</div>
-              ${b.comments ? `<div style="font-size:0.65rem; color:#94A3B8; margin-top:2px;">${b.comments}</div>` : ''}
-            </div>`;
-          }).join('')}
-        </div>`;
+        const rows = log.baitStationsAudit.map(b => {
+          const badgeClass = b.activity !== 'No Activity' ? 'badge-act' : 'badge-no-act';
+          const translatedActivity = b.activity === 'No Activity' ? (state.language === 'ar' ? 'لا يوجد نشاط' : 'No Activity') : b.activity;
+          return `
+            <tr>
+              <td><strong>${t('stations')} #${b.stationNumber}</strong></td>
+              <td>${b.location}</td>
+              <td><span class="badge-status ${badgeClass}">${translatedActivity}</span></td>
+              <td><em>${b.comment || '-'}</em></td>
+            </tr>
+          `;
+        }).join('');
+        baitHTML = `
+          <div class="table-wrapper">
+            <table class="bait-table">
+              <thead>
+                <tr>
+                  <th>${t('station_no')}</th>
+                  <th>${t('location')}</th>
+                  <th>${t('activity')}</th>
+                  <th>${t('notes')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+        `;
       }
 
       // Signature
-      let signatureHTML = '<div style="color:#94A3B8; font-style:italic; font-size:0.82rem;">No signature recorded.</div>';
+      let signatureHTML = `<div style="color:#94A3B8; font-style:italic; font-size:0.82rem;">${t('no_signature')}</div>`;
       if (log && log.clientSignature) {
         signatureHTML = `<img src="${log.clientSignature}" style="max-height:80px; max-width:100%;" alt="Client Signature" />`;
       }
 
       // Photos
-      let photosHTML = '<p style="color:#94A3B8; font-style:italic; font-size:0.85rem;">No photos attached.</p>';
+      let photosHTML = `<p style="color:#94A3B8; font-style:italic; font-size:0.85rem;">${t('no_photos')}</p>`;
       if (log && log.pictures && log.pictures.length) {
         photosHTML = `<div class="photos-gallery">${log.pictures.map(p => `<img src="${p}" alt="Visit Photo" />`).join('')}</div>`;
       }
 
-      const reportDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+      const reportDate = new Date().toLocaleDateString(state.language === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+      const capitalizedService = service.split(',').map(s => s.trim().charAt(0).toUpperCase() + s.trim().slice(1)).join(', ');
 
       output.innerHTML = `
         <div class="report-card">
@@ -419,43 +570,43 @@
             <div>
               <img src="assets/logo-en.png" class="report-header-logo" alt="Buckler" />
             </div>
-            <div class="report-header-title" style="text-align:right;">
-              <h1>Operation Visit Report</h1>
-              <p>${service.charAt(0).toUpperCase() + service.slice(1)} — ${dateStr}</p>
-              <span class="status-badge status-conducted" style="margin-top:0.4rem; display:inline-block;">✓ Conducted</span>
+            <div class="report-header-title" style="text-align: inherit;">
+              <h1 style="color: white;">${t('report_title')}</h1>
+              <p style="color: white; opacity: 0.9;">${capitalizedService} — ${dateStr}</p>
+              <span class="status-badge status-conducted" style="margin-top:0.4rem; display:inline-block;">${t('conducted')}</span>
             </div>
           </div>
 
           <!-- Meta grid -->
           <div class="report-meta">
             <div class="meta-item">
-              <span class="meta-label">Client</span>
+              <span class="meta-label">${t('client')}</span>
               <span class="meta-value">${clientName}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Service</span>
-              <span class="meta-value" style="text-transform:capitalize;">${service}</span>
+              <span class="meta-label">${t('service')}</span>
+              <span class="meta-value" style="text-transform:capitalize;">${capitalizedService}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Date Conducted</span>
+              <span class="meta-label">${t('date_conducted')}</span>
               <span class="meta-value">${dateStr}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Team Leader</span>
+              <span class="meta-label">${t('team_leader')}</span>
               <span class="meta-value">${tlNames}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Region / City</span>
+              <span class="meta-label">${t('region_city')}</span>
               <span class="meta-value">${region} — ${city}</span>
             </div>
             ${log && log.timeIn ? `
             <div class="meta-item">
-              <span class="meta-label">Time In / Out</span>
+              <span class="meta-label">${t('time_in_out')}</span>
               <span class="meta-value">${log.timeIn} – ${log.timeOut || 'N/A'} (${log.timeSpent || 'N/A'})</span>
             </div>` : ''}
             ${log && log.geoLocation ? `
             <div class="meta-item">
-              <span class="meta-label">GPS Location</span>
+              <span class="meta-label">${t('gps_location')}</span>
               <span class="meta-value"><a href="https://www.google.com/maps?q=${encodeURIComponent(log.geoLocation)}" target="_blank" style="color:#C62828;">${log.geoLocation}</a></span>
             </div>` : ''}
           </div>
@@ -466,39 +617,39 @@
             <!-- Comments / Observations -->
             ${log && log.comments ? `
             <div>
-              <div class="section-title">Field Observations & Comments</div>
+              <div class="section-title">${t('observations_title')}</div>
               <div class="info-box">${log.comments}</div>
             </div>` : ''}
 
             <!-- Products Consumed -->
             <div>
-              <div class="section-title">Products & Materials Used</div>
+              <div class="section-title">${t('materials_title')}</div>
               ${productsHTML}
             </div>
 
             <!-- Bait Station Audit -->
             <div>
-              <div class="section-title">Bait Station Audit</div>
+              <div class="section-title">${t('bait_title')}</div>
               ${baitHTML}
             </div>
 
             <!-- Visit Photos -->
             <div>
-              <div class="section-title">Visit Photos</div>
+              <div class="section-title">${t('photos_title')}</div>
               ${photosHTML}
             </div>
 
             <!-- Client Review -->
             <div>
-              <div class="section-title">Client Review & Sign-Off</div>
+              <div class="section-title">${t('review_title')}</div>
               <div class="signature-area">
                 ${log && log.clientComments ? `
                 <div class="signature-box">
-                  <div class="sig-label">Client Feedback</div>
+                  <div class="sig-label">${t('client_feedback')}</div>
                   <div class="info-box">${log.clientComments}</div>
                 </div>` : ''}
                 <div class="signature-box">
-                  <div class="sig-label">Client Signature</div>
+                  <div class="sig-label">${t('client_signature')}</div>
                   <div class="sig-image">${signatureHTML}</div>
                 </div>
               </div>
@@ -509,11 +660,11 @@
           <!-- Footer -->
           <div class="report-footer">
             <div>
-              <strong>Buckler Pest Control — Iraq Operations</strong><br/>
-              Generated: ${reportDate}
+              <strong>${t('brand_footer')}</strong><br/>
+              ${t('generated')}: ${reportDate}
             </div>
             <div class="print-hide" style="display:flex; gap:0.5rem;">
-              <a href="mailto:?subject=Visit Report - ${clientName}&body=Please find the visit report at: ${encodeURIComponent(window.location.href)}" style="font-size:0.75rem; color:#C62828; text-decoration:none; font-weight:700;">📧 Share via Email</a>
+              <a href="mailto:?subject=Visit Report - ${clientName}&body=Please find the visit report at: ${encodeURIComponent(window.location.href)}" style="font-size:0.75rem; color:#C62828; text-decoration:none; font-weight:700;">${t('share_email')}</a>
             </div>
           </div>
         </div>
