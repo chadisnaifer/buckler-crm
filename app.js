@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
       brand_name: "Buckler - Iraq",
       brand_subtitle: "Operations CRM Portal",
       share_crm: "Share CRM",
+      backup_crm: "Save & Backup",
       noti_center: "Notifications Center",
       mark_all_read: "Mark all read",
       active_session: "Active Session:",
@@ -53,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
       brand_name: "باكلر - العراق",
       brand_subtitle: "بوابة إدارة العمليات CRM",
       share_crm: "مشاركة النظام",
+      backup_crm: "حفظ ونسخ احتياطي",
       noti_center: "مركز التنبيهات",
       mark_all_read: "تحديد الكل كمقروء",
       active_session: "الجلسة النشطة:",
@@ -252,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnImportDB: document.getElementById('btn-import-db'),
     dbFileInput: document.getElementById('db-file-input'),
     btnShareCrm: document.getElementById('btn-share-crm'),
+    btnBackupCrm: document.getElementById('btn-backup-crm'),
     btnSupabaseConfig: document.getElementById('btn-supabase-config'),
     
     // Reports Elements
@@ -5399,18 +5402,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showModal('Operation Visit Log Details', html, false);
     bindEntityClicks(document.getElementById('log-details-modal'));
-
-    // Removed shareable report buttons (only available in Reports tab when sending to client)
-    const cancelBtn = document.getElementById('modal-cancel-btn');
-      };
-      const footer = cancelBtn.parentElement;
-      if (footer) {
-        footer.insertBefore(shareBtn, cancelBtn);
-        footer.insertBefore(copyBtn, cancelBtn);
-        footer.insertBefore(emailBtn, cancelBtn);
-      }
-
-    }
   }
 
   // Handle forms submit
@@ -6287,6 +6278,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     els.btnShareCrm.addEventListener('click', () => openShareCrmModal());
+    if (els.btnBackupCrm) {
+      els.btnBackupCrm.addEventListener('click', () => {
+        const dbData = window.BucklerDB.getData();
+        const dataStr = JSON.stringify(dbData, null, 2);
+        const date = new Date();
+        const timestamp = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}_${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}`;
+        downloadFile(dataStr, `buckler_db_backup_${timestamp}.json`, 'application/json');
+        showToast(state.language === 'ar' ? 'تم تنزيل النسخة الاحتياطية! يرجى حفظها في سطح المكتب.' : 'Database backup downloaded! Please save it to your Desktop.', 'success');
+      });
+    }
     els.btnSupabaseConfig.addEventListener('click', () => openSupabaseConfigModal());
 
     if (els.btnAddSector) {
