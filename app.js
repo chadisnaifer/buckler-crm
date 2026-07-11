@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return ['complaints', 'messages'].includes(tabId);
     }
     if (role === 'team leader') {
-      return ['schedules', 'messages'].includes(tabId);
+      return ['messages'].includes(tabId);
     }
     return true;
   }
@@ -849,6 +849,35 @@ document.addEventListener('DOMContentLoaded', () => {
       if (regEl && cityEl) {
         cityEl.innerHTML = getCityOptions(regEl ? regEl.value : 'All', cityEl.value || 'All', true);
         cityEl.disabled = false;
+      }
+    });
+
+    // Reset schedule filters on role switch to ensure no cached/stale values are applied
+    if (els.searchSchedule) els.searchSchedule.value = '';
+    if (els.filterScheduleRegion) els.filterScheduleRegion.value = getRestrictedRegion();
+    if (els.filterScheduleCity) els.filterScheduleCity.value = getRestrictedCity();
+    if (els.filterScheduleClient) els.filterScheduleClient.value = 'All';
+    if (els.filterScheduleService) els.filterScheduleService.value = 'All';
+    if (els.filterScheduleStatus) els.filterScheduleStatus.value = 'All';
+    if (els.filterScheduleDate) els.filterScheduleDate.value = '';
+    populateScheduleClientFilter(getRestrictedRegion());
+    populateTLFilterOptions(getRestrictedRegion());
+
+    // Toggle schedule filters display based on whether user is team leader
+    const filtersToToggle = [
+      els.filterScheduleRegion,
+      els.filterScheduleCity,
+      els.filterScheduleTL,
+      els.filterScheduleService,
+      els.filterScheduleStatus,
+      els.filterScheduleDate,
+      els.searchSchedule ? els.searchSchedule.closest('.search-input-wrapper') : null,
+      document.getElementById('btn-clear-schedule-filters')
+    ];
+
+    filtersToToggle.forEach(el => {
+      if (el) {
+        el.style.display = isTL ? 'none' : '';
       }
     });
 

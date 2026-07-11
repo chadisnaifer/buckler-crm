@@ -1067,10 +1067,15 @@ class Database {
   }
 
   checkInDriver(tlId, timeStr, dateStr) {
+    let today = dateStr;
+    if (!today) {
+      const d = new Date();
+      today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
     const log = {
       id: `att-${Date.now()}`,
       teamLeaderId: tlId,
-      date: dateStr || new Date().toISOString().split('T')[0],
+      date: today,
       checkIn: timeStr,
       checkOut: null
     };
@@ -1080,8 +1085,7 @@ class Database {
 
   checkOutDriver(tlId, timeStr, dateStr) {
     const logs = this.get('attendanceLog');
-    const today = dateStr || new Date().toISOString().split('T')[0];
-    const activeLog = logs.find(l => l.teamLeaderId === tlId && l.date === today && !l.checkOut);
+    const activeLog = [...logs].reverse().find(l => l.teamLeaderId === tlId && !l.checkOut);
     if (activeLog) {
       this.update('attendanceLog', activeLog.id, { checkOut: timeStr });
       return true;
