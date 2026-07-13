@@ -881,12 +881,15 @@ class Database {
 
   // Notification generation
   triggerScheduleAlert(schedule) {
-    this.insert('notifications', {
-      userId: schedule.teamLeaderId,
-      title: 'New Visit Scheduled',
-      message: `Admin scheduled a ${schedule.service} operations visit on ${schedule.date} @ ${schedule.time}.`,
-      date: new Date().toISOString().split('T')[0],
-      read: false
+    const tlIds = schedule.teamLeaderId ? schedule.teamLeaderId.split(',').map(x => x.trim()) : [];
+    tlIds.forEach(id => {
+      this.insert('notifications', {
+        userId: id,
+        title: 'New Visit Scheduled',
+        message: `Admin scheduled a ${schedule.service} operations visit on ${schedule.date} @ ${schedule.time}.`,
+        date: new Date().toISOString().split('T')[0],
+        read: false
+      });
     });
   }
   triggerComplaintAlert(complaint) {

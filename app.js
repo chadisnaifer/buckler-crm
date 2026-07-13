@@ -908,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabId === 'schedules') {
       state.calendarCurrentDate = new Date();
       if (els.filterScheduleDate) {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = formatDateLocal(new Date());
         els.filterScheduleDate.value = todayStr;
       }
     }
@@ -2456,7 +2456,8 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       const notis = window.BucklerDB.get('notifications');
       notis.forEach(nt => {
-        if (nt.userId === state.currentUser.id || nt.userId === 'All') {
+        const uids = (nt.userId || '').split(',').map(x => x.trim());
+        if (uids.includes(state.currentUser.id) || nt.userId === 'All') {
           window.BucklerDB.update('notifications', nt.id, { read: true });
         }
       });
@@ -2468,7 +2469,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderNotifications() {
     if (!state.currentUser) return;
     const notis = window.BucklerDB.get('notifications');
-    const userNotis = notis.filter(n => n.userId === state.currentUser.id || n.userId === 'All');
+    const userNotis = notis.filter(n => {
+      const uids = (n.userId || '').split(',').map(x => x.trim());
+      return uids.includes(state.currentUser.id) || n.userId === 'All';
+    });
     
     const unreadCount = userNotis.filter(n => !n.read).length;
     if (unreadCount > 0) {
@@ -2549,7 +2553,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const matchSearch = clientName.includes(searchQuery) || serviceName.includes(searchQuery);
       const matchStatus = targetStatus === 'All' ? true : sch.status === targetStatus;
-      const matchDate = targetDate === '' ? true : sch.date === targetDate;
+      const matchDate = (state.scheduleActiveView === 'calendar' && state.calendarPeriod !== 'Day')
+        ? true
+        : (targetDate === '' ? true : sch.date === targetDate);
       const matchClient = targetClient === 'All' ? true : sch.clientId === targetClient;
       const matchCity = targetCity === 'All' ? true : sch.city === targetCity;
       const matchService = targetService === 'All' ? true : sch.service === targetService;
@@ -5557,6 +5563,15 @@ document.addEventListener('DOMContentLoaded', () => {
         window.BucklerDB.insert('schedules', fields);
         showToast('New operations schedule created', 'success');
       }
+      
+      // Update filters so that the newly created/updated schedule is visible immediately
+      if (els.filterScheduleDate) {
+        els.filterScheduleDate.value = fields.date;
+      }
+      if (els.searchSchedule) {
+        els.searchSchedule.value = '';
+      }
+      
       els.modalBackdrop.style.display = 'none';
       renderSchedules();
     }
