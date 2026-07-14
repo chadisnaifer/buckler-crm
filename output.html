@@ -1,0 +1,2451 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buckler - Iraq Operations CRM</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Leaflet CSS and JS for interactive mapping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase client library for real-time secure database syncing -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- jsPDF for client-side PDF visit reports generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+    @keyframes dashRoute {
+      to { stroke-dashoffset: -40; }
+    }
+  </style></head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <!-- Mobile Hamburger Menu -->
+    <button id="btn-mobile-menu" aria-label="Open menu">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+    <div class="brand-section">
+      <img src="assets/logo-en.png" alt="Buckler Pest Control Logo" class="brand-logo">
+      <div class="brand-divider"></div>
+      <div class="brand-title">
+        <span data-i18n="brand_name">Buckler - Iraq</span>
+        <span class="brand-subtitle" data-i18n="brand_subtitle">Operations CRM Portal</span>
+      </div>
+    </div>
+    
+    <!-- Right side: Notifications & Profile Switcher -->
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <!-- Language Switcher -->
+      <button class="btn btn-secondary btn-sm" id="btn-toggle-lang" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;">
+        🌐 <span id="btn-toggle-lang-text">العربية</span>
+      </button>
+
+      <!-- Share State Button -->
+      <button class="btn btn-secondary btn-sm" id="btn-share-crm" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;">
+        🔗 <span data-i18n="share_crm">Share CRM</span>
+      </button>
+
+      <!-- Backup Button -->
+      <button class="btn btn-secondary btn-sm" id="btn-backup-crm" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;" title="Save &amp; Backup Database to Desktop">
+        💾 <span data-i18n="backup_crm">Save &amp; Backup</span>
+      </button>
+
+      <!-- Restore Backup Button -->
+      <button class="btn btn-secondary btn-sm" id="btn-restore-crm" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: white; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; height: 36px;" title="Restore Database from Backup File">
+        📂 <span data-i18n="restore_crm_btn">Restore Backup</span>
+      </button>
+      <input type="file" id="btn-restore-crm-input" accept=".json" style="display: none;">
+
+      <!-- Notification Alerts Bell -->
+      <div style="position: relative;">
+        <button class="btn btn-secondary btn-sm" id="btn-noti-bell" style="padding: 0.5rem; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; border: 1px solid var(--border-color); background: white;">
+          🔔
+          <span id="noti-badge" style="position: absolute; top: -5px; right: -5px; background: var(--primary-red); color: white; border-radius: 50%; font-size: 0.65rem; font-weight: 700; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">1</span>
+        </button>
+        
+        <!-- Notifications dropdown list -->
+        <div id="noti-dropdown" style="display: none; position: absolute; right: 0; top: 44px; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); width: 320px; max-height: 400px; overflow-y: auto; z-index: 1000; padding: 0.5rem 0;">
+          <div style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color); font-weight: 700; font-size: 0.85rem; color: var(--text-dark); display: flex; justify-content: space-between; align-items: center;">
+            <span data-i18n="noti_center">Notifications Center</span>
+            <a href="#" id="noti-clear-all" style="font-size: 0.75rem; color: var(--primary-red); text-decoration: none; font-weight: 600;" data-i18n="mark_all_read">Mark all read</a>
+          </div>
+          <div id="noti-dropdown-list" style="display: flex; flex-direction: column; max-height: 320px; overflow-y: auto;">
+      <div class="noti-item" style="padding:0.75rem 1rem; border-bottom:1px solid #ECEFF1; font-size:0.8rem; cursor:pointer; background:rgba(198,40,40,0.03); transition:var(--transition);" data-id="ntf-1">
+        <div style="font-weight:700; color:var(--text-dark); display:flex; justify-content:space-between;">
+          <span>New Complaint Registered</span>
+          <span style="font-size:0.65rem; color:var(--text-muted);">2026-06-03</span>
+        </div>
+        <p style="color:var(--text-medium); margin-top:2px; line-height:1.3;">Zaid Mahmoud (Baghdad Mall) has filed a High severity complaint.</p>
+      </div>
+    </div>
+        </div>
+      </div>
+
+      <!-- Quick Role Switcher for demonstration testing -->
+      <div class="user-switcher">
+        <label for="role-selector" data-i18n="active_session">Active Session:</label>
+        <select id="role-selector">
+      <option value="usr-gm">Hassan Al-Sadi (GM)</option>
+    
+      <option value="usr-tm">Rami Hanna (tech manager)</option>
+    
+      <option value="usr-sm">Omar Mansour (sales manager)</option>
+    
+      <option value="usr-sr-c">Ali Ridha (sales representative - Central)</option>
+    
+      <option value="usr-sr-k">Dilshad Hawleri (sales representative - Kurdistan)</option>
+    
+      <option value="usr-sr-s">Hadi Basrawi (sales representative - South)</option>
+    
+      <option value="usr-ac-c">Yasmin Kassim (admin coordinator - Central)</option>
+    
+      <option value="usr-ac-k">Avan Jalal (admin coordinator - Kurdistan)</option>
+    
+      <option value="usr-ac-s">Ali Jasim (admin coordinator - South)</option>
+    
+      <option value="usr-ts-c">Ahmed Khalil (tech supervisor - Central)</option>
+    
+      <option value="usr-ts-k">Diar Slemani (tech supervisor - Kurdistan)</option>
+    
+      <option value="usr-ts-s">Sajjad Salman (tech supervisor - South)</option>
+    
+      <option value="usr-om-c">Mustafa Al-Sudani (operations manager - Central)</option>
+    
+      <option value="usr-om-k">Zana Barzani (operations manager - Kurdistan)</option>
+    
+      <option value="usr-om-s">Hussein Jawad (operations manager - South)</option>
+    
+      <option value="tl-faris">Faris Naji (team leader - Central)</option>
+    
+      <option value="tl-omar">Omar Al-Tikriti (team leader - Central)</option>
+    
+      <option value="tl-karwan">Karwan Rekani (team leader - Kurdistan)</option>
+    
+      <option value="tl-sherwan">Sherwan Sorani (team leader - Kurdistan)</option>
+    
+      <option value="tl-murtadha">Murtadha Jabbar (team leader - South)</option>
+    
+      <option value="tl-karrar">Karrar Fadel (team leader - South)</option>
+    </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Main Application Wrapper -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="nav-links">
+        <a class="nav-link active" data-tab="dashboard">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          <span data-i18n="nav_dashboard">Operations Dashboard</span>
+        </a>
+        <a class="nav-link" data-tab="sales">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span data-i18n="nav_sales">Sales CRM</span>
+        </a>
+        <a class="nav-link" data-tab="schedules">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <span data-i18n="nav_schedules">Schedule</span>
+        </a>
+        <a class="nav-link" data-tab="clients">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+          <span data-i18n="nav_clients">Clients List</span>
+        </a>
+        <a class="nav-link" data-tab="items">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+          <span data-i18n="nav_items">Products List</span>
+        </a>
+        <a class="nav-link" data-tab="suppliers">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+          <span data-i18n="nav_suppliers">Suppliers</span>
+        </a>
+        <a class="nav-link" data-tab="complaints">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          <span data-i18n="nav_complaints">Complaints Tracker</span>
+        </a>
+        <a class="nav-link" data-tab="messages">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+          <span data-i18n="nav_messages">Messages &amp; Chat</span>
+        </a>
+        <a class="nav-link" data-tab="uv-sales">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          <span data-i18n="nav_uv_sales">UV Machine Sales</span>
+        </a>
+        <a class="nav-link" data-tab="bait-stations">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          <span data-i18n="nav_bait_stations">Rodent Bait Stations</span>
+        </a>
+        <a class="nav-link" data-tab="reports">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 2v-6m-9-9h12a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path></svg>
+          <span data-i18n="nav_reports">Sanitation IPM Reports</span>
+        </a>
+        <a class="nav-link" data-tab="media">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <span data-i18n="nav_media">Media Gallery</span>
+        </a>
+        <a class="nav-link" data-tab="forms">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <span data-i18n="nav_forms">Forms &amp; Templates</span>
+        </a>
+        <a class="nav-link" data-tab="users">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          <span data-i18n="nav_users">User &amp; CRM Admin</span>
+        </a>
+      </div>
+      
+      <!-- Current User Profile display at bottom -->
+      <div class="sidebar-footer">
+        <div class="current-user-badge">
+          <div class="avatar-circle" id="cur-user-avatar">HA</div>
+          <div class="user-info">
+            <span class="user-name" id="cur-user-name">Hassan Al-Sadi</span>
+            <span class="user-role-tag" id="cur-user-role">GM</span>
+            <span class="user-region-tag" id="cur-user-region" style="display: none;">All</span>
+          </div>
+        </div>
+        <button id="btn-sign-out" title="Sign Out" style="display:flex; align-items:center; gap:0.4rem; width:100%; margin-top:0.5rem; padding:0.45rem 0.7rem; font-size:0.78rem; font-weight:700; color:var(--text-muted); background:transparent; border:1px solid var(--border-color); border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition);" onmouseover="this.style.background='var(--primary-red-light)'; this.style.color='var(--primary-red)';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)';">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+          Sign Out / Switch User
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      
+      <!-- TAB 1: OPERATIONS DASHBOARD -->
+      <section class="tab-content active" id="dashboard-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Iraq Operations Dashboard</h1>
+            <p>Real-time analytics, metrics, and dispatch details across Buckler's regions.</p>
+          </div>
+        </div>
+        <!-- Dashboard Global Filter Bar -->
+        <div id="dash-filter-bar" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; padding:0.75rem 1rem; background:white; border:1px solid var(--border-color); border-radius:var(--radius-md); margin-bottom:1rem; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+          <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-right:0.25rem;">Filters:</span>
+          <!-- Service filter -->
+          <select id="dash-filter-service" class="filter-select" style="margin:0; font-size:0.8rem;"><option value="All">All Services</option><option value="pest control">Pest control</option><option value="termite treatment">Termite treatment</option><option value="weed removal">Weed removal</option><option value="animal control">Animal control</option><option value="bird control">Bird control</option><option value="poultry disinfection">Poultry disinfection</option><option value="landscaping (design)">Landscaping (design)</option><option value="landscaping (gardening)">Landscaping (gardening)</option><option value="landscaping (maintenance)">Landscaping (maintenance)</option><option value="cleaning">Cleaning</option><option value="maintenance">Maintenance</option><option value="products sales">Products sales</option></select>
+          <!-- Region filter -->
+          <select id="dash-filter-region" class="filter-select" style="margin:0; font-size:0.8rem;">
+            <option value="All">All Regions</option>
+            <option value="Central">Central</option>
+            <option value="Kurdistan">Kurdistan</option>
+            <option value="South">South</option>
+          </select>
+          <!-- Quick period presets -->
+          <div style="display:flex; gap:0.25rem; align-items:center; border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">
+            <button id="dash-preset-month" class="btn-dash-preset active" onclick="setDashPreset('month')" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; font-weight: 700; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; cursor: pointer; background: var(--primary-red); color: white; transition: 0.15s;">This Month</button>
+            <button id="dash-preset-all" class="btn-dash-preset" onclick="setDashPreset('all')" style="padding:0.35rem 0.7rem; font-size:0.75rem; font-weight:700; border:none; border-left:1px solid var(--border-color); cursor:pointer; background:white; color:var(--text-medium); transition:all 0.15s;">All Time</button>
+          </div>
+          <!-- Custom date range -->
+          <div style="display:flex; gap:0.25rem; align-items:center;">
+            <input type="date" id="dash-filter-date-from" class="filter-select" style="margin:0; font-size:0.8rem; padding:0.35rem 0.5rem;">
+            <span style="font-size:0.75rem; color:var(--text-muted);">to</span>
+            <input type="date" id="dash-filter-date-to" class="filter-select" style="margin:0; font-size:0.8rem; padding:0.35rem 0.5rem;">
+          </div>
+          <button onclick="clearDashFilters()" style="padding:0.35rem 0.7rem; font-size:0.75rem; font-weight:600; border:1px solid var(--border-color); border-radius:5px; background:white; color:var(--text-medium); cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='white'">✕ Clear</button>
+          <!-- Live filter summary -->
+          <span id="dash-filter-summary" style="margin-left:auto; font-size:0.75rem; color:var(--text-muted); font-style:italic;">Showing: 2026-07-01 → 2026-07-31</span>
+        </div>
+
+        <!-- Metric KPI Cards (Fully Clickable and Actionable) -->
+        <div class="stats-grid">
+          <div class="stat-card" id="dash-card-scheduled" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Scheduled Visits</span>
+              <div class="stat-icon-wrapper">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-scheduled">0</div>
+            <div class="stat-desc">Click to view/plan visits</div>
+          </div>
+          <div class="stat-card" id="dash-card-conducted" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Conducted Visits</span>
+              <div class="stat-icon-wrapper" style="background-color: #ECFDF5; color: #10B981;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-conducted">0</div>
+            <div class="stat-desc">Click to inspect logs</div>
+          </div>
+          <div class="stat-card" id="dash-card-completion" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Completion Rate</span>
+              <div class="stat-icon-wrapper" style="background-color: #EFF6FF; color: #3B82F6;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-completion">0%</div>
+            <div class="stat-desc">Click for team metrics summary</div>
+          </div>
+          <div class="stat-card" id="dash-card-items" style="cursor: pointer;">
+            <div class="stat-header">
+              <span class="stat-label">Products Consumed</span>
+              <div class="stat-icon-wrapper" style="background-color: #FFFBEB; color: #F59E0B;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              </div>
+            </div>
+            <div class="stat-value" id="stat-items-used">0</div>
+            <div class="stat-desc">Click to inspect stocks</div>
+          </div>
+        </div>
+
+        <!-- Visit Type Breakdown Mini Cards -->
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-top:0;">
+          <div class="stat-card" id="dash-card-regular" style="cursor:pointer; border-left:4px solid #3B82F6; padding:0.85rem 1rem;">
+            <div class="stat-header" style="margin-bottom:0.25rem;">
+              <span class="stat-label" style="font-size:0.75rem;">🔵 Regular Visits</span>
+            </div>
+            <div class="stat-value" id="stat-visit-regular" style="font-size:1.5rem;">10</div>
+            <div class="stat-desc" style="font-size:0.7rem;">Standard service visits</div>
+          </div>
+          <div class="stat-card" id="dash-card-callback" style="cursor:pointer; border-left:4px solid #F59E0B; padding:0.85rem 1rem;">
+            <div class="stat-header" style="margin-bottom:0.25rem;">
+              <span class="stat-label" style="font-size:0.75rem;">🟡 Call-back Visits</span>
+            </div>
+            <div class="stat-value" id="stat-visit-callback" style="font-size:1.5rem;">0</div>
+            <div class="stat-desc" style="font-size:0.7rem;">Follow-up return visits</div>
+          </div>
+          <div class="stat-card" id="dash-card-inspection" style="cursor:pointer; border-left:4px solid #EF4444; padding:0.85rem 1rem;">
+            <div class="stat-header" style="margin-bottom:0.25rem;">
+              <span class="stat-label" style="font-size:0.75rem;">🔴 Inspection Visits</span>
+            </div>
+            <div class="stat-value" id="stat-visit-inspection" style="font-size:1.5rem;">0</div>
+            <div class="stat-desc" style="font-size:0.7rem;">Quality inspection visits</div>
+          </div>
+        </div>
+
+        <!-- Dashboard Charts Panel -->
+        <div class="dashboard-row full-width">
+          <!-- Charts Section -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Visits Analysis</h3>
+                <span class="card-subtitle">Performance breakdown by service type and schedule counts</span>
+              </div>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:1.5rem;">
+              <div class="chart-container">
+                <canvas id="visitsChart" style="box-sizing: border-box; display: block; height: 250px; width: 657px;" width="657" height="250"></canvas>
+              </div>
+              <div class="dashboard-charts-row" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Service Types Share</h4>
+                  <canvas id="servicesChart" style="box-sizing: border-box; display: block; height: 200px; width: 657px;" width="657" height="200"></canvas>
+                </div>
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Client Sectors Share</h4>
+                  <canvas id="sectorsChart" style="box-sizing: border-box; display: block; height: 200px; width: 657px;" width="657" height="200"></canvas>
+                </div>
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Visit Types Share</h4>
+                  <canvas id="visitTypesChart" style="box-sizing: border-box; display: block; height: 200px; width: 657px;" width="657" height="200"></canvas>
+                </div>
+                <div style="height:200px; position:relative;">
+                  <h4 style="font-size:0.85rem; text-align:center; color:var(--text-muted); margin-bottom:0.5rem;">Team Leader Performance (Rate)</h4>
+                  <canvas id="performanceChart" style="box-sizing: border-box; display: block; height: 200px; width: 657px;" width="657" height="200"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="dashboard-row full-width" style="margin-top:0;">
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <h3 class="card-title">Recent Activity</h3>
+                <span class="card-subtitle">Latest visits and operations — click any row for details</span>
+              </div>
+              <div style="display:flex; gap:0.4rem; flex-wrap:wrap;" id="dash-activity-service-pills"><button onclick="window._setDashActivityFilter('All')" style="padding:0.2rem 0.6rem; font-size:0.72rem; font-weight:600; border-radius:20px; border:1.5px solid #6B7280; background:#6B7280; color:white; cursor:pointer; transition:all 0.15s;">All</button></div>
+            </div>
+            <div class="card-body" style="padding:0;">
+              <div id="dashboard-activity-feed" style="max-height:320px; overflow-y:auto;"><div style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.85rem;">No recent activities in this period.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transit, Commutes &amp; Routing Panel (Shown to all roles except Team Leaders) -->
+
+        <div class="dashboard-row" id="staff-routing-panel" style="display: grid;">
+          <!-- Staff Daily Commutes & Routing Tracker Card -->
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <h3 class="card-title">Staff Daily Commutes &amp; Routing Tracker</h3>
+                <span class="card-subtitle">Detailed travel legs and distance calculation per Team Leader</span>
+              </div>
+              <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                <select id="routing-region-select" class="filter-select"><option value="All">All Regions</option><option value="Central">Central</option><option value="Kurdistan">Kurdistan</option><option value="South">South</option></select>
+                <div id="routing-tl-pills-container" class="tl-pills-container" style="min-width: 150px;">
+                  <!-- Team Leader Pills dynamically generated in app.js -->
+                </div>
+                <input type="date" id="routing-start-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-01">
+                <span style="font-size:0.8rem; color:var(--text-muted);">to</span>
+                <input type="date" id="routing-end-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-07">
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:1.5rem;">
+                <div>
+                  <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); margin-bottom:0.75rem;">Daily Routing Details</h4>
+                  <div id="routing-details-list" style="display:flex; flex-direction:column; gap:0.5rem; max-height: 280px; overflow-y: auto;"><p style="color:var(--text-muted); font-size:0.85rem;">No Team Leader selected.</p></div>
+                </div>
+                <div style="background:#F8FAFC; padding:1.25rem; border-radius:10px; border:1px solid var(--border-color); display:flex; flex-direction:column; justify-content:center; gap:0.5rem;">
+                  <span style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Calculated Daily Travel</span>
+                  <span style="font-size:2.25rem; font-weight:800; color:var(--primary-red);" id="routing-total-distance">0.0 km</span>
+                  <span style="font-size:0.75rem; color:var(--text-muted);" id="routing-summary-text">Commuting: Hub → Clients → Hub</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transit & Commutes Section -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Live Commute details</h3>
+                <span class="card-subtitle">Route transit tracking &amp; fuel calculations</span>
+              </div>
+            </div>
+            <div class="card-body" style="overflow-y:auto; max-height: 380px; display:flex; flex-direction:column; gap:1rem;" id="commute-log-list">
+        <div class="commute-card" style="cursor:pointer;" data-id="com-4">
+          <div class="commute-header">
+            <!-- Clickable client details -->
+            <span style="display:flex; align-items:center;">
+              <strong style="color: var(--text-dark); cursor:pointer;" class="client-click" data-id="cli-c3">Babylon Hospital</strong>
+              <span style="font-size:0.65rem; font-weight:700; color:var(--primary-red); background:#FFEBEE; padding:1px 6px; border-radius:4px; margin-left:0.5rem; text-transform:uppercase;">Healthcare</span>
+            </span>
+            <span class="commute-badge badge-dispatched">Dispatched</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="tl-faris">Faris Naji</strong> | Route: Buckler Central Hub → Al-Karrada, Baghdad
+          </div>
+          <div class="commute-body">
+            <div class="commute-metric">
+              <span class="commute-val">6.4 km</span>
+              <span>Distance</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">18 mins</span>
+              <span>Est. Duration</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">0.9 L</span>
+              <span>Fuel (Est.)</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="commute-card" style="cursor:pointer;" data-id="com-6">
+          <div class="commute-header">
+            <!-- Clickable client details -->
+            <span style="display:flex; align-items:center;">
+              <strong style="color: var(--text-dark); cursor:pointer;" class="client-click" data-id="cli-s1">Basra Gateway Terminal</strong>
+              <span style="font-size:0.65rem; font-weight:700; color:var(--primary-red); background:#FFEBEE; padding:1px 6px; border-radius:4px; margin-left:0.5rem; text-transform:uppercase;">Logistics</span>
+            </span>
+            <span class="commute-badge badge-dispatched">Dispatched</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="tl-murtadha">Murtadha Jabbar</strong> | Route: Buckler South Hub → Umm Qasr Port, Basra
+          </div>
+          <div class="commute-body">
+            <div class="commute-metric">
+              <span class="commute-val">58 km</span>
+              <span>Distance</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">65 mins</span>
+              <span>Est. Duration</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">7.5 L</span>
+              <span>Fuel (Est.)</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="commute-card" style="cursor:pointer;" data-id="com-5">
+          <div class="commute-header">
+            <!-- Clickable client details -->
+            <span style="display:flex; align-items:center;">
+              <strong style="color: var(--text-dark); cursor:pointer;" class="client-click" data-id="cli-k2">Rotana Hotel Erbil</strong>
+              <span style="font-size:0.65rem; font-weight:700; color:var(--primary-red); background:#FFEBEE; padding:1px 6px; border-radius:4px; margin-left:0.5rem; text-transform:uppercase;">Hospitality</span>
+            </span>
+            <span class="commute-badge badge-scheduled">Scheduled</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="tl-sherwan">Sherwan Sorani</strong> | Route: Buckler Kurdistan Hub → Gulan Street, Erbil
+          </div>
+          <div class="commute-body">
+            <div class="commute-metric">
+              <span class="commute-val">9.1 km</span>
+              <span>Distance</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">20 mins</span>
+              <span>Est. Duration</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">1.3 L</span>
+              <span>Fuel (Est.)</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="commute-card" style="cursor:pointer;" data-id="com-7">
+          <div class="commute-header">
+            <!-- Clickable client details -->
+            <span style="display:flex; align-items:center;">
+              <strong style="color: var(--text-dark); cursor:pointer;" class="client-click" data-id="cli-s2">Al-Basra Sheraton</strong>
+              <span style="font-size:0.65rem; font-weight:700; color:var(--primary-red); background:#FFEBEE; padding:1px 6px; border-radius:4px; margin-left:0.5rem; text-transform:uppercase;">Hospitality</span>
+            </span>
+            <span class="commute-badge badge-scheduled">Scheduled</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="tl-karrar">Karrar Fadel</strong> | Route: Buckler South Hub → Shatt Corniche, Basra
+          </div>
+          <div class="commute-body">
+            <div class="commute-metric">
+              <span class="commute-val">4.5 km</span>
+              <span>Distance</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">12 mins</span>
+              <span>Est. Duration</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">0.6 L</span>
+              <span>Fuel (Est.)</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="commute-card" style="cursor:pointer;" data-id="com-1">
+          <div class="commute-header">
+            <!-- Clickable client details -->
+            <span style="display:flex; align-items:center;">
+              <strong style="color: var(--text-dark); cursor:pointer;" class="client-click" data-id="cli-c1">Baghdad Mall</strong>
+              <span style="font-size:0.65rem; font-weight:700; color:var(--primary-red); background:#FFEBEE; padding:1px 6px; border-radius:4px; margin-left:0.5rem; text-transform:uppercase;">Retail</span>
+            </span>
+            <span class="commute-badge badge-completed">Completed</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="tl-faris">Faris Naji</strong> | Route: Buckler Central Hub → Al-Harthiya, Baghdad
+          </div>
+          <div class="commute-body">
+            <div class="commute-metric">
+              <span class="commute-val">12.5 km</span>
+              <span>Distance</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">35 mins</span>
+              <span>Est. Duration</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">1.8 L</span>
+              <span>Fuel (Est.)</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="commute-card" style="cursor:pointer;" data-id="com-2">
+          <div class="commute-header">
+            <!-- Clickable client details -->
+            <span style="display:flex; align-items:center;">
+              <strong style="color: var(--text-dark); cursor:pointer;" class="client-click" data-id="cli-c2">Al-Mansour Hotel</strong>
+              <span style="font-size:0.65rem; font-weight:700; color:var(--primary-red); background:#FFEBEE; padding:1px 6px; border-radius:4px; margin-left:0.5rem; text-transform:uppercase;">Hospitality</span>
+            </span>
+            <span class="commute-badge badge-completed">Completed</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="tl-omar">Omar Al-Tikriti</strong> | Route: Buckler Central Hub → Al-Mansour, Baghdad
+          </div>
+          <div class="commute-body">
+            <div class="commute-metric">
+              <span class="commute-val">8.2 km</span>
+              <span>Distance</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">22 mins</span>
+              <span>Est. Duration</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">1.2 L</span>
+              <span>Fuel (Est.)</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="commute-card" style="cursor:pointer;" data-id="com-3">
+          <div class="commute-header">
+            <!-- Clickable client details -->
+            <span style="display:flex; align-items:center;">
+              <strong style="color: var(--text-dark); cursor:pointer;" class="client-click" data-id="cli-k1">Family Mall Erbil</strong>
+              <span style="font-size:0.65rem; font-weight:700; color:var(--primary-red); background:#FFEBEE; padding:1px 6px; border-radius:4px; margin-left:0.5rem; text-transform:uppercase;">Retail</span>
+            </span>
+            <span class="commute-badge badge-completed">Completed</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom: 2px;">
+            Driver: <strong style="cursor:pointer;" class="user-click" data-id="tl-karwan">Karwan Rekani</strong> | Route: Buckler Kurdistan Hub → 100m Road, Erbil
+          </div>
+          <div class="commute-body">
+            <div class="commute-metric">
+              <span class="commute-val">15 km</span>
+              <span>Distance</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">28 mins</span>
+              <span>Est. Duration</span>
+            </div>
+            <div class="commute-metric">
+              <span class="commute-val">2.1 L</span>
+              <span>Fuel (Est.)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+          </div>
+        </div>
+
+        <!-- Driver Shifts & Workloads Tracker Section -->
+        <div class="dashboard-row full-width" id="driver-shifts-panel" style="display: block; margin-top: 1.5rem;">
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+              <div>
+                <h3 class="card-title">Driver Shifts &amp; Workloads Tracker</h3>
+                <span class="card-subtitle">Monitor check-in/out times, commutes, and active working hours</span>
+              </div>
+              <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Regions</span>
+                  <div id="shifts-region-pills" class="tl-pills-container">
+      <div class="tl-pill active" data-value="All">
+        <span class="pill-avatar">★</span>
+        <span>All</span>
+      </div>
+    
+        <div class="tl-pill active" data-value="Central">
+          <span class="pill-avatar">CE</span>
+          <span>Central</span>
+        </div>
+      
+        <div class="tl-pill active" data-value="Kurdistan">
+          <span class="pill-avatar">KU</span>
+          <span>Kurdistan</span>
+        </div>
+      
+        <div class="tl-pill active" data-value="South">
+          <span class="pill-avatar">SO</span>
+          <span>South</span>
+        </div>
+      </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Team Leaders</span>
+                  <div id="shifts-tl-pills" class="tl-pills-container">
+      <div class="tl-pill active" data-value="All">
+        <span class="pill-avatar">★</span>
+        <span>All</span>
+      </div>
+    
+        <div class="tl-pill active" data-value="tl-faris">
+          <span class="pill-avatar">FN</span>
+          <span>Faris Naji</span>
+        </div>
+      
+        <div class="tl-pill active" data-value="tl-omar">
+          <span class="pill-avatar">OA</span>
+          <span>Omar Al-Tikriti</span>
+        </div>
+      
+        <div class="tl-pill active" data-value="tl-karwan">
+          <span class="pill-avatar">KR</span>
+          <span>Karwan Rekani</span>
+        </div>
+      
+        <div class="tl-pill active" data-value="tl-sherwan">
+          <span class="pill-avatar">SS</span>
+          <span>Sherwan Sorani</span>
+        </div>
+      
+        <div class="tl-pill active" data-value="tl-murtadha">
+          <span class="pill-avatar">MJ</span>
+          <span>Murtadha Jabbar</span>
+        </div>
+      
+        <div class="tl-pill active" data-value="tl-karrar">
+          <span class="pill-avatar">KF</span>
+          <span>Karrar Fadel</span>
+        </div>
+      </div>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center; margin-top:10px;">
+                  <input type="date" id="shifts-start-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-01">
+                  <span style="font-size:0.8rem; color:var(--text-muted);">to</span>
+                  <input type="date" id="shifts-end-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-07">
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Total Shifts</span>
+                  <div class="stat-value" id="shifts-total-count" style="font-size: 1.5rem; margin-top: 4px;">9</div>
+                </div>
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Total Commute Time</span>
+                  <div class="stat-value" id="shifts-total-commute" style="font-size: 1.5rem; margin-top: 4px;">85 mins</div>
+                </div>
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Total Visits</span>
+                  <div class="stat-value" id="shifts-total-visits" style="font-size: 1.5rem; margin-top: 4px;">3</div>
+                </div>
+                <div class="stat-card" style="padding: 1rem; min-height: auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Avg Work Hours/Day</span>
+                  <div class="stat-value" id="shifts-avg-hours" style="font-size: 1.5rem; margin-top: 4px;">9.3 hrs</div>
+                </div>
+              </div>
+              <div class="table-wrapper">
+                <table class="data-table" style="font-size: 0.85rem;">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Team Leader</th>
+                      <th>Region</th>
+                      <th>Check-In</th>
+                      <th>Check-Out</th>
+                      <th>Commute Time</th>
+                      <th>Visits</th>
+                      <th>Working Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shifts-table-body">
+        <tr>
+          <td><code>2026-06-03</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-omar" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Omar Al-Tikriti</a></strong></td>
+          <td><span class="badge-region badge-region-central">Central</span></td>
+          <td><code>08:05</code></td>
+          <td><code>17:00</code></td>
+          <td><strong>0 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">0 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">8h 55m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-03</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-karwan" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Karwan Rekani</a></strong></td>
+          <td><span class="badge-region badge-region-kurdistan">Kurdistan</span></td>
+          <td><code>07:55</code></td>
+          <td><code>17:45</code></td>
+          <td><strong>28 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">1 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">9h 50m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-03</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-karrar" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Karrar Fadel</a></strong></td>
+          <td><span class="badge-region badge-region-south">South</span></td>
+          <td><code>08:10</code></td>
+          <td><code>17:20</code></td>
+          <td><strong>0 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">0 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">9h 10m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-02</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-faris" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Faris Naji</a></strong></td>
+          <td><span class="badge-region badge-region-central">Central</span></td>
+          <td><code>08:15</code></td>
+          <td><code>18:00</code></td>
+          <td><strong>0 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">0 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">9h 45m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-02</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-karwan" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Karwan Rekani</a></strong></td>
+          <td><span class="badge-region badge-region-kurdistan">Kurdistan</span></td>
+          <td><code>07:50</code></td>
+          <td><code>17:10</code></td>
+          <td><strong>0 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">0 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">9h 20m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-02</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-murtadha" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Murtadha Jabbar</a></strong></td>
+          <td><span class="badge-region badge-region-south">South</span></td>
+          <td><code>08:00</code></td>
+          <td><code>17:30</code></td>
+          <td><strong>0 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">0 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">9h 30m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-01</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-faris" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Faris Naji</a></strong></td>
+          <td><span class="badge-region badge-region-central">Central</span></td>
+          <td><code>08:00</code></td>
+          <td><code>17:30</code></td>
+          <td><strong>35 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">1 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">9h 30m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-01</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-omar" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Omar Al-Tikriti</a></strong></td>
+          <td><span class="badge-region badge-region-central">Central</span></td>
+          <td><code>08:30</code></td>
+          <td><code>16:45</code></td>
+          <td><strong>0 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">0 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">8h 15m</span></td>
+        </tr>
+      
+        <tr>
+          <td><code>2026-06-01</code></td>
+          <td><strong><a href="#" class="user-click" data-id="tl-karwan" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">Karwan Rekani</a></strong></td>
+          <td><span class="badge-region badge-region-kurdistan">Kurdistan</span></td>
+          <td><code>07:45</code></td>
+          <td><code>17:00</code></td>
+          <td><strong>0 mins</strong></td>
+          <td><span style="font-weight:700; color:var(--text-dark);">0 visits</span></td>
+          <td><span style="font-weight:700; color:var(--text-medium);">9h 15m</span></td>
+        </tr>
+      </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>        <!-- Operational Deep Dives (Item Consumption & Complaints) -->
+        <div class="dashboard-row full-width" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <!-- Item Consumption Card -->
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <h3 class="card-title">Products Consumption Analysis</h3>
+                <span class="card-subtitle">Analyze inventory item usage across operations</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                <select id="dash-consume-region" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem;">
+                  <option value="All">All Regions</option>
+                  <option value="Central">Central</option>
+                  <option value="Kurdistan">Kurdistan</option>
+                  <option value="South">South</option>
+                </select>
+                <select id="dash-consume-client" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem; max-width: 140px;"><option value="All">All Clients</option><option value="cli-c1">Baghdad Mall</option><option value="cli-c1-b1">Baghdad Mall - Food Court Branch</option><option value="cli-c1-b2">Baghdad Mall - Erbil Branch</option><option value="cli-c2">Al-Mansour Hotel</option><option value="cli-c3">Babylon Hospital</option><option value="cli-c4">Asiacell HQ Baghdad</option><option value="cli-k1">Family Mall Erbil</option><option value="cli-k2">Rotana Hotel Erbil</option><option value="cli-k3">Sulaymaniyah University</option><option value="cli-k4">Korek Telecom HQ</option><option value="cli-s1">Basra Gateway Terminal</option><option value="cli-s2">Al-Basra Sheraton</option><option value="cli-s3">Rumaila Oil Field Clinic</option><option value="cli-s4">Majnoon Camp Services</option></select>
+                <select id="dash-consume-item" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem; max-width: 140px;"><option value="All">All Items</option><option value="itm-1">Permethrin 10% EC (PERM-10)</option><option value="itm-2">Termidor HE Termiticide (TERM-HE)</option><option value="itm-3">Glyphosate 480 Herbicide (GLY-480)</option><option value="itm-4">Flocoumafen Rodent Bait Blocks (FLOC-B)</option><option value="itm-5">Virkon S Disinfectant (VIRK-S)</option><option value="itm-6">Stainless Steel Bird Spikes (SS-SPIKES)</option><option value="itm-7">Organic NPK Fertilizer (NPK-FERT)</option><option value="itm-8">Professional Sprayer Nozzle B2 (NOZ-B2)</option><option value="itm-9">Buckler Pest Defense Spray (PEST-DEF)</option><option value="itm-10">Bromadiolone Bait Stations (BROM-STN)</option><option value="itm-uv-1">UV Insect Trap Type A (UV-TRAP-A)</option><option value="itm-uv-2">UV Insect Trap Type B (UV-TRAP-B)</option><option value="itm-uv-3">UV Insect Trap Type C (UV-TRAP-C)</option></select>
+              </div>
+              <div style="height:220px; position:relative; margin-bottom: 1rem;">
+                <canvas id="dashConsumeChart" style="box-sizing: border-box; display: block; height: 220px; width: 657px;" width="657" height="220"></canvas>
+              </div>
+              <div id="dash-consume-total" style="font-size:0.8rem; font-weight:700; color:var(--text-dark); text-align:center; padding: 0.5rem; background:#F8FAFC; border-radius:6px; border:1px solid var(--border-color); cursor:pointer;">Total Consumed: 43 Units</div>
+            </div>
+          </div>
+
+          <!-- Complaints Analysis Card -->
+          <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <h3 class="card-title">Complaints Analysis</h3>
+                <span class="card-subtitle">Monitor service quality issues and resolution states</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                <select id="dash-complaint-region" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem;">
+                  <option value="All">All Regions</option>
+                  <option value="Central">Central</option>
+                  <option value="Kurdistan">Kurdistan</option>
+                  <option value="South">South</option>
+                </select>
+                <select id="dash-complaint-client" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem; max-width: 140px;"><option value="All">All Clients</option><option value="cli-c1">Baghdad Mall</option><option value="cli-c1-b1">Baghdad Mall - Food Court Branch</option><option value="cli-c1-b2">Baghdad Mall - Erbil Branch</option><option value="cli-c2">Al-Mansour Hotel</option><option value="cli-c3">Babylon Hospital</option><option value="cli-c4">Asiacell HQ Baghdad</option><option value="cli-k1">Family Mall Erbil</option><option value="cli-k2">Rotana Hotel Erbil</option><option value="cli-k3">Sulaymaniyah University</option><option value="cli-k4">Korek Telecom HQ</option><option value="cli-s1">Basra Gateway Terminal</option><option value="cli-s2">Al-Basra Sheraton</option><option value="cli-s3">Rumaila Oil Field Clinic</option><option value="cli-s4">Majnoon Camp Services</option></select>
+                <select id="dash-complaint-status" class="filter-select" style="margin:0; font-size:0.75rem; padding:0.4rem 0.6rem;">
+                  <option value="All">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+              </div>
+              <div style="height:220px; position:relative; margin-bottom: 1rem;">
+                <canvas id="dashComplaintChart" style="box-sizing: border-box; display: block; height: 220px; width: 657px;" width="657" height="220"></canvas>
+              </div>
+              <div id="dash-complaint-total" style="font-size:0.8rem; font-weight:700; color:var(--text-dark); text-align:center; padding: 0.5rem; background:#F8FAFC; border-radius:6px; border:1px solid var(--border-color); cursor:pointer;">Total Logged: 3 Issues</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Map & Geographical Analytics -->
+        <div class="dashboard-row full-width">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Buckler - Iraq Regional Map Hub</h3>
+                <span class="card-subtitle">Click regional zones (Central, South, Kurdistan) to filter and view active operations</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="map-visualizer-container">
+                
+                <!-- Real Google Maps Hub Container -->
+                <div class="map-svg-pane" style="padding:0; min-height:320px; border-radius:var(--radius-lg); overflow:hidden; border: 1px solid var(--border-color); display: block;">
+                  <div id="dashboard-real-map" style="width: 100%; height: 320px; background: rgb(229, 227, 223); z-index: 1; position: relative;" class="leaflet-container leaflet-touch leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom" tabindex="0"><div class="leaflet-pane leaflet-map-pane" style="transform: translate3d(0px, 0px, 0px);"><div class="leaflet-pane leaflet-tile-pane"><div class="leaflet-layer " style="z-index: 1; opacity: 1;"><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 20; transform: translate3d(0px, 0px, 0px) scale(1);"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=39&amp;y=25&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(132px, -27px, 0px); opacity: 1;"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=40&amp;y=25&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(388px, -27px, 0px); opacity: 1;"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=39&amp;y=26&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(132px, 229px, 0px); opacity: 1;"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=40&amp;y=26&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(388px, 229px, 0px); opacity: 1;"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=38&amp;y=25&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-124px, -27px, 0px); opacity: 1;"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=41&amp;y=25&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(644px, -27px, 0px); opacity: 1;"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=38&amp;y=26&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-124px, 229px, 0px); opacity: 1;"><img alt="" src="https://mt1.google.com/vt/lyrs=m&amp;x=41&amp;y=26&amp;z=6" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(644px, 229px, 0px); opacity: 0;"></div></div></div><div class="leaflet-pane leaflet-overlay-pane"><svg pointer-events="none" class="leaflet-zoom-animated" width="786" height="384" viewBox="-65 -32 786 384" style="transform: translate3d(-65px, -32px, 0px);"><g><path class="leaflet-interactive" stroke="#3B82F6" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#3B82F6" fill-opacity="0.5625" fill-rule="evenodd" d="M276 -34L443 -34L434 46L365 63L297 18z"></path><path class="leaflet-interactive" stroke="#EF4444" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#EF4444" fill-opacity="0.7000000000000001" fill-rule="evenodd" d="M206 74L365 63L434 46L456 183L365 237L206 216z"></path><path class="leaflet-interactive" stroke="#10B981" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#10B981" fill-opacity="0.5625" fill-rule="evenodd" d="M365 237L456 183L547 226L561 338L479 343L388 290z"></path></g></svg></div><div class="leaflet-pane leaflet-shadow-pane"></div><div class="leaflet-pane leaflet-marker-pane"><div class="leaflet-marker-icon city-map-pin-div leaflet-zoom-animated leaflet-interactive" tabindex="0" role="button" style="margin-left: -20px; margin-top: -6px; width: 40px; height: 30px; transform: translate3d(343px, -4px, 0px); z-index: -4;">
+            <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+              <div style="width:12px; height:12px; background:#1E293B; border:2px solid #FFFFFF; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>
+              <span style="font-size:0.75rem; font-weight:700; color:#0F172A; text-shadow:0 0 4px #FFFFFF; margin-top:2px; white-space:nowrap;">Erbil</span>
+            </div>
+          </div><div class="leaflet-marker-icon city-map-pin-div leaflet-zoom-animated leaflet-interactive" tabindex="0" role="button" style="margin-left: -20px; margin-top: -6px; width: 40px; height: 30px; transform: translate3d(406px, 31px, 0px); z-index: 31;">
+            <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+              <div style="width:12px; height:12px; background:#1E293B; border:2px solid #FFFFFF; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>
+              <span style="font-size:0.75rem; font-weight:700; color:#0F172A; text-shadow:0 0 4px #FFFFFF; margin-top:2px; white-space:nowrap;">Suleimaniah</span>
+            </div>
+          </div><div class="leaflet-marker-icon city-map-pin-div leaflet-zoom-animated leaflet-interactive" tabindex="0" role="button" style="margin-left: -20px; margin-top: -6px; width: 40px; height: 30px; transform: translate3d(359px, 155px, 0px); z-index: 155;">
+            <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+              <div style="width:12px; height:12px; background:#1E293B; border:2px solid #FFFFFF; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>
+              <span style="font-size:0.75rem; font-weight:700; color:#0F172A; text-shadow:0 0 4px #FFFFFF; margin-top:2px; white-space:nowrap;">Baghdad</span>
+            </div>
+          </div><div class="leaflet-marker-icon city-map-pin-div leaflet-zoom-animated leaflet-interactive" tabindex="0" role="button" style="margin-left: -20px; margin-top: -6px; width: 40px; height: 30px; transform: translate3d(515px, 306px, 0px); z-index: 306;">
+            <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+              <div style="width:12px; height:12px; background:#1E293B; border:2px solid #FFFFFF; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>
+              <span style="font-size:0.75rem; font-weight:700; color:#0F172A; text-shadow:0 0 4px #FFFFFF; margin-top:2px; white-space:nowrap;">Basra</span>
+            </div>
+          </div></div><div class="leaflet-pane leaflet-tooltip-pane"></div><div class="leaflet-pane leaflet-popup-pane"></div><div class="leaflet-proxy leaflet-zoom-animated" style="transform: translate3d(10179.9px, 6587.34px, 0px) scale(32);"></div></div><div class="leaflet-control-container"><div class="leaflet-top leaflet-left"></div><div class="leaflet-top leaflet-right"><div class="leaflet-control-zoom leaflet-bar leaflet-control"><a class="leaflet-control-zoom-in" href="#" title="Zoom in" role="button" aria-label="Zoom in" aria-disabled="false"><span aria-hidden="true">+</span></a><a class="leaflet-control-zoom-out" href="#" title="Zoom out" role="button" aria-label="Zoom out" aria-disabled="false"><span aria-hidden="true">−</span></a></div></div><div class="leaflet-bottom leaflet-left"></div><div class="leaflet-bottom leaflet-right"></div></div></div>
+                </div>
+
+                <!-- Info Cards -->
+                <div style="display:flex; flex-direction:column; gap:0.75rem; justify-content:center;">
+                  <div style="border-left:4px solid var(--primary-red); padding:0.75rem; background:#FAFAFA; border-radius:6px; cursor:pointer;" id="hub-card-central">
+                    <strong style="color:var(--primary-red);">Central Region (Baghdad Hub)</strong>
+                    <p style="font-size:0.8rem; color:var(--text-medium); margin-top:2px;">Servicing the central provinces including Baghdad, Anbar, Babylon and Diyala. Features main warehouse and technical training operations.</p>
+                  </div>
+                  <div style="border-left:4px solid var(--info-blue); padding:0.75rem; background:#FAFAFA; border-radius:6px; cursor:pointer;" id="hub-card-kurdistan">
+                    <strong style="color:var(--info-blue);">Kurdistan Region (Erbil Hub)</strong>
+                    <p style="font-size:0.8rem; color:var(--text-medium); margin-top:2px;">Covers Erbil, Sulaymaniyah, Duhok, and Halabja. High volume of commercial food outlets and residential compound treatments.</p>
+                  </div>
+                  <div style="border-left:4px solid var(--success-green); padding:0.75rem; background:#FAFAFA; border-radius:6px; cursor:pointer;" id="hub-card-south">
+                    <strong style="color:var(--success-green);">South Region (Basra Hub)</strong>
+                    <p style="font-size:0.8rem; color:var(--text-medium); margin-top:2px;">Covers Basra, Dhi Qar, Maysan and Muthanna. Primarily focuses on industrial oil camps, shipping terminals, and product sales.</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: SALES CRM -->
+      <section class="tab-content" id="sales-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Sales CRM &amp; Pipeline</h1>
+            <p>Track sales opportunities from prospecting to closing, with custom costing and pricing generators.</p>
+          </div>
+          <div class="view-actions" style="display:flex; gap:0.75rem; align-items:center;">
+            <button class="btn btn-secondary" id="btn-toggle-sales-dash" style="display:inline-flex; align-items:center; gap:0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z"></path><path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+              Toggle Dashboard
+            </button>
+            <button class="btn btn-primary" id="btn-add-deal" style="display:inline-flex; align-items:center; gap:0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+              Add New Deal
+            </button>
+          </div>
+        </div>
+
+        <!-- Sales Visual Dashboard Panel (Collapsible) -->
+        <div id="sales-dashboard-panel" class="card" style="margin-bottom:1.5rem; display:block;">
+          <div class="card-header"><h3 class="card-title">Sales Pipeline Analytics</h3></div>
+          <div class="card-body" style="display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:1.5rem; min-height:220px; align-items:center; padding:1rem;">
+            <div>
+              <h4 style="font-size:0.78rem; text-align:center; color:var(--text-medium); margin-bottom:0.5rem; font-weight:700;">Pipeline Stage Value Distribution</h4>
+              <canvas id="chart-sales-stages" style="max-height:160px;"></canvas>
+            </div>
+            <div>
+              <h4 style="font-size:0.78rem; text-align:center; color:var(--text-medium); margin-bottom:0.5rem; font-weight:700;">Revenue Forecast by Currency</h4>
+              <canvas id="chart-sales-revenue" style="max-height:160px;"></canvas>
+            </div>
+            <div>
+              <h4 style="font-size:0.78rem; text-align:center; color:var(--text-medium); margin-bottom:0.5rem; font-weight:700;">Sales Rep Revenue Leaderboard</h4>
+              <canvas id="chart-sales-reps" style="max-height:160px;"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sales KPI Cards Row -->
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem;">
+          <div class="stat-card" id="card-sales-prospects" style="border-left:4px solid #94A3B8; cursor: pointer;">
+            <span class="stat-label">👥 Prospects</span>
+            <div class="stat-value" id="stat-sales-prospects">0</div>
+          </div>
+          <div class="stat-card" id="card-sales-proposals" style="border-left:4px solid #3B82F6; cursor: pointer;">
+            <span class="stat-label">📄 Proposals Sent</span>
+            <div class="stat-value" id="stat-sales-proposals">0</div>
+          </div>
+          <div class="stat-card" id="card-sales-won-usd" style="border-left:4px solid #10B981; cursor: pointer;">
+            <span class="stat-label">💰 Won (USD)</span>
+            <div class="stat-value" id="stat-sales-won-value-usd">$0</div>
+          </div>
+          <div class="stat-card" id="card-sales-won-iqd" style="border-left:4px solid #8B5CF6; cursor: pointer;">
+            <span class="stat-label">💰 Won (IQD)</span>
+            <div class="stat-value" id="stat-sales-won-value-iqd">0 IQD</div>
+          </div>
+        </div>
+
+        <!-- Pipeline Filter Bar -->
+        <div class="filters-bar" style="margin-bottom:1rem; flex-wrap:wrap; gap:1rem; padding:0.75rem; background:var(--bg-light); border-radius:6px; border:1px solid var(--border-color); align-items:center;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label for="sales-filter-rep" style="font-weight:700; font-size:0.8rem; color:var(--text-dark); margin:0;">User / Representative:</label>
+            <select id="sales-filter-rep" class="filter-select" style="margin:0; min-width:160px;">
+              <option value="All">All Users / Reps</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:center; gap:1rem; margin-left:auto;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <label for="sales-filter-start" style="font-weight:700; font-size:0.8rem; color:var(--text-dark); margin:0;">From:</label>
+              <input type="date" id="sales-filter-start" class="filter-select" style="margin:0; min-width:130px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <label for="sales-filter-end" style="font-weight:700; font-size:0.8rem; color:var(--text-dark); margin:0;">To:</label>
+              <input type="date" id="sales-filter-end" class="filter-select" style="margin:0; min-width:130px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Kanban Board Container -->
+        <!-- Kanban Board Container: Optimized 4-Column Grid Layout to Fit All Steps on 1 Screen -->
+        <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:0.5rem; width:100%; align-items:stretch; min-height:500px;">
+          <!-- Column: Prospecting -->
+          <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
+            <div style="font-weight:700; font-size:0.78rem; color:#64748B; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🔍 Prospecting</span>
+              <span id="count-deal-prospecting" style="background:#E2E8F0; padding:1px 6px; border-radius:10px; font-size:0.7rem;">0</span>
+            </div>
+            <div id="kanban-prospecting" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
+          </div>
+
+          <!-- Column: Proposal -->
+          <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
+            <div style="font-weight:700; font-size:0.78rem; color:#8B5CF6; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📄 Proposal Sent</span>
+              <span id="count-deal-proposal" style="background:#EDE9FE; padding:1px 6px; border-radius:10px; font-size:0.7rem;">0</span>
+            </div>
+            <div id="kanban-proposal" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
+          </div>
+
+          <!-- Column: Closed Won -->
+          <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
+            <div style="font-weight:700; font-size:0.78rem; color:#10B981; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🎉 Closed Won</span>
+              <span id="count-deal-won" style="background:#D1FAE5; padding:1px 6px; border-radius:10px; font-size:0.7rem;">0</span>
+            </div>
+            <div id="kanban-won" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
+          </div>
+
+          <!-- Column: Closed Lost -->
+          <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
+            <div style="font-weight:700; font-size:0.78rem; color:#EF4444; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">❌ Closed Lost</span>
+              <span id="count-deal-lost" style="background:#FEE2E2; padding:1px 6px; border-radius:10px; font-size:0.7rem;">0</span>
+            </div>
+            <div id="kanban-lost" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: SCHEDULES & VISITS -->
+      <section class="tab-content" id="schedules-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Operations Schedules</h1>
+            <p>Schedule client services, allocate regional team leaders, and log visit reports.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-schedule" style="display: inline-flex;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Schedule Service
+          </button>
+        </div>
+
+        <!-- Team Leader Shift Widget (Visible only to logged in team leaders) -->
+        <div id="tl-shift-widget" style="display: none; margin-bottom: 1.5rem;">
+          <!-- Injected dynamically in app.js -->
+        </div>
+
+        <!-- Filter bar -->
+        <div class="action-bar">
+          <div class="search-input-wrapper" style="min-width: 200px;">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-schedule" placeholder="Search client or service...">
+          </div>
+          <select id="filter-schedule-region" class="filter-select"><option value="All" selected="">All Regions</option><option value="Central">Central</option><option value="South">South</option><option value="Kurdistan">Kurdistan</option></select>
+          <select id="filter-schedule-city" class="filter-select"><option value="All" selected="">All Cities</option><option value="Baghdad">Baghdad</option><option value="Najf">Najf</option><option value="Karbala">Karbala</option><option value="Hilla">Hilla</option><option value="Erbil">Erbil</option><option value="Suleimaniah">Suleimaniah</option><option value="Mosul">Mosul</option><option value="Kirkuk">Kirkuk</option><option value="Duhok">Duhok</option><option value="Basra">Basra</option><option value="Roumailah">Roumailah</option><option value="Nasriyah">Nasriyah</option></select>
+          <select id="filter-schedule-client" class="filter-select"><option value="All">All Clients</option>
+      <option value="cli-c1">Baghdad Mall</option>
+    
+      <option value="cli-c1-b1">Baghdad Mall - Food Court Branch</option>
+    
+      <option value="cli-c1-b2">Baghdad Mall - Erbil Branch</option>
+    
+      <option value="cli-c2">Al-Mansour Hotel</option>
+    
+      <option value="cli-c3">Babylon Hospital</option>
+    
+      <option value="cli-c4">Asiacell HQ Baghdad</option>
+    
+      <option value="cli-k1">Family Mall Erbil</option>
+    
+      <option value="cli-k2">Rotana Hotel Erbil</option>
+    
+      <option value="cli-k3">Sulaymaniyah University</option>
+    
+      <option value="cli-k4">Korek Telecom HQ</option>
+    
+      <option value="cli-s1">Basra Gateway Terminal</option>
+    
+      <option value="cli-s2">Al-Basra Sheraton</option>
+    
+      <option value="cli-s3">Rumaila Oil Field Clinic</option>
+    
+      <option value="cli-s4">Majnoon Camp Services</option>
+    </select>
+          <select id="filter-schedule-tl" class="filter-select" multiple="" style="min-width: 150px; height: 38px; padding: 4px;"><option value="All" selected="">All Team Leaders</option>
+      <option value="tl-faris">Faris Naji</option>
+    
+      <option value="tl-omar">Omar Al-Tikriti</option>
+    
+      <option value="tl-karwan">Karwan Rekani</option>
+    
+      <option value="tl-sherwan">Sherwan Sorani</option>
+    
+      <option value="tl-murtadha">Murtadha Jabbar</option>
+    
+      <option value="tl-karrar">Karrar Fadel</option>
+    </select>
+          <select id="filter-schedule-service" class="filter-select"><option value="All">All Services</option><option value="pest control">Pest control</option><option value="termite treatment">Termite treatment</option><option value="weed removal">Weed removal</option><option value="animal control">Animal control</option><option value="bird control">Bird control</option><option value="poultry disinfection">Poultry disinfection</option><option value="landscaping (design)">Landscaping (design)</option><option value="landscaping (gardening)">Landscaping (gardening)</option><option value="landscaping (maintenance)">Landscaping (maintenance)</option><option value="cleaning">Cleaning</option><option value="maintenance">Maintenance</option><option value="products sales">Products sales</option></select>
+          <select id="filter-schedule-status" class="filter-select">
+            <option value="All">All Statuses</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Conducted">Conducted</option>
+          </select>
+          <input type="date" id="filter-schedule-date" class="filter-select" style="font-family: var(--font-family);">
+          <button class="btn btn-secondary btn-sm" id="btn-clear-schedule-filters">Clear</button>
+
+          <!-- List vs Calendar View Toggle -->
+          <div class="view-toggle" style="display:flex; border:1px solid var(--border-color); border-radius:var(--radius-md); overflow:hidden; background:white; margin-left:auto;">
+            <button class="btn-toggle active" id="btn-schedule-view-list" style="padding:0.6rem 1rem; font-size:0.8rem; font-weight:700; border:none; background:transparent; cursor:pointer; color:var(--text-medium); transition:var(--transition);">List</button>
+            <button class="btn-toggle" id="btn-schedule-view-cal" style="padding:0.6rem 1rem; font-size:0.8rem; font-weight:700; border:none; border-left:1px solid var(--border-color); background:transparent; cursor:pointer; color:var(--text-medium); transition:var(--transition);">Calendar</button>
+          </div>
+
+          <!-- Calendar Controls -->
+          <div id="calendar-view-controls" style="display:none; align-items:center; gap:0.5rem; flex-wrap:nowrap;">
+            <select id="calendar-period" class="filter-select" style="padding:0.5rem 0.75rem; font-size:0.8rem;">
+              <option value="Month">Month View</option>
+              <option value="Week">Week View</option>
+              <option value="Day">Day View</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" id="btn-cal-prev" style="padding:0.5rem 0.75rem; font-weight:700;">◀</button>
+            <span id="calendar-current-label" style="font-weight:700; font-size:0.8rem; min-width:100px; text-align:center; color:var(--text-dark);">June 2026</span>
+            <button class="btn btn-secondary btn-sm" id="btn-cal-next" style="padding:0.5rem 0.75rem; font-weight:700;">▶</button>
+          </div>
+        </div>
+
+        <!-- Schedules Strip Cards List -->
+        <div class="schedules-container" id="schedules-list">
+          <!-- Injected dynamically in app.js -->
+        </div>
+
+        <!-- Schedules Calendar Grid View -->
+        <div id="schedules-calendar" style="display:none; background:white; border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem; box-shadow:var(--shadow-sm); overflow-x:auto;">
+          <!-- Injected dynamically in app.js -->
+        </div>
+      </section>
+
+      <!-- TAB 3: CLIENTS CRUD -->
+      <section class="tab-content" id="clients-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Client Registry</h1>
+            <p>Manage client relationships, addresses, and contacts across Iraq regions.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-client" style="display: inline-flex;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Add Client
+          </button>
+        </div>
+
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-client" placeholder="Search clients by name, contact, address...">
+          </div>
+          <select id="filter-client-region" class="filter-select"><option value="All" selected="">All Regions</option><option value="Central">Central</option><option value="South">South</option><option value="Kurdistan">Kurdistan</option></select>
+          <select id="filter-client-city" class="filter-select"><option value="All" selected="">All Cities</option><option value="Baghdad">Baghdad</option><option value="Najf">Najf</option><option value="Karbala">Karbala</option><option value="Hilla">Hilla</option><option value="Erbil">Erbil</option><option value="Suleimaniah">Suleimaniah</option><option value="Mosul">Mosul</option><option value="Kirkuk">Kirkuk</option><option value="Duhok">Duhok</option><option value="Basra">Basra</option><option value="Roumailah">Roumailah</option><option value="Nasriyah">Nasriyah</option></select>
+          <select id="filter-client-service" class="filter-select">
+            <option value="All">All Services</option>
+            <option value="Pest Control">Pest Control</option>
+            <option value="Weed Removal">Weed Removal</option>
+            <option value="Termite Treatment">Termite Treatment</option>
+            <option value="Animal Control">Animal Control</option>
+            <option value="Bird Control">Bird Control</option>
+            <option value="Poultry Halls">Poultry Halls</option>
+            <option value="Landscaping">Landscaping</option>
+          </select>
+          <select id="filter-client-hierarchy" class="filter-select">
+            <option value="All">All Accounts</option>
+            <option value="Main">Main Accounts Only</option>
+            <option value="Branches">Branch Accounts Only</option>
+          </select>
+          <select id="filter-client-parent" class="filter-select" style="max-width:200px;">
+            <option value="All">All Parent Accounts</option>
+          </select>
+          
+          <div class="csv-upload-zone" id="upload-clients-zone">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <div>
+              <p class="primary-msg">Drag &amp; Drop Clients CSV</p>
+              <p class="secondary-msg">or click to browse local files</p>
+            </div>
+            <input type="file" id="clients-file-input" class="hidden-file-input" accept=".csv">
+          </div>
+
+          <button class="btn btn-secondary" id="btn-dl-client-tmpl">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Template
+          </button>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Client Code</th>
+                <th>Client Name</th>
+                <th>Sector</th>
+                <th>Contact Name</th>
+                <th>Region</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Geo Location</th>
+                <th>Full Address</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clients-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Clients Visit Analysis Panel -->
+        <div class="card" style="margin-top: 1.5rem;" id="clients-visit-analysis-panel">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 class="card-title">Clients Visit Frequencies &amp; Types Breakdown</h3>
+              <span class="card-subtitle">Aggregated analysis of visit types across business sectors and team allocations.</span>
+            </div>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <select id="client-analysis-region" class="filter-select" multiple="" style="margin:0; min-width:140px; height:38px; padding:2px 4px;">
+                <option value="All" selected="">All Regions</option>
+                <option value="Central">Central</option>
+                <option value="Kurdistan">Kurdistan</option>
+                <option value="South">South</option>
+              </select>
+              <select id="client-analysis-sector" class="filter-select" style="margin:0;">
+                <option value="All">All Sectors</option>
+              </select>
+              <select id="client-analysis-tl" class="filter-select" style="margin:0;">
+                <option value="All">All Team Leaders</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body" style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem;">
+            <div style="height:250px; position:relative;">
+              <canvas id="clientAnalysisChart"></canvas>
+            </div>
+            <div style="height:250px; position:relative;">
+              <canvas id="clientAnalysisPieChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Business Sectors Card -->
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 class="card-title">Business Sectors Registry</h3>
+              <span class="card-subtitle">Manage client industries for scheduling metrics and dynamic categorization.</span>
+            </div>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <button class="btn btn-secondary" id="btn-dl-sector-tmpl">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Template
+              </button>
+              <button class="btn btn-primary" id="btn-add-sector" style="display: inline-flex;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M12 4v16m8-8H4"></path></svg>
+                Add Sector
+              </button>
+            </div>
+          </div>
+          <div class="card-body" style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; align-items:start;">
+            <!-- Table Wrapper -->
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Sector ID</th>
+                    <th>Sector Name</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sectors-table-body">
+                  <!-- Dynamic Sector List -->
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Drag and Drop Import Zone -->
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+              <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); margin-bottom:-0.25rem;">Bulk Import Sectors</h4>
+              <div class="csv-upload-zone" id="upload-sectors-zone" style="height:120px; min-height:120px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:0.5rem; border:2px dashed var(--border-color); border-radius:8px; cursor:pointer;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:28px; height:28px; color:var(--text-muted);"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                <div style="text-align:center;">
+                  <p class="primary-msg" style="font-size:0.8rem; font-weight:600; color:var(--text-dark); margin:0;">Drag &amp; Drop Sectors CSV</p>
+                  <p class="secondary-msg" style="font-size:0.7rem; color:var(--text-muted); margin:0;">or click to browse</p>
+                </div>
+                <input type="file" id="sectors-file-input" class="hidden-file-input" style="display:none;" accept=".csv">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clients Geographic Map Visualizer Card -->
+        <div class="card" id="client-map-card" style="margin-top: 1.5rem;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 class="card-title">Client Geographic Map Visualizer</h3>
+              <span class="card-subtitle">Interactive plotting of client coordinates based on multi-select filters</span>
+            </div>
+            <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Regions</span>
+                <div id="map-client-region-pills" class="tl-pills-container"></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Team Leaders</span>
+                <div id="map-client-tl-pills" class="tl-pills-container"></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Clients</span>
+                <div id="map-client-cli-pills" class="tl-pills-container"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="map-visualizer-container" style="display: grid; grid-template-columns: 2fr 1fr; border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden;">
+              <!-- Left: Map pane -->
+              <div class="map-svg-pane" style="padding:0; min-height:340px; position:relative; border-right:1px solid var(--border-color); display:block;">
+                <div id="client-real-map" style="width: 100%; height: 340px; background: #e5e3df; z-index: 1;"></div>
+              </div>
+              <!-- Right: Selected Client Panel -->
+              <div style="padding: 1.25rem; background: #F8FAFC; max-height: 340px; overflow-y: auto;">
+                <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">Mapped Client Sites</h4>
+                <div id="mapped-client-registry-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: PRODUCTS & INVENTORY CRUD -->
+      <section class="tab-content" id="items-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Products List</h1>
+            <p>Control chemical compounds, equipment, landscaping resources, and sales products.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-item" style="display: inline-flex;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Add Product
+          </button>
+        </div>
+
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-item" placeholder="Search inventory products by name...">
+          </div>
+
+
+          <div class="csv-upload-zone" id="upload-items-zone">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            <div>
+              <p class="primary-msg">Drag &amp; Drop Inventory CSV</p>
+              <p class="secondary-msg">or click to browse local files</p>
+            </div>
+            <input type="file" id="items-file-input" class="hidden-file-input" accept=".csv">
+          </div>
+
+          <button class="btn btn-secondary" id="btn-dl-item-tmpl">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Template
+          </button>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Item Code</th>
+                <th>Category</th>
+                <th>Unit of Measurement</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="items-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 5: COMPLAINTS CRUD -->
+      <section class="tab-content" id="complaints-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Customer Complaints Registry</h1>
+            <p>Log, assign, and resolve customer feedback and service quality issues.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-complaint" style="display: inline-flex;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+            Log Complaint
+          </button>
+        </div>
+
+        <!-- Action / Filter bar -->
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-complaint" placeholder="Search complaints details or complainant...">
+          </div>
+          <select id="filter-complaint-region" class="filter-select"><option value="All" selected="">All Regions</option><option value="Central">Central</option><option value="South">South</option><option value="Kurdistan">Kurdistan</option></select>
+          <select id="filter-complaint-city" class="filter-select"><option value="All" selected="">All Cities</option><option value="Baghdad">Baghdad</option><option value="Najf">Najf</option><option value="Karbala">Karbala</option><option value="Hilla">Hilla</option><option value="Erbil">Erbil</option><option value="Suleimaniah">Suleimaniah</option><option value="Mosul">Mosul</option><option value="Kirkuk">Kirkuk</option><option value="Duhok">Duhok</option><option value="Basra">Basra</option><option value="Roumailah">Roumailah</option><option value="Nasriyah">Nasriyah</option></select>
+          <select id="filter-complaint-severity" class="filter-select">
+            <option value="All">All Severities</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <select id="filter-complaint-status" class="filter-select">
+            <option value="All">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+
+        <!-- Complaints Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Complainant Name</th>
+                <th>Client / Hotel</th>
+                <th>Region</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Issue Details</th>
+                <th>Assigned To</th>
+                <th>Date Logged</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="complaints-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 6: MESSAGES & CHAT COMMUNICATION PANEL -->
+      <section class="tab-content" id="messages-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Staff Internal Messenger</h1>
+            <p>Exchange live direct messages or broadcast warnings on regional broadcast channels.</p>
+          </div>
+        </div>
+
+        <!-- Chat Split Panel -->
+        <div style="display:grid; grid-template-columns: 260px 1fr; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-lg); height: 500px; overflow: hidden; box-shadow: var(--shadow-sm);">
+          <!-- Chat sidebar -->
+          <div style="border-right:1px solid var(--border-color); background:#F8FAFC; display:flex; flex-direction:column; overflow-y:auto;">
+            <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); font-weight:700; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">
+              Region Channels
+            </div>
+            <div id="chat-channels-list" style="display:flex; flex-direction:column; padding:0.25rem 0.5rem; gap:2px;">
+              <!-- Injected dynamically -->
+            </div>
+            <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); border-top:1px solid var(--border-color); font-weight:700; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">
+              Staff Direct DMs
+            </div>
+            <div id="chat-users-list" style="display:flex; flex-direction:column; padding:0.25rem 0.5rem; gap:2px; flex:1; overflow-y:auto;">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Chat active conversation box -->
+          <div style="display:flex; flex-direction:column;">
+            <div style="padding:0.85rem 1.25rem; background:#FAFAFA; border-bottom:1px solid var(--border-color);">
+              <h4 id="active-chat-title" style="font-size:0.95rem; font-weight:700; color:var(--text-dark);">No Conversation Selected</h4>
+              <span id="active-chat-status" style="font-size:0.75rem; color:var(--text-muted);">Pick a contact from the panel to start</span>
+            </div>
+            <div id="chat-messages-container" style="flex:1; overflow-y:auto; padding:1.25rem; background:#F1F5F9; display:flex; flex-direction:column; gap:0.75rem;">
+              <!-- Injected dynamically -->
+            </div>
+            <div style="padding:0.75rem; border-top:1px solid var(--border-color); display:flex; gap:0.5rem; background:white; align-items:center;">
+              <button class="btn btn-secondary" id="chat-attach-btn" disabled="" style="padding:0.5rem; display:flex; align-items:center; justify-content:center; height:38px; min-width:38px; margin:0;" title="Attach file or photo">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:18px; height:18px;"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+              </button>
+              <input type="file" id="chat-file-input" style="display:none;">
+              <input type="text" id="chat-input" class="form-control" placeholder="Type a message..." disabled="">
+              <button class="btn btn-primary" id="chat-send-btn" disabled="">Send</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: USERS & CRM ADMIN SETTINGS -->
+      <section class="tab-content" id="users-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>System Profiles &amp; Settings</h1>
+            <p>Add staff accounts, adjust roles, and manage access parameters.</p>
+          </div>
+          <div style="display:flex; gap:0.75rem; align-items:center;">
+            <button type="button" class="btn btn-secondary" id="btn-export-db" style="display: inline-flex;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              Save Backup (JSON)
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-import-db" style="display: inline-flex;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L4 8m4-4v12"></path></svg>
+              Restore Backup (JSON)
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-supabase-config">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Database Settings (Supabase)
+            </button>
+            <input type="file" id="db-file-input" accept=".json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">
+            <button type="button" class="btn btn-danger" id="btn-reset-db" style="display: inline-flex;">Reset CRM Database</button>
+            <button type="button" class="btn btn-secondary" id="btn-manage-roles" style="display:inline-flex; align-items:center; gap:0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+              Manage Roles
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-add-user" style="display: inline-flex;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+              Create Account
+            </button>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="search-user" placeholder="Search staff profiles by name or role...">
+          </div>
+          <select id="filter-user-region" class="filter-select"><option value="All" selected="">All Regions</option><option value="Central">Central</option><option value="South">South</option><option value="Kurdistan">Kurdistan</option></select>
+          <select id="filter-user-city" class="filter-select"><option value="All" selected="">All Cities</option><option value="Baghdad">Baghdad</option><option value="Najf">Najf</option><option value="Karbala">Karbala</option><option value="Hilla">Hilla</option><option value="Erbil">Erbil</option><option value="Suleimaniah">Suleimaniah</option><option value="Mosul">Mosul</option><option value="Kirkuk">Kirkuk</option><option value="Duhok">Duhok</option><option value="Basra">Basra</option><option value="Roumailah">Roumailah</option><option value="Nasriyah">Nasriyah</option></select>
+          <select id="filter-user-role" class="filter-select">
+            <option value="All">All Roles</option>
+            <option value="GM">GM</option>
+            <option value="tech manager">Tech Manager</option>
+            <option value="admin coordinator">Admin Coordinator</option>
+            <option value="operations manager">Operations Manager</option>
+            <option value="tech supervisor">Tech Supervisor</option>
+            <option value="team leader">Team Leader</option>
+          </select>
+        </div>
+
+        <!-- Users Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Staff Name</th>
+                <th>Access Role</th>
+                <th>Region Access</th>
+                <th>Email Address</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Vehicle Fleet Registry Section -->
+        <div style="margin-top: 3rem; border-top: 2px solid var(--border-color); padding-top: 2rem;">
+          <div class="view-header" style="margin-bottom: 1rem;">
+            <div class="view-title">
+              <h2>Vehicle Fleet Registry</h2>
+              <p>Manage and allocate company vehicles to team leaders.</p>
+            </div>
+            <div>
+              <button class="btn btn-primary" id="btn-add-vehicle" style="display: inline-flex;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+                Log Vehicle
+              </button>
+            </div>
+          </div>
+
+          <div class="action-bar" style="margin-bottom: 1rem;">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <input type="text" id="search-vehicle" placeholder="Search vehicles by model, plate, or type...">
+            </div>
+            <select id="filter-vehicle-region" class="filter-select">
+              <option value="All">All Regions</option>
+              <option value="Central">Central</option>
+              <option value="Kurdistan">Kurdistan</option>
+              <option value="South">South</option>
+            </select>
+            <select id="filter-vehicle-tl" class="filter-select">
+              <option value="All">All Team Leaders</option>
+            </select>
+          </div>
+
+          <!-- Vehicles Table View -->
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Vehicle Type</th>
+                  <th>Model</th>
+                  <th>Plate No.</th>
+                  <th>Region</th>
+                  <th>Allocated Team Leader</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="vehicles-table-body">
+                <!-- Injected dynamically in app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- TAB 8: UV MACHINE SALES REGISTRY -->
+      <section class="tab-content" id="uv-sales-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>UV Machine Sales Tracker</h1>
+            <p>Track UV equipment installations, client sales, machine types, and technical allocations across regions.</p>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <select id="filter-uv-region" class="filter-select"><option value="All" selected="">All Regions</option><option value="Central">Central</option><option value="South">South</option><option value="Kurdistan">Kurdistan</option></select>
+          <select id="filter-uv-city" class="filter-select"><option value="All" selected="">All Cities</option><option value="Baghdad">Baghdad</option><option value="Najf">Najf</option><option value="Karbala">Karbala</option><option value="Hilla">Hilla</option><option value="Erbil">Erbil</option><option value="Suleimaniah">Suleimaniah</option><option value="Mosul">Mosul</option><option value="Kirkuk">Kirkuk</option><option value="Duhok">Duhok</option><option value="Basra">Basra</option><option value="Roumailah">Roumailah</option><option value="Nasriyah">Nasriyah</option></select>
+          <select id="filter-uv-client" class="filter-select">
+            <option value="All">All Clients</option>
+          </select>
+          <select id="filter-uv-type" class="filter-select">
+            <option value="All">All Machine Types</option>
+          </select>
+          <select id="filter-uv-tl" class="filter-select">
+            <option value="All">All Team Leaders</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="btn-clear-uv-filters">Clear</button>
+        </div>
+
+        <!-- UV Sales Visual Container -->
+        <div id="uv-sales-visual-container" style="display: none; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+            <!-- Bar Chart: Chronological Sales -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title" id="uv-chart-title">UV Machines Sales Analysis</h3>
+                <span class="card-subtitle" id="uv-chart-subtitle">Machines sold per day, by model type</span>
+              </div>
+              <div class="card-body" style="height: 280px; position: relative;">
+                <canvas id="uvSalesChart"></canvas>
+              </div>
+            </div>
+            <!-- Doughnut Chart: Regional Distribution -->
+            <div class="card" id="uv-regional-sales-card">
+              <div class="card-header">
+                <h3 class="card-title">Sales by Region</h3>
+                <span class="card-subtitle">Distribution of UV sales by region</span>
+              </div>
+              <div class="card-body" style="height: 280px; position: relative;">
+                <canvas id="uvSalesRegionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- UV Sales Table View -->
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Client Name</th>
+                <th>Region / City</th>
+                <th>UV Machine Model / Type</th>
+                <th>Date of Installation</th>
+                <th>Installed By (TL)</th>
+                <th>Quantity Sold</th>
+              </tr>
+            </thead>
+            <tbody id="uv-sales-table-body">
+              <!-- Injected dynamically in app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 8.5: RODENT BAIT STATIONS TAB -->
+      <section class="tab-content" id="bait-stations-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1 data-i18n="nav_bait_stations">Rodent Bait Stations</h1>
+            <p>Track rodent bait stations allocated per client and stickers consumed across regions.</p>
+          </div>
+        </div>
+
+        <!-- Filtering Panel -->
+        <div class="action-bar" style="flex-wrap: wrap; gap: 0.75rem; padding: 1.25rem; background: var(--bg-light); border-radius: var(--radius-md); border: 1px solid var(--border-color); align-items: center; margin-bottom: 1.5rem;">
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:140px; flex:1;">
+            <label for="bait-filter-region" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Region</label>
+            <select id="bait-filter-region" class="form-control" style="height:38px;"></select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:180px; flex:1.5;">
+            <label for="bait-filter-client" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Client</label>
+            <select id="bait-filter-client" class="form-control" style="height:38px;"></select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:140px; flex:1;">
+            <label for="bait-filter-sector" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Business Sector</label>
+            <select id="bait-filter-sector" class="form-control" style="height:38px;"></select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:130px; flex:1;">
+            <label for="bait-filter-start-date" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Start Date</label>
+            <input type="date" id="bait-filter-start-date" class="form-control" style="height:38px;">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:130px; flex:1;">
+            <label for="bait-filter-end-date" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">End Date</label>
+            <input type="date" id="bait-filter-end-date" class="form-control" style="height:38px;">
+          </div>
+          <div style="display:flex; align-items:flex-end; height:38px; margin-top: auto;">
+            <button id="btn-bait-clear-filters" class="btn btn-secondary" style="height:38px; white-space:nowrap; padding: 0 1rem; display:flex; align-items:center; justify-content:center; gap:4px; font-weight:700;">✕ Clear Filters</button>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="stats-grid" style="margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="stat-card" style="border-left: 4px solid var(--primary-red); padding: 1.25rem; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.25rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Target Bait Stations</span>
+            <span id="bait-kpi-target" style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">0</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Allocated in client profiles</span>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid #3B82F6; padding: 1.25rem; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.25rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Stations Audited / Checked</span>
+            <span id="bait-kpi-checked" style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">0</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Audit checks logged in selected period</span>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid #10B981; padding: 1.25rem; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.25rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Stickers Replaced / Consumed</span>
+            <span id="bait-kpi-stickers" style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">0</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Total station sticker replacements</span>
+          </div>
+        </div>
+
+        <!-- Tabs inside Bait Stations Tab: 1. Clients Summary, 2. Detailed Activity Logs -->
+        <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+          <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.75rem;">Bait Stations Summary by Client</h3>
+          <div class="table-container">
+            <table class="table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th>Client Code &amp; Name</th>
+                  <th>Region</th>
+                  <th>Sector</th>
+                  <th style="text-align:center;">Profile Target</th>
+                  <th style="text-align:center;">Stations Audited</th>
+                  <th style="text-align:center;">Stickers Replaced</th>
+                  <th>Last Inspected Date</th>
+                </tr>
+              </thead>
+              <tbody id="bait-summary-table-body">
+                <!-- Dynamically injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+          <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.75rem;">Detailed Bait Station Activity Log</h3>
+          <div class="table-container">
+            <table class="table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Client Name</th>
+                  <th>Region</th>
+                  <th style="text-align:center;">Station #</th>
+                  <th>Location</th>
+                  <th>Activity Status</th>
+                  <th style="text-align:center;">Stickers Replaced</th>
+                  <th>Technician Comment</th>
+                </tr>
+              </thead>
+              <tbody id="bait-detailed-table-body">
+                <!-- Dynamically injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 9: REPORTS TAB -->
+      <section class="tab-content" id="reports-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Sanitation IPM Reports</h1>
+            <p>Generate regular, detailed, or individual visit audits and customer reports.</p>
+          </div>
+        </div>
+
+        <div class="action-bar" style="flex-wrap: wrap; gap: 1rem; padding: 1.25rem; background: var(--bg-light); border-radius: var(--radius-md); border: 1px solid var(--border-color); align-items: center;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label for="report-type" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Report Type:</label>
+            <select id="report-type" class="filter-select" style="margin:0; min-width:160px;">
+              <option value="regular">1. Regular IPM Report</option>
+              <option value="detailed">2. Detailed IPM Report</option>
+              <option value="visit">3. Visit Audit Report</option>
+              <option value="client-dashboard">4. Client History Dashboard</option>
+            </select>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.35rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; justify-content:space-between;">
+              <label style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Clients:</label>
+              <div style="display:flex; gap:0.4rem;">
+                <button type="button" id="btn-report-select-all" style="font-size:0.7rem; padding:2px 8px; background:var(--primary-red); color:white; border:none; border-radius:4px; cursor:pointer;">All</button>
+                <button type="button" id="btn-report-clear-all" style="font-size:0.7rem; padding:2px 8px; background:#E2E8F0; color:var(--text-dark); border:none; border-radius:4px; cursor:pointer;">Clear</button>
+              </div>
+            </div>
+            <div id="report-client-checklist" style="max-height:140px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.5rem; background:#FAFAFA; min-width:210px;">
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-s2" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Al-Basra Sheraton</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-c2" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Al-Mansour Hotel</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-c4" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Asiacell HQ Baghdad</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-c3" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Babylon Hospital</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-c1" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Baghdad Mall</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-c1-b2" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Baghdad Mall - Erbil Branch</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-c1-b1" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Baghdad Mall - Food Court Branch</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-s1" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Basra Gateway Terminal</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-k1" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Family Mall Erbil</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-k4" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Korek Telecom HQ</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-s4" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Majnoon Camp Services</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-k2" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Rotana Hotel Erbil</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-s3" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Rumaila Oil Field Clinic</span>
+        </label>
+      
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:4px;cursor:pointer;">
+          <input type="checkbox" class="report-client-cb" value="cli-k3" checked="" style="accent-color:var(--primary-red);width:13px;height:13px;">
+          <span>Sulaymaniyah University</span>
+        </label>
+      </div>
+            <!-- Hidden legacy select kept for JS refs -->
+            <select id="report-client-select" style="display:none;"><option value="cli-s2">Al-Basra Sheraton</option><option value="cli-c2">Al-Mansour Hotel</option><option value="cli-c4">Asiacell HQ Baghdad</option><option value="cli-c3">Babylon Hospital</option><option value="cli-c1">Baghdad Mall</option><option value="cli-c1-b2">Baghdad Mall - Erbil Branch</option><option value="cli-c1-b1">Baghdad Mall - Food Court Branch</option><option value="cli-s1">Basra Gateway Terminal</option><option value="cli-k1">Family Mall Erbil</option><option value="cli-k4">Korek Telecom HQ</option><option value="cli-s4">Majnoon Camp Services</option><option value="cli-k2">Rotana Hotel Erbil</option><option value="cli-s3">Rumaila Oil Field Clinic</option><option value="cli-k3">Sulaymaniyah University</option></select>
+          </div>
+
+          <!-- Date Range Container -->
+          <div id="report-date-range-fields" style="display:flex; align-items:center; gap:1rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <label for="report-start-date" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Start:</label>
+              <input type="date" id="report-start-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-01">
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <label for="report-end-date" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">End:</label>
+              <input type="date" id="report-end-date" class="filter-select" style="min-width:130px; margin:0;" value="2026-06-30">
+            </div>
+          </div>
+
+          <!-- Visit Select Container (Only for Visit Report) -->
+          <div id="report-visit-select-field" style="display:none; align-items:center; gap:0.5rem;">
+            <label for="report-visit-select" style="font-weight:700; font-size:0.8rem; color:var(--text-dark);">Select Visit:</label>
+            <select id="report-visit-select" class="filter-select" style="margin:0; min-width:200px;"><option value="">No completed visits found</option></select>
+          </div>
+          
+          <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btn-generate-report">Generate Report</button>
+            <button class="btn btn-secondary" id="btn-copy-report-link" style="display: none; align-items: center; gap: 0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+              Copy Link
+            </button>
+            <button class="btn btn-secondary" id="btn-email-report" style="display: none; align-items: center; gap: 0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+              Email Report
+            </button>
+            <button class="btn btn-secondary" id="btn-print-report" style="display: none; align-items: center; gap: 0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+              Print Report
+            </button>
+            <button class="btn btn-secondary" id="btn-export-report-csv" style="display: none; align-items: center; gap: 0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Visit Audit Observations / Recommendations Entry (Only for Visit Report) -->
+        <div id="visit-report-fields" style="display:none; width: 100%; margin-top: 1rem; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm); flex-direction: column; gap: 1rem;">
+          <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-dark); border-bottom:1px dashed var(--border-color); padding-bottom:0.5rem; margin-bottom:0.25rem;">Visit Report Parameters</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="report-visit-observations" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block; color:var(--text-medium);">Observations *</label>
+              <textarea id="report-visit-observations" class="form-control" placeholder="Enter custom biological or structural audit observations..." style="min-height:90px; resize:vertical;"></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="report-visit-recommendations" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block; color:var(--text-medium);">Recommendations *</label>
+              <textarea id="report-visit-recommendations" class="form-control" placeholder="Enter compliance recommendations (e.g. hygiene improvements, sealing gaps)..." style="min-height:90px; resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="report-visit-generated-by" style="font-weight:700; font-size:0.8rem; margin-bottom:0.35rem; display:block; color:var(--text-medium);">Report Generated By *</label>
+              <input type="text" id="report-visit-generated-by" class="form-control" value="" placeholder="Prepared By (e.g. Yasmin Kassim - Admin Coordinator)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Sibling Output Display Area -->
+        <div id="reports-output-container" style="display: none; margin-top: 1.5rem; margin-bottom: 2rem;">
+          <!-- Content Injected dynamically in app.js -->
+        </div>
+      </section>
+
+      <!-- TAB: MEDIA GALLERY -->
+      <section class="tab-content" id="media-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1 data-i18n="nav_media">Media Gallery</h1>
+            <p data-i18n="media_desc">Upload, categorize, manage and download company certificates, profiles, brochures, and catalogs.</p>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-secondary" id="btn-media-manage-categories" style="display:flex; align-items:center; gap:6px; font-weight:700;">
+              📁 <span data-i18n="manage_categories">Manage Categories</span>
+            </button>
+            <button class="btn btn-primary" id="btn-media-upload-file" style="display:flex; align-items:center; gap:6px; font-weight:700;">
+              📤 <span data-i18n="upload_file">Upload File</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter and Search Bar -->
+        <div class="action-bar" style="display:flex; flex-wrap:wrap; gap:0.75rem; padding:1.25rem; background:var(--bg-light); border-radius:var(--radius-md); border:1px solid var(--border-color); align-items:center; margin-bottom:1.5rem;">
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:200px; flex:1;">
+            <label for="media-search" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);" data-i18n="search_files">Search Files</label>
+            <input type="text" id="media-search" class="form-control" placeholder="Search by filename..." style="height:38px;">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:180px; flex:1;">
+            <label for="media-filter-category" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);" data-i18n="filter_category">Category Filter</label>
+            <select id="media-filter-category" class="form-control" style="height:38px;">
+              <option value="All" data-i18n="all_categories">All Categories</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Grid of Collapsible Category Panels -->
+        <div id="media-gallery-container" style="display:flex; flex-direction:column; gap:1.5rem;">
+          <!-- Dynamically populated in app.js -->
+        </div>
+      </section>
+
+      <!-- TAB: FORMS & TEMPLATES -->
+      <section class="tab-content" id="forms-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Inspection Forms &amp; Templates</h1>
+            <p>Fill out field audit forms or download operations templates.</p>
+          </div>
+        </div>
+
+        <!-- Form Tab Switcher -->
+        <div style="display:flex; border-bottom:2px solid var(--border-color); margin-bottom:1.5rem; gap:1.5rem;">
+          <button class="nav-link active" id="btn-subtab-inspect" style="padding:0.75rem 0.5rem; border:none; background:none; font-weight:700; cursor:pointer; font-size:0.9rem; color:var(--text-dark); border-bottom:3px solid var(--primary-red); margin-bottom:-2px;">🔍 Inspection Form</button>
+          <button class="nav-link" id="btn-subtab-risk" style="padding:0.75rem 0.5rem; border:none; background:none; font-weight:600; cursor:pointer; font-size:0.9rem; color:var(--text-muted); border-bottom:3px solid transparent; margin-bottom:-2px;">⚠️ Risk Assessment</button>
+          <button class="nav-link" id="btn-subtab-templates" style="padding:0.75rem 0.5rem; border:none; background:none; font-weight:600; cursor:pointer; font-size:0.9rem; color:var(--text-muted); border-bottom:3px solid transparent; margin-bottom:-2px;">📁 My Templates</button>
+        </div>
+
+        <!-- SUBTAB 1: INSPECTION FORM -->
+        <div id="subtab-content-inspect" style="display:block;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">New Client Field Inspection Report</h3></div>
+            <div class="card-body">
+              <form id="inspect-form" onsubmit="event.preventDefault();">
+                <div class="form-group row-split">
+                  <div>
+                    <label for="ins-client">Client / Prospect Name *</label>
+                    <select id="ins-client" class="form-control" required="">
+                      <!-- Populated dynamically with clients and deals -->
+                    </select>
+                  </div>
+                  <div>
+                    <label for="ins-inspector">Inspector / Surveyor Name *</label>
+                    <input type="text" id="ins-inspector" class="form-control" required="" placeholder="Full Name">
+                  </div>
+                </div>
+                <div class="form-group row-split">
+                  <div>
+                    <label for="ins-date">Date of Inspection *</label>
+                    <input type="date" id="ins-date" class="form-control" required="" value="2026-07-10">
+                  </div>
+                  <div>
+                    <label>Areas Inspected (Select all that apply)</label>
+                    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.4rem; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Kitchen / Canteen"> Kitchen/Canteen</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Storage / Warehouse"> Storage/Warehouse</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Production Lines"> Production Lines</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Offices / Corridors"> Offices/Corridors</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Outer Perimeter"> Outer Perimeter</label>
+                      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="ins-area-cb" value="Waste Disposal Area"> Waste Area</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group row-split">
+                  <div>
+                    <label for="ins-pest-activity">Pest Activity Level *</label>
+                    <select id="ins-pest-activity" class="form-control" required="">
+                      <option value="None">🟢 None</option>
+                      <option value="Low">🟡 Low</option>
+                      <option value="Medium">🟠 Medium</option>
+                      <option value="High">🔴 High</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="ins-hygiene">Hygiene / Sanitation Standard *</label>
+                    <select id="ins-hygiene" class="form-control" required="">
+                      <option value="Good">🟢 Good / Compliant</option>
+                      <option value="Fair">🟡 Fair / Needs Action</option>
+                      <option value="Poor">🔴 Poor / High Risk</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="ins-observations">Observations &amp; Structural Defects</label>
+                  <textarea id="ins-observations" class="form-control" placeholder="Describe any gaps, cracks, pooling water, active infestations, bait placement spots, etc." style="min-height:80px;"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="ins-recommendations">Recommendations &amp; Corrective Actions</label>
+                  <textarea id="ins-recommendations" class="form-control" placeholder="What the client needs to fix (sealing doors, improving waste handling) and suggested treatment plan..." style="min-height:80px;"></textarea>
+                </div>
+                <div class="form-group" style="max-width:320px;">
+                  <label>Inspector Signature *</label>
+                  <div style="border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA; position:relative; overflow:hidden;">
+                    <canvas id="ins-sig-canvas" width="300" height="120" style="display:block; cursor:crosshair;"></canvas>
+                    <button type="button" class="btn btn-sm btn-secondary" id="btn-ins-sig-clear" style="position:absolute; bottom:5px; right:5px; padding:2px 8px; font-size:0.7rem;">Clear</button>
+                  </div>
+                </div>
+                <div style="margin-top:1.5rem; display:flex; gap:0.5rem;">
+                  <button type="button" class="btn btn-primary" id="btn-save-inspection">Save Inspection Report</button>
+                  <button type="button" class="btn btn-secondary" id="btn-reset-inspection">Reset Form</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- List of Saved Inspections -->
+          <div class="card" style="margin-top:1.5rem;">
+            <div class="card-header"><h3 class="card-title">Saved Inspection History</h3></div>
+            <div class="card-body" style="padding:0;">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Client / Prospect</th>
+                      <th>Date</th>
+                      <th>Inspector</th>
+                      <th>Pest Activity</th>
+                      <th>Hygiene</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inspections-table-body">
+                    <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No inspection records found.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 2: RISK ASSESSMENT FORM -->
+        <div id="subtab-content-risk" style="display:none;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Site Risk Assessment (Pre-Task Safety Review)</h3></div>
+            <div class="card-body">
+              <form id="risk-form" onsubmit="event.preventDefault();">
+                <div class="form-group row-split">
+                  <div>
+                    <label for="risk-client">Client / Prospect Name *</label>
+                    <select id="risk-client" class="form-control" required="">
+                      <!-- Populated dynamically with clients and deals -->
+                    </select>
+                  </div>
+                  <div>
+                    <label for="risk-assessor">Assessor Name *</label>
+                    <input type="text" id="risk-assessor" class="form-control" required="" placeholder="Full Name">
+                  </div>
+                </div>
+                <div class="form-group row-split">
+                  <div>
+                    <label for="risk-date">Assessment Date *</label>
+                    <input type="date" id="risk-date" class="form-control" required="" value="2026-07-10">
+                  </div>
+                  <div>
+                    <label for="risk-level">Overall Residual Risk Level *</label>
+                    <select id="risk-level" class="form-control" required="">
+                      <option value="Low">🟢 Low Risk</option>
+                      <option value="Medium">🟡 Medium Risk</option>
+                      <option value="High">🔴 High Risk (Strict Controls Needed)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Hazards Identified on Site</label>
+                  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.4rem; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Chemical Exposure"> Chemical Exposure</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Slips, Trips &amp; Falls"> Slips, Trips &amp; Falls</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Working at Heights"> Working at Heights</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Electrical Hazards"> Electrical Hazards</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Confined Spaces"> Confined Spaces</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-hazard-cb" value="Biological / Animal bites"> Biological Hazards</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Mandatory PPE Required (Checkboxes)</label>
+                  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.4rem; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Safety Goggles"> Safety Goggles</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Nitrile / Chemical Gloves"> Protective Gloves</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Respirator / Face Mask"> Respirator / Mask</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Steel-Toe Boots"> Steel-Toe Boots</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="High-Vis Vest"> High-Vis Vest</label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;"><input type="checkbox" name="risk-ppe-cb" value="Hard Hat"> Hard Hat</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="risk-controls">Specific Safety Control Measures / Action Plan *</label>
+                  <textarea id="risk-controls" class="form-control" required="" placeholder="e.g. Cordons placed, ventilation of room, isolation of electrical box, safety harnesses used..." style="min-height:80px;"></textarea>
+                </div>
+                <div style="margin-top:1.5rem; display:flex; gap:0.5rem;">
+                  <button type="button" class="btn btn-primary" id="btn-save-risk">Save Risk Assessment</button>
+                  <button type="button" class="btn btn-secondary" id="btn-reset-risk">Reset Form</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- List of Saved Risk Assessments -->
+          <div class="card" style="margin-top:1.5rem;">
+            <div class="card-header"><h3 class="card-title">Saved Risk Assessment Logs</h3></div>
+            <div class="card-body" style="padding:0;">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Client / Prospect</th>
+                      <th>Date</th>
+                      <th>Assessor</th>
+                      <th>Overall Risk Level</th>
+                      <th>Hazards Identified</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="risks-table-body">
+                    <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No risk assessment records found.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 3: MY TEMPLATES -->
+        <div id="subtab-content-templates" style="display:none;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Upload Custom Document Template / Form</h3></div>
+            <div class="card-body">
+              <form id="template-upload-form" onsubmit="event.preventDefault();">
+                <div class="form-group row-split">
+                  <div>
+                    <label for="tmpl-title">Template Title *</label>
+                    <input type="text" id="tmpl-title" class="form-control" required="" placeholder="e.g. Fumigation Audit Checklist">
+                  </div>
+                  <div>
+                    <label for="tmpl-category">Category *</label>
+                    <select id="tmpl-category" class="form-control" required="">
+                      <option value="Inspection">Inspection Form</option>
+                      <option value="Safety">Safety / HSE</option>
+                      <option value="Audit">IPM Audit</option>
+                      <option value="Contract">Contract / Sales</option>
+                      <option value="Other">Other Operational</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="tmpl-desc">Description</label>
+                  <input type="text" id="tmpl-desc" class="form-control" placeholder="Short description of document contents, file type, or instructions">
+                </div>
+                <div class="form-group">
+                  <label>Select Template File *</label>
+                  <div class="csv-upload-zone" id="upload-tmpl-zone" style="height:120px; min-height:120px;">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:32px;height:32px;margin-bottom:0.5rem;color:var(--text-muted);"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <p class="primary-msg" style="font-size:0.8rem; font-weight:600; color:var(--text-dark); margin:0;">Click or Drag template to upload</p>
+                    <span id="tmpl-filename-label" style="font-size:0.75rem; color:var(--primary-red); font-weight:700; margin-top:4px; display:none;">No file selected</span>
+                    <input type="file" id="tmpl-file-input" class="hidden-file-input" style="display:none;">
+                  </div>
+                </div>
+                <div style="margin-top:1.5rem;">
+                  <button type="button" class="btn btn-primary" id="btn-save-template">Upload Template</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Template Library Grid -->
+          <div class="card" style="margin-top:1.5rem;">
+            <div class="card-header"><h3 class="card-title">Templates &amp; Custom Forms Library</h3></div>
+            <div class="card-body" style="padding:0;">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Description</th>
+                      <th>Filename</th>
+                      <th>Upload Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="templates-table-body">
+                    <!-- Dynamic templates populated in app.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: SUPPLIERS MANAGEMENT -->
+      <section class="tab-content" id="suppliers-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Supplier Management</h1>
+            <p>Manage local and international suppliers and their allocated products.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-primary" id="btn-add-supplier" style="display:inline-flex; align-items:center; gap:0.5rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4v16m8-8H4"></path></svg>
+              Add Supplier
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar" style="margin-bottom:1rem;">
+          <input type="text" id="search-supplier" class="filter-select" placeholder="Search suppliers..." style="min-width:200px;">
+          <select id="filter-supplier-category" class="filter-select">
+            <option value="All">All Categories</option>
+            <option value="Local">Local</option>
+            <option value="International">International</option>
+          </select>
+        </div>
+
+        <!-- Supplier Stats Row -->
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; margin-bottom:1rem;">
+          <div class="stat-card" style="padding:0.85rem 1rem; border-left:4px solid #3B82F6;">
+            <span class="stat-label" style="font-size:0.75rem;">🏢 Local Suppliers</span>
+            <div class="stat-value" id="stat-suppliers-local" style="font-size:1.5rem;">0</div>
+          </div>
+          <div class="stat-card" style="padding:0.85rem 1rem; border-left:4px solid #10B981;">
+            <span class="stat-label" style="font-size:0.75rem;">🌍 International Suppliers</span>
+            <div class="stat-value" id="stat-suppliers-intl" style="font-size:1.5rem;">0</div>
+          </div>
+        </div>
+
+        <!-- Suppliers Table -->
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Supplier Name</th>
+                    <th>Category</th>
+                    <th>Country</th>
+                    <th>Contact Person</th>
+                    <th>Phone / Email</th>
+                    <th>Products Supplied</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="suppliers-table-body">
+                  <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No suppliers registered yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Shared Modal Backdrop (CRUD / Log Forms popup) -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Form Modal</h3>
+        <button class="modal-close" id="modal-close-btn">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Form injected dynamically in app.js -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="modal-save-btn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Database Chatbot Assistant Widget -->
+  <div id="chatbot-widget" style="position:fixed; bottom:1.5rem; right:1.5rem; z-index:1000; display:flex; flex-direction:column; align-items:flex-end;">
+    <!-- Expanded Chat window -->
+    <div id="chatbot-window" style="display:none; width:340px; height:450px; background:white; border:1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); overflow:hidden; flex-direction:column; margin-bottom:0.75rem; animation: slideInModal 0.2s ease;">
+      <!-- Chatbot Header -->
+      <div style="background:var(--primary-red); color:white; padding:0.85rem 1rem; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <div class="avatar-circle" style="width:28px; height:28px; background:white; color:var(--primary-red); font-size:0.85rem; font-weight:800;">B</div>
+          <div>
+            <h4 style="font-size:0.85rem; font-weight:700; margin:0; line-height:1.2;">Buckler Assistant</h4>
+            <span style="font-size:0.65rem; opacity:0.85; display:flex; align-items:center; gap:3px;">🟢 Live Database Connected</span>
+          </div>
+        </div>
+        <button id="chatbot-close-btn" style="background:none; border:none; color:white; font-size:1.1rem; cursor:pointer; line-height:1;">✕</button>
+      </div>
+      
+      <!-- Messages list -->
+      <div id="chatbot-messages" style="flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:0.75rem; background:#F8FAFC; font-size:0.8rem; line-height:1.4;">
+        <div style="background:#E2E8F0; padding:0.75rem; border-radius:10px 10px 10px 0; color:var(--text-dark); max-width:85%; align-self:flex-start;">
+          Marhaban! I am your Buckler Iraq Assistant. Ask me anything about our clients, inventory stocks, daily schedules, or regional issues.
+          <br><br>
+          <strong>Or click these quick search queries:</strong>
+          <ul style="padding-left:1rem; margin-top:0.4rem; list-style-type:square; font-size:0.75rem; display:flex; flex-direction:column; gap:3px;">
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">How many clients do we have?</a></li>
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">List team leaders in Central</a></li>
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">Low stock items?</a></li>
+            <li><a href="#" class="bot-suggest" style="color:var(--primary-red); font-weight:600; text-decoration:none;">How do we treat termites?</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Input box -->
+      <div style="padding:0.65rem; border-top:1px solid var(--border-color); display:flex; gap:0.5rem; background:white;">
+        <input type="text" id="chatbot-input" class="form-control" style="font-size:0.8rem; padding:0.45rem 0.65rem;" placeholder="Ask about clients, stock, schedule, FAQs...">
+        <button class="btn btn-primary" id="chatbot-send-btn" style="font-size:0.8rem; padding:0.45rem 0.85rem; font-weight:600;">Send</button>
+      </div>
+    </div>
+
+    <!-- Bubble toggle button -->
+    <button id="chatbot-bubble-btn" style="background:var(--primary-red); color:white; width:50px; height:50px; border-radius:50%; border:none; box-shadow: var(--shadow-lg); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.3rem; transition:var(--transition);">
+      💬
+    </button>
+  </div>
+
+  <!-- Javascript Core and DB Engine -->
+  <script src="database.js"></script>
+  <script src="app.js"></script>
+
+
+<div id="toast-container" class="toast-container"><div class="toast toast-success">
+      <span>Logged in as Hassan Al-Sadi (GM)</span>
+    </div></div></body></html>

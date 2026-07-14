@@ -47,9 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
       nav_complaints: "Complaints Tracker",
       nav_messages: "Messages & Chat",
       nav_uv_sales: "UV Machine Sales",
+      nav_bait_stations: "Rodent Bait Stations",
       nav_reports: "Sanitation IPM Reports",
       nav_forms: "Forms & Templates",
-      nav_users: "User & CRM Admin"
+      nav_users: "User & CRM Admin",
+      nav_media: "Media Gallery",
+      media_desc: "Upload, categorize, manage and download company certificates, profiles, brochures, and catalogs.",
+      manage_categories: "Manage Categories",
+      upload_file: "Upload File",
+      search_files: "Search Files",
+      filter_category: "Category Filter",
+      all_categories: "All Categories"
     },
     ar: {
       brand_name: "باكلر - العراق",
@@ -69,9 +77,17 @@ document.addEventListener('DOMContentLoaded', () => {
       nav_complaints: "متابعة الشكاوى",
       nav_messages: "المحادثة والرسائل",
       nav_uv_sales: "مبيعات أجهزة UV",
+      nav_bait_stations: "محطات طعوم القوارض",
       nav_reports: "تقارير الصحة والـ IPM",
       nav_forms: "النماذج والقوالب",
-      nav_users: "المستخدمين وإدارة النظام"
+      nav_users: "المستخدمين وإدارة النظام",
+      nav_media: "معرض الملفات والوسائط",
+      media_desc: "تحميل وتصنيف وإدارة وتنزيل الشهادات والملفات التعريفية والكتالوجات الخاصة بالشركة.",
+      manage_categories: "إدارة التصنيفات",
+      upload_file: "تحميل ملف",
+      search_files: "البحث عن ملفات",
+      filter_category: "تصفية حسب التصنيف",
+      all_categories: "جميع التصنيفات"
     }
   };
 
@@ -123,6 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
     searchClient: document.getElementById('search-client'),
     filterClientRegion: document.getElementById('filter-client-region'),
     filterClientCity: document.getElementById('filter-client-city'),
+    filterClientService: document.getElementById('filter-client-service'),
+    filterClientHierarchy: document.getElementById('filter-client-hierarchy'),
+    filterClientParent: document.getElementById('filter-client-parent'),
     
     searchItem: document.getElementById('search-item'),
 
@@ -202,6 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
     chatMessagesContainer: document.getElementById('chat-messages-container'),
     chatInput: document.getElementById('chat-input'),
     chatSendBtn: document.getElementById('chat-send-btn'),
+    chatAttachBtn: document.getElementById('chat-attach-btn'),
+    chatFileInput: document.getElementById('chat-file-input'),
 
     // Chatbot Widget Elements
     chatbotWidget: document.getElementById('chatbot-widget'),
@@ -311,7 +332,14 @@ document.addEventListener('DOMContentLoaded', () => {
     clientAnalysisSector: document.getElementById('client-analysis-sector'),
     clientAnalysisTl: document.getElementById('client-analysis-tl'),
     clientAnalysisChart: document.getElementById('clientAnalysisChart'),
-    clientAnalysisPieChart: document.getElementById('clientAnalysisPieChart')
+    clientAnalysisPieChart: document.getElementById('clientAnalysisPieChart'),
+
+    // Media Gallery Elements
+    btnMediaUploadFile: document.getElementById('btn-media-upload-file'),
+    btnMediaManageCategories: document.getElementById('btn-media-manage-categories'),
+    mediaSearch: document.getElementById('media-search'),
+    mediaFilterCategory: document.getElementById('media-filter-category'),
+    mediaGalleryContainer: document.getElementById('media-gallery-container')
   };
 
   // Map coordinate conversion list
@@ -559,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupActionableKPIs();
     setupCalendarEvents();
     setupUvSalesEvents();
+    setupMediaEvents();
 
     // Load initial user & render
     switchUser(els.roleSelector.value);
@@ -973,8 +1002,14 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'uv-sales':
         renderUVSales();
         break;
+      case 'bait-stations':
+        renderBaitStationsTab();
+        break;
       case 'reports':
         renderReports();
+        break;
+      case 'media':
+        renderMediaTab();
         break;
     }
   }
@@ -1156,6 +1191,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     els.filterClientRegion.addEventListener('change', () => renderClients());
+    els.filterClientService.addEventListener('change', () => renderClients());
+    els.filterClientHierarchy.addEventListener('change', () => renderClients());
+    els.filterClientParent.addEventListener('change', () => renderClients());
 
     els.searchComplaint.addEventListener('input', () => renderComplaints());
     els.filterComplaintRegion.addEventListener('change', () => renderComplaints());
@@ -1259,7 +1297,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Clients tab visit analysis filters binding
     if (els.clientAnalysisRegion) {
-      els.clientAnalysisRegion.addEventListener('change', renderClientAnalysis);
+      let lastSelectedRegions = ['All'];
+      els.clientAnalysisRegion.addEventListener('change', () => {
+        const selectedOptions = Array.from(els.clientAnalysisRegion.selectedOptions).map(opt => opt.value);
+        if (selectedOptions.includes('All') && !lastSelectedRegions.includes('All')) {
+          Array.from(els.clientAnalysisRegion.options).forEach(opt => {
+            if (opt.value !== 'All') opt.selected = false;
+          });
+        } else if (selectedOptions.length > 1 && selectedOptions.includes('All')) {
+          Array.from(els.clientAnalysisRegion.options).forEach(opt => {
+            if (opt.value === 'All') opt.selected = false;
+          });
+        }
+        lastSelectedRegions = Array.from(els.clientAnalysisRegion.selectedOptions).map(opt => opt.value);
+        renderClientAnalysis();
+      });
     }
     if (els.clientAnalysisSector) {
       els.clientAnalysisSector.addEventListener('change', renderClientAnalysis);
@@ -3170,6 +3222,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderClients() {
     const region = getRestrictedRegion();
     const clients = window.BucklerDB.getClients(region);
+    const allClients = window.BucklerDB.get('clients') || [];
     
     // Setup and render clients geographic map
     if (!state.selectedMapRegions) {
@@ -3178,17 +3231,50 @@ document.addEventListener('DOMContentLoaded', () => {
       renderClientMap();
     }
     
+    // Populate Client Parent Filter dropdown dynamically
+    const parentClients = allClients.filter(c => !c.parentId);
+    if (els.filterClientParent) {
+      const currentSelected = els.filterClientParent.value;
+      let parentHTML = `<option value="All">All Parent Accounts</option>`;
+      parentClients.forEach(pc => {
+        parentHTML += `<option value="${pc.id}">${pc.name} (${pc.clientCode || pc.id})</option>`;
+      });
+      els.filterClientParent.innerHTML = parentHTML;
+      els.filterClientParent.value = currentSelected || 'All';
+    }
+
     // Support sidebar filter dropdown + search input
     const targetRegion = els.filterClientRegion.value;
     const targetCity = els.filterClientCity.value;
+    const targetService = els.filterClientService.value;
+    const targetHierarchy = els.filterClientHierarchy.value;
+    const targetParent = els.filterClientParent.value;
     const searchQuery = els.searchClient.value.toLowerCase();
     
     let filteredClients = clients;
-    if (targetRegion !== 'All') {
-      filteredClients = filteredClients.filter(c => c.region === targetRegion);
+
+    // Apply Parent Filter (w/ branches) - overrides region/city filters
+    if (targetParent !== 'All') {
+      filteredClients = allClients.filter(c => c.id === targetParent || c.parentId === targetParent);
+    } else {
+      if (targetRegion !== 'All') {
+        filteredClients = filteredClients.filter(c => c.region === targetRegion);
+      }
+      if (targetCity !== 'All') {
+        filteredClients = filteredClients.filter(c => c.city === targetCity);
+      }
     }
-    if (targetCity !== 'All') {
-      filteredClients = filteredClients.filter(c => c.city === targetCity);
+
+    // Apply Service Type Filter
+    if (targetService !== 'All') {
+      filteredClients = filteredClients.filter(c => c.contractTypes && c.contractTypes.includes(targetService));
+    }
+
+    // Apply Hierarchy Type Filter
+    if (targetHierarchy === 'Main') {
+      filteredClients = filteredClients.filter(c => !c.parentId);
+    } else if (targetHierarchy === 'Branches') {
+      filteredClients = filteredClients.filter(c => !!c.parentId);
     }
     
     filteredClients = filteredClients.filter(c => 
@@ -3220,12 +3306,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<span style="font-size:0.7rem; background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; padding:1px 5px; border-radius:3px; margin-right:3px; display:inline-block; white-space:nowrap; margin-top:2px;">${ct}${v !== '' ? ` (${v})` : ''}</span>`;
       }).join('') || '<span style="color:var(--text-muted); font-size:0.72rem;">No services</span>';
 
+      let parentNameStr = '';
+      if (c.parentId) {
+        const parent = allClients.find(p => p.id === c.parentId);
+        if (parent) {
+          parentNameStr = `<div style="font-size:0.72rem; color:var(--text-muted); font-style:italic; margin-top:2px;">↳ Branch of <strong>${parent.name}</strong></div>`;
+        }
+      }
+
       return `
         <tr>
           <td><code>${c.clientCode || c.id}</code></td>
           <!-- Make client name actionable -->
           <td>
             <strong><a href="#" class="client-click" data-id="${c.id}" style="color:var(--primary-red); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary-red);">${c.name}</a></strong>
+            ${parentNameStr}
             <div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:2px; max-width:300px;">${servicesInfo}</div>
           </td>
           <td>${sectorCell}</td>
@@ -3237,7 +3332,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${c.phone || '-'}</td>
           <td>${c.email}</td>
           <td><code>${c.lat && c.lng ? `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}` : 'N/A'}</code></td>
-          <td>${c.address}</td>
+          <td style="max-width:180px;"><div class="expandable-truncate" title="Click to expand/collapse">${c.address}</div></td>
           ${canManage ? `
             <td>
               <div class="table-cell-actions">
@@ -3301,23 +3396,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const canManage = hasEditPermission('items');
 
-    els.itemsTableBody.innerHTML = filteredItems.length ? filteredItems.map(i => `
-      <tr>
-        <!-- Make item name actionable to show ledger -->
-        <td><strong><a href="#" class="item-ledger-click" data-id="${i.id}" style="color:var(--primary-red); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary-red);">${i.name}</a></strong></td>
-        <td><code>${i.itemCode || i.id}</code></td>
-        <td><span style="font-size:0.75rem; font-weight:700; color:var(--text-medium); background:#F1F5F9; padding:2px 8px; border-radius:4px;">${i.category || 'Others'}</span></td>
-        <td>${i.unit}</td>
-        ${canManage ? `
-          <td>
-            <div class="table-cell-actions">
-              <button class="btn btn-secondary btn-sm edit-item-btn" data-id="${i.id}">Edit</button>
-              <button class="btn btn-danger btn-sm delete-item-btn" data-id="${i.id}">Delete</button>
-            </div>
-          </td>
-        ` : '<td>-</td>'}
-      </tr>
-    `).join('') : `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No products registered in inventory.</td></tr>`;
+    els.itemsTableBody.innerHTML = filteredItems.length ? filteredItems.map(i => {
+      const picHtml = i.picture 
+        ? `<img src="${i.picture}" class="product-thumb-click" data-id="${i.id}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; cursor: pointer; border: 1.5px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.08)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)'" />`
+        : `<div style="width: 40px; height: 40px; border-radius: 6px; background: #F1F5F9; border: 1.5px dashed var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.2rem; font-weight: 700; margin: 0 auto; user-select: none;">📦</div>`;
+      return `
+        <tr>
+          <td style="text-align: center; vertical-align: middle; padding: 0.5rem 0.25rem;">${picHtml}</td>
+          <!-- Make item name actionable to show ledger -->
+          <td><strong><a href="#" class="item-ledger-click" data-id="${i.id}" style="color:var(--primary-red); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary-red);">${i.name}</a></strong></td>
+          <td><code>${i.itemCode || i.id}</code></td>
+          <td><span style="font-size:0.75rem; font-weight:700; color:var(--text-medium); background:#F1F5F9; padding:2px 8px; border-radius:4px;">${i.category || 'Others'}</span></td>
+          <td>${i.unit}</td>
+          ${canManage ? `
+            <td>
+              <div class="table-cell-actions">
+                <button class="btn btn-secondary btn-sm edit-item-btn" data-id="${i.id}">Edit</button>
+                <button class="btn btn-danger btn-sm delete-item-btn" data-id="${i.id}">Delete</button>
+              </div>
+            </td>
+          ` : '<td>-</td>'}
+        </tr>
+      `;
+    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">No products registered in inventory.</td></tr>`;
 
     document.querySelectorAll('.edit-item-btn').forEach(b => {
       b.addEventListener('click', () => openItemModal(b.getAttribute('data-id')));
@@ -3340,7 +3441,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    document.querySelectorAll('.product-thumb-click').forEach(img => {
+      img.addEventListener('click', () => {
+        openProductImageLightbox(img.getAttribute('data-id'));
+      });
+    });
+
     bindEntityClicks(els.itemsTableBody);
+  }
+
+  function openProductImageLightbox(itemId) {
+    const item = window.BucklerDB.get('items').find(i => i.id === itemId);
+    if (!item || !item.picture) return;
+    const html = `
+      <div style="text-align: center; padding: 1rem;">
+        <img src="${item.picture}" style="max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+        <div style="margin-top: 1rem; font-size: 1.1rem; font-weight: 600; color: var(--text-dark);">${item.name}</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">${item.itemCode || item.id} - ${item.category || 'Others'}</div>
+      </div>
+    `;
+    showModal(item.name, html, false);
   }
 
   els.searchItem.addEventListener('input', renderItems);
@@ -3486,8 +3606,39 @@ document.addEventListener('DOMContentLoaded', () => {
             ${cmp.city ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${cmp.city}</div>` : ''}
           </td>
           <td><span class="badge-region ${sevClass}">${cmp.severity}</span></td>
-          <td><span class="schedule-status-badge ${statusClass}">${cmp.status}</span></td>
-          <td style="max-width:240px; white-space:normal; font-size:0.8rem; color:var(--text-medium);">${cmp.details} ${cmp.resolutionDetails ? `<br/><strong style="color:var(--success-green);">Res:</strong> ${cmp.resolutionDetails}` : ''}</td>
+          <td style="min-width: 180px; padding: 0.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; position: relative; width: 100%; max-width: 180px; margin: 0 auto; padding: 0 5px;">
+              <!-- Background progress line -->
+              <div style="position: absolute; top: 8px; left: 10px; right: 10px; height: 3px; background: #E2E8F0; z-index: 1;"></div>
+              <!-- Active progress line -->
+              <div style="position: absolute; top: 8px; left: 10px; width: ${cmp.status === 'Pending' ? '0%' : (cmp.status === 'In Progress' ? '50%' : '100%')}; height: 3px; background: ${cmp.status === 'Resolved' ? '#10B981' : '#F59E0B'}; z-index: 2; transition: width 0.3s ease;"></div>
+              
+              <!-- Dot 1: Pending -->
+              <div style="display: flex; flex-direction: column; align-items: center; z-index: 3; position: relative;">
+                <div style="width: 16px; height: 16px; border-radius: 50%; background: #F59E0B; border: 2px solid #FFFFFF; box-shadow: 0 0 0 1px #F59E0B; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; font-weight: bold;">
+                  ${cmp.status === 'Pending' ? '●' : '✓'}
+                </div>
+                <span style="font-size: 0.6rem; font-weight: 700; color: #1E293B; margin-top: 4px; text-transform: uppercase;">Pending</span>
+              </div>
+              
+              <!-- Dot 2: In Progress -->
+              <div style="display: flex; flex-direction: column; align-items: center; z-index: 3; position: relative;">
+                <div style="width: 16px; height: 16px; border-radius: 50%; background: ${cmp.status !== 'Pending' ? '#F59E0B' : '#E2E8F0'}; border: 2px solid #FFFFFF; box-shadow: 0 0 0 1px ${cmp.status !== 'Pending' ? '#F59E0B' : '#E2E8F0'}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; font-weight: bold;">
+                  ${cmp.status === 'Resolved' ? '✓' : (cmp.status === 'In Progress' ? '●' : '')}
+                </div>
+                <span style="font-size: 0.6rem; font-weight: 700; color: ${cmp.status !== 'Pending' ? '#1E293B' : '#94A3B8'}; margin-top: 4px; text-transform: uppercase;">Active</span>
+              </div>
+              
+              <!-- Dot 3: Resolved -->
+              <div style="display: flex; flex-direction: column; align-items: center; z-index: 3; position: relative;">
+                <div style="width: 16px; height: 16px; border-radius: 50%; background: ${cmp.status === 'Resolved' ? '#10B981' : '#E2E8F0'}; border: 2px solid #FFFFFF; box-shadow: 0 0 0 1px ${cmp.status === 'Resolved' ? '#10B981' : '#E2E8F0'}; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; font-weight: bold;">
+                  ${cmp.status === 'Resolved' ? '✓' : ''}
+                </div>
+                <span style="font-size: 0.6rem; font-weight: 700; color: ${cmp.status === 'Resolved' ? '#1E293B' : '#94A3B8'}; margin-top: 4px; text-transform: uppercase;">Resolved</span>
+              </div>
+            </div>
+          </td>
+          <td style="max-width:240px; font-size:0.8rem; color:var(--text-medium);"><div class="expandable-truncate" title="Click to expand/collapse">${cmp.details} ${cmp.resolutionDetails ? `<br/><strong style="color:var(--success-green);">Res:</strong> ${cmp.resolutionDetails}` : ''}</div></td>
           <!-- Assigned staff is actionable -->
           <td><a href="#" class="user-click" data-id="${cmp.assignedStaffId}" style="color:inherit; font-weight:600; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${staffName}</a></td>
           <td>${cmp.dateSubmitted}</td>
@@ -4025,6 +4176,655 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function renderBaitStationsTab() {
+    const regionRestr = getRestrictedRegion();
+    const cityRestr = getRestrictedCity();
+    
+    // Initialize filters once
+    if (!state.baitStationsInitialized) {
+      // Region filter options
+      const regionFilter = document.getElementById('bait-filter-region');
+      const regions = regionRestr !== 'All' ? [regionRestr] : ['All', 'Central', 'Kurdistan', 'South'];
+      regionFilter.innerHTML = regions.map(r => `<option value="${r}">${r === 'All' ? 'All Regions' : r}</option>`).join('');
+
+      // Sector filter options
+      const sectorFilter = document.getElementById('bait-filter-sector');
+      const sectorsData = window.BucklerDB.get('sectors') || [];
+      sectorFilter.innerHTML = `<option value="All">All Sectors</option>` + sectorsData.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+
+      // Client filter options (updates dynamically)
+      const updateClientFilterOptions = () => {
+        const clientFilter = document.getElementById('bait-filter-client');
+        const selRegion = regionFilter.value;
+        const allClients = window.BucklerDB.get('clients') || [];
+        
+        let filtered = allClients;
+        if (selRegion !== 'All') {
+          filtered = filtered.filter(c => c.region === selRegion);
+        }
+        if (cityRestr !== 'All') {
+          filtered = filtered.filter(c => c.city === cityRestr);
+        }
+        
+        clientFilter.innerHTML = `<option value="All">All Clients</option>` + filtered.map(c => `<option value="${c.id}">${c.name} (${c.clientCode || c.id})</option>`).join('');
+      };
+
+      updateClientFilterOptions();
+
+      // Bind events
+      regionFilter.addEventListener('change', () => {
+        updateClientFilterOptions();
+        renderBaitStationsData();
+      });
+      document.getElementById('bait-filter-client').addEventListener('change', renderBaitStationsData);
+      document.getElementById('bait-filter-sector').addEventListener('change', renderBaitStationsData);
+      document.getElementById('bait-filter-start-date').addEventListener('change', renderBaitStationsData);
+      document.getElementById('bait-filter-end-date').addEventListener('change', renderBaitStationsData);
+      
+      document.getElementById('btn-bait-clear-filters').addEventListener('click', () => {
+        regionFilter.value = regionRestr !== 'All' ? regionRestr : 'All';
+        updateClientFilterOptions();
+        document.getElementById('bait-filter-client').value = 'All';
+        document.getElementById('bait-filter-sector').value = 'All';
+        document.getElementById('bait-filter-start-date').value = '';
+        document.getElementById('bait-filter-end-date').value = '';
+        renderBaitStationsData();
+      });
+
+      state.baitStationsInitialized = true;
+    }
+
+    renderBaitStationsData();
+  }
+
+  function renderBaitStationsData() {
+    const regionVal = document.getElementById('bait-filter-region').value;
+    const clientVal = document.getElementById('bait-filter-client').value;
+    const sectorVal = document.getElementById('bait-filter-sector').value;
+    const startDateVal = document.getElementById('bait-filter-start-date').value;
+    const endDateVal = document.getElementById('bait-filter-end-date').value;
+
+    let clients = window.BucklerDB.get('clients') || [];
+    const schedules = window.BucklerDB.get('schedules') || [];
+    const allLogs = window.BucklerDB.get('operationLogs') || [];
+
+    // Filter clients
+    if (regionVal !== 'All') clients = clients.filter(c => c.region === regionVal);
+    const restrictedCity = getRestrictedCity();
+    if (restrictedCity !== 'All') clients = clients.filter(c => c.city === restrictedCity);
+    if (sectorVal !== 'All') clients = clients.filter(c => c.sector === sectorVal);
+    if (clientVal !== 'All') clients = clients.filter(c => c.id === clientVal);
+
+    const clientIds = new Set(clients.map(c => c.id));
+
+    // Filter logs in period and matching filtered clients
+    let filteredLogs = allLogs.filter(l => {
+      const sch = schedules.find(s => s.id === l.scheduleId);
+      if (!sch || !clientIds.has(sch.clientId)) return false;
+      
+      if (startDateVal && l.dateConducted < startDateVal) return false;
+      if (endDateVal && l.dateConducted > endDateVal) return false;
+      return true;
+    });
+
+    // KPI 1: Target Bait Stations (Profile or max historical visit count)
+    let totalTarget = 0;
+    clients.forEach(c => {
+      let targetCount = c.baitStationsCount || 0;
+      if (!targetCount) {
+        // Fallback: look at historical maximum station number audited
+        const histLogs = allLogs.filter(l => {
+          const sch = schedules.find(s => s.id === l.scheduleId);
+          return sch && sch.clientId === c.id;
+        });
+        let maxNum = 0;
+        histLogs.forEach(l => {
+          if (l.baitStationsAudit) {
+            l.baitStationsAudit.forEach(a => {
+              if (a.number > maxNum) maxNum = a.number;
+            });
+          }
+        });
+        targetCount = maxNum || 0;
+      }
+      totalTarget += targetCount;
+    });
+
+    // KPI 2: Total Checked Stations
+    let totalChecked = 0;
+    filteredLogs.forEach(l => {
+      if (l.baitStationsAudit) {
+        totalChecked += l.baitStationsAudit.length;
+      }
+    });
+
+    // KPI 3: Total Stickers Replaced
+    let totalStickers = filteredLogs.reduce((sum, l) => sum + (l.baitStickersReplaced || 0), 0);
+
+    document.getElementById('bait-kpi-target').textContent = totalTarget;
+    document.getElementById('bait-kpi-checked').textContent = totalChecked;
+    document.getElementById('bait-kpi-stickers').textContent = totalStickers;
+
+    // Render client summary table
+    const summaryBody = document.getElementById('bait-summary-table-body');
+    if (clients.length === 0) {
+      summaryBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No matching clients.</td></tr>`;
+    } else {
+      summaryBody.innerHTML = clients.map(c => {
+        const clientLogs = filteredLogs.filter(l => {
+          const sch = schedules.find(s => s.id === l.scheduleId);
+          return sch && sch.clientId === c.id;
+        });
+
+        let clientChecked = 0;
+        clientLogs.forEach(l => {
+          if (l.baitStationsAudit) clientChecked += l.baitStationsAudit.length;
+        });
+
+        const clientStickers = clientLogs.reduce((sum, l) => sum + (l.baitStickersReplaced || 0), 0);
+
+        let lastDate = '—';
+        if (clientLogs.length) {
+          const dates = clientLogs.map(l => l.dateConducted).filter(Boolean);
+          if (dates.length) {
+            lastDate = dates.reduce((a, b) => new Date(a) > new Date(b) ? a : b);
+          }
+        }
+
+        // Profile target or historical max
+        let targetCount = c.baitStationsCount || 0;
+        if (!targetCount) {
+          const histLogs = allLogs.filter(l => {
+            const sch = schedules.find(s => s.id === l.scheduleId);
+            return sch && sch.clientId === c.id;
+          });
+          let maxNum = 0;
+          histLogs.forEach(l => {
+            if (l.baitStationsAudit) {
+              l.baitStationsAudit.forEach(a => {
+                if (a.number > maxNum) maxNum = a.number;
+              });
+            }
+          });
+          targetCount = maxNum || 0;
+        }
+
+        return `
+          <tr>
+            <td><strong><a href="#" class="client-click" data-id="${c.id}" style="color:var(--primary-red); font-weight:700; text-decoration:none; border-bottom:1px dashed var(--primary-red);">${c.name}</a></strong></td>
+            <td><span class="badge-region badge-region-${c.region.toLowerCase()}">${c.region}</span></td>
+            <td>${c.sector || 'N/A'}</td>
+            <td style="text-align:center; font-weight:700;">${targetCount}</td>
+            <td style="text-align:center; font-weight:700; color:#3B82F6;">${clientChecked}</td>
+            <td style="text-align:center; font-weight:700; color:#10B981;">${clientStickers}</td>
+            <td>${lastDate}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render detailed bait station activity log
+    const detailedBody = document.getElementById('bait-detailed-table-body');
+    const auditRows = [];
+
+    // Sort logs descending by date
+    const sortedLogs = [...filteredLogs].sort((a, b) => new Date(b.dateConducted) - new Date(a.dateConducted));
+
+    sortedLogs.forEach(l => {
+      const sch = schedules.find(s => s.id === l.scheduleId);
+      const c = clients.find(cl => sch && cl.id === sch.clientId);
+      if (!c) return;
+
+      if (l.baitStationsAudit && l.baitStationsAudit.length) {
+        l.baitStationsAudit.forEach(audit => {
+          auditRows.push({
+            date: l.dateConducted || 'Unknown',
+            clientId: c.id,
+            clientName: c.name,
+            region: c.region,
+            stationNumber: audit.number,
+            location: audit.location || 'N/A',
+            activity: audit.activity || 'No Activity',
+            stickersReplaced: l.baitStickersReplaced || 0,
+            comment: audit.comments || audit.comment || '—'
+          });
+        });
+      }
+    });
+
+    if (auditRows.length === 0) {
+      detailedBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">No bait station activity logs found in the selected period.</td></tr>`;
+    } else {
+      detailedBody.innerHTML = auditRows.map(r => {
+        const hasAct = r.activity !== 'No Activity';
+        const actBg = hasAct ? '#FEE2E2' : '#ECFDF5';
+        const actColor = hasAct ? '#991B1B' : '#065F46';
+        return `
+          <tr>
+            <td><strong>${r.date}</strong></td>
+            <td><strong><a href="#" class="client-click" data-id="${r.clientId}" style="color:inherit; font-weight:700; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${r.clientName}</a></strong></td>
+            <td><span class="badge-region badge-region-${r.region.toLowerCase()}">${r.region}</span></td>
+            <td style="text-align:center; font-weight:700;">${r.stationNumber}</td>
+            <td>${r.location}</td>
+            <td><span style="background:${actBg}; color:${actColor}; padding:0.25rem 0.5rem; border-radius:12px; font-size:0.75rem; font-weight:700; display:inline-block;">${r.activity}</span></td>
+            <td style="text-align:center; font-weight:700; color:#10B981;">${r.stickersReplaced}</td>
+            <td><div style="font-size:0.75rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.comment}">${r.comment}</div></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    bindEntityClicks(summaryBody);
+    bindEntityClicks(detailedBody);
+  }
+
+  // ── Media Gallery Features ──
+  state.collapsedMediaCategories = {};
+
+  function setupMediaEvents() {
+    if (els.mediaSearch) {
+      els.mediaSearch.addEventListener('input', renderMediaTab);
+    }
+    if (els.mediaFilterCategory) {
+      els.mediaFilterCategory.addEventListener('change', renderMediaTab);
+    }
+    if (els.btnMediaUploadFile) {
+      els.btnMediaUploadFile.addEventListener('click', () => openUploadFileModal());
+    }
+    if (els.btnMediaManageCategories) {
+      els.btnMediaManageCategories.addEventListener('click', openCategoryManagerModal);
+    }
+  }
+
+  function renderMediaTab() {
+    const searchVal = els.mediaSearch ? els.mediaSearch.value.trim().toLowerCase() : '';
+    const catVal = els.mediaFilterCategory ? els.mediaFilterCategory.value : 'All';
+
+    const categories = window.BucklerDB.get('mediaCategories') || [];
+    const mediaFiles = window.BucklerDB.get('media') || [];
+    const users = window.BucklerDB.get('users') || [];
+
+    // Populate Category Filter dropdown options dynamically if needed
+    if (els.mediaFilterCategory) {
+      const currentSelected = els.mediaFilterCategory.value;
+      let optionsHTML = `<option value="All">${state.language === 'ar' ? 'جميع التصنيفات' : 'All Categories'}</option>`;
+      categories.forEach(c => {
+        const displayName = state.language === 'ar' && t(c.name) !== c.name ? t(c.name) : c.name.charAt(0).toUpperCase() + c.name.slice(1);
+        optionsHTML += `<option value="${c.id}">${displayName}</option>`;
+      });
+      els.mediaFilterCategory.innerHTML = optionsHTML;
+      els.mediaFilterCategory.value = currentSelected || 'All';
+    }
+
+    let galleryHTML = '';
+
+    categories.forEach(cat => {
+      // Filter categories if a specific category is selected
+      if (catVal !== 'All' && cat.id !== catVal) return;
+
+      const catFiles = mediaFiles.filter(f => {
+        if (f.category !== cat.id) return false;
+        if (searchVal && !f.name.toLowerCase().includes(searchVal)) return false;
+        return true;
+      });
+
+      const isCollapsed = !!state.collapsedMediaCategories[cat.id];
+      const displayName = state.language === 'ar' && t(cat.name) !== cat.name ? t(cat.name) : cat.name.charAt(0).toUpperCase() + cat.name.slice(1);
+
+      let filesHTML = '';
+      if (catFiles.length === 0) {
+        filesHTML = `
+          <div style="grid-column: 1 / -1; text-align:center; padding:2rem; background:#F8FAFC; border:1px dashed var(--border-color); border-radius:8px; color:var(--text-muted); font-size:0.85rem;">
+            ${state.language === 'ar' ? 'لا توجد ملفات في هذا التصنيف حالياً.' : 'No files in this category.'}
+          </div>
+        `;
+      } else {
+        filesHTML = catFiles.map(f => {
+          const u = users.find(user => user.id === f.uploadedBy);
+          const uName = u ? u.name : (f.uploadedBy || 'Admin');
+          
+          // Formatted size
+          let sizeStr = '—';
+          if (f.size) {
+            if (f.size > 1024 * 1024) {
+              sizeStr = `${(f.size / (1024 * 1024)).toFixed(1)} MB`;
+            } else {
+              sizeStr = `${Math.round(f.size / 1024)} KB`;
+            }
+          }
+
+          // File icon/thumbnail
+          let iconHTML = '';
+          const type = (f.type || '').toLowerCase();
+          if (type.startsWith('image/')) {
+            iconHTML = `<img src="${f.data}" style="width:100%; height:110px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color);" />`;
+          } else if (type.includes('pdf')) {
+            iconHTML = `
+              <div style="width:100%; height:110px; background:#FEF2F2; color:#EF4444; display:flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid #FCA5A5; font-size:2.2rem; font-weight:800;">
+                PDF
+              </div>
+            `;
+          } else {
+            iconHTML = `
+              <div style="width:100%; height:110px; background:#F1F5F9; color:var(--text-muted); display:flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid var(--border-color); font-size:2.5rem;">
+                📄
+              </div>
+            `;
+          }
+
+          return `
+            <div class="file-card" style="background:white; border:1px solid var(--border-color); border-radius:8px; padding:0.75rem; display:flex; flex-direction:column; gap:0.5rem; transition:transform 0.15s, box-shadow:0.15s; box-shadow:var(--shadow-sm);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-md)';" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)';">
+              ${iconHTML}
+              <div style="display:flex; flex-direction:column; gap:0.15rem; min-height:48px;">
+                <div style="font-weight:700; font-size:0.8rem; color:var(--text-dark); word-break:break-all; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;" title="${f.name}">${f.name}</div>
+                <div style="font-size:0.7rem; color:var(--text-muted); display:flex; justify-content:space-between;">
+                  <span>${sizeStr}</span>
+                  <span>${f.uploadDate}</span>
+                </div>
+              </div>
+              <div style="font-size:0.7rem; color:var(--text-muted); border-top:1px solid #F1F5F9; padding-top:0.35rem; display:flex; justify-content:space-between; align-items:center;">
+                <span>By: <strong>${uName}</strong></span>
+              </div>
+              <div style="display:flex; gap:0.25rem; margin-top:auto; padding-top:0.25rem; border-top:1px solid #F1F5F9;">
+                <a href="${f.data}" download="${f.name}" class="btn btn-secondary" style="flex:1; padding:0.3rem; font-size:0.75rem; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:3px;" title="Download file">
+                  📥 <span>Download</span>
+                </a>
+                <button class="btn btn-secondary btn-media-edit-file" data-id="${f.id}" style="padding:0.3rem; font-size:0.75rem; display:flex; align-items:center; justify-content:center;" title="Edit file details">
+                  ✏️
+                </button>
+                <button class="btn btn-secondary btn-media-delete-file" data-id="${f.id}" style="padding:0.3rem; font-size:0.75rem; display:flex; align-items:center; justify-content:center; color:var(--primary-red);" title="Delete file">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      galleryHTML += `
+        <div class="category-panel-card" style="background:white; border:1px solid var(--border-color); border-radius:8px; overflow:hidden; box-shadow:var(--shadow-sm);">
+          <div class="category-header-bar" data-id="${cat.id}" style="display:flex; justify-content:space-between; align-items:center; padding:0.85rem 1.25rem; background:#F8FAFC; border-bottom:1px solid var(--border-color); cursor:pointer; user-select:none; transition:background 0.15s;" onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='#F8FAFC'">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem; color:var(--text-medium); transform:rotate(${isCollapsed ? '270deg' : '0deg'}); transition:transform 0.15s;">▼</span>
+              <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-dark); margin:0; text-transform:capitalize;">${displayName}</h3>
+              <span class="badge" style="background:#E2E8F0; color:var(--text-medium); font-size:0.75rem; border-radius:12px; padding:0.15rem 0.5rem; font-weight:700;">${catFiles.length}</span>
+            </div>
+          </div>
+          <div class="category-content-body" style="display:${isCollapsed ? 'none' : 'grid'}; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; padding:1.25rem; background:#FFFFFF;">
+            ${filesHTML}
+          </div>
+        </div>
+      `;
+    });
+
+    if (els.mediaGalleryContainer) {
+      els.mediaGalleryContainer.innerHTML = galleryHTML;
+
+      // Bind category toggle click events
+      els.mediaGalleryContainer.querySelectorAll('.category-header-bar').forEach(header => {
+        header.onclick = () => {
+          const catId = header.getAttribute('data-id');
+          state.collapsedMediaCategories[catId] = !state.collapsedMediaCategories[catId];
+          renderMediaTab();
+        };
+      });
+
+      // Bind file edit events
+      els.mediaGalleryContainer.querySelectorAll('.btn-media-edit-file').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const fileId = btn.getAttribute('data-id');
+          openUploadFileModal(fileId);
+        };
+      });
+
+      // Bind file delete events
+      els.mediaGalleryContainer.querySelectorAll('.btn-media-delete-file').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const fileId = btn.getAttribute('data-id');
+          const allMedia = window.BucklerDB.get('media') || [];
+          const f = allMedia.find(x => x.id === fileId);
+          if (!f) return;
+          const confirmText = state.language === 'ar' ? `هل أنت متأكد من حذف الملف "${f.name}"؟` : `Are you sure you want to delete the file "${f.name}"?`;
+          if (confirm(confirmText)) {
+            window.BucklerDB.delete('media', fileId);
+            showToast(state.language === 'ar' ? 'تم حذف الملف بنجاح' : 'File deleted successfully', 'success');
+            renderMediaTab();
+          }
+        };
+      });
+    }
+  }
+
+  function openUploadFileModal(fileId = null) {
+    const isEdit = !!fileId;
+    const mediaFiles = window.BucklerDB.get('media') || [];
+    const f = isEdit ? mediaFiles.find(x => x.id === fileId) : null;
+    const categories = window.BucklerDB.get('mediaCategories') || [];
+
+    const title = isEdit 
+      ? (state.language === 'ar' ? 'تعديل تفاصيل الملف' : 'Edit File Details')
+      : (state.language === 'ar' ? 'تحميل ملف جديد' : 'Upload New File');
+
+    const catOptionsHTML = categories.map(c => {
+      const displayName = state.language === 'ar' && t(c.name) !== c.name ? t(c.name) : c.name.charAt(0).toUpperCase() + c.name.slice(1);
+      const isSelected = f && f.category === c.id ? 'selected' : '';
+      return `<option value="${c.id}" ${isSelected}>${displayName}</option>`;
+    }).join('');
+
+    const bodyHTML = `
+      <form id="media-upload-form" style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="form-group">
+          <label for="media-modal-name" style="font-weight:700; font-size:0.85rem; color:var(--text-medium); margin-bottom:0.25rem; display:block;">
+            ${state.language === 'ar' ? 'اسم الملف *' : 'File Name *'}
+          </label>
+          <input type="text" id="media-modal-name" class="form-control" value="${f ? f.name : ''}" required placeholder="e.g. Buckler Certificate" />
+        </div>
+        <div class="form-group">
+          <label for="media-modal-category" style="font-weight:700; font-size:0.85rem; color:var(--text-medium); margin-bottom:0.25rem; display:block;">
+            ${state.language === 'ar' ? 'التصنيف *' : 'Category *'}
+          </label>
+          <select id="media-modal-category" class="form-control" required>
+            ${catOptionsHTML}
+          </select>
+        </div>
+        ${isEdit ? '' : `
+          <div class="form-group">
+            <label for="media-modal-file" style="font-weight:700; font-size:0.85rem; color:var(--text-medium); margin-bottom:0.25rem; display:block;">
+              ${state.language === 'ar' ? 'اختر ملفاً *' : 'Select File *'}
+            </label>
+            <input type="file" id="media-modal-file" class="form-control" required style="padding:0.4rem;" />
+            <span style="font-size:0.7rem; color:var(--text-muted); display:block; margin-top:0.25rem;">
+              ${state.language === 'ar' ? 'الحجم الأقصى المسموح به: 5 ميغابايت' : 'Maximum size allowed: 5 MB'}
+            </span>
+          </div>
+        `}
+      </form>
+    `;
+
+    showModal(title, bodyHTML, true, 'modal-md');
+
+    // Handle submit
+    const submitBtn = els.modalBackdrop.querySelector('.btn-primary');
+    if (submitBtn) {
+      submitBtn.onclick = () => {
+        const nameVal = document.getElementById('media-modal-name').value.trim();
+        const catVal = document.getElementById('media-modal-category').value;
+        if (!nameVal || !catVal) {
+          showToast(state.language === 'ar' ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Please fill all required fields', 'error');
+          return;
+        }
+
+        if (isEdit) {
+          const updated = {
+            ...f,
+            name: nameVal,
+            category: catVal
+          };
+          window.BucklerDB.update('media', f.id, updated);
+          showToast(state.language === 'ar' ? 'تم تحديث الملف بنجاح' : 'File updated successfully', 'success');
+          els.modalBackdrop.style.display = 'none';
+          renderMediaTab();
+        } else {
+          const fileEl = document.getElementById('media-modal-file');
+          const file = fileEl.files[0];
+          if (!file) {
+            showToast(state.language === 'ar' ? 'الرجاء اختيار ملف للتحميل' : 'Please select a file to upload', 'error');
+            return;
+          }
+
+          const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+          const limit = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+          if (file.size > limit) {
+            const limitMsg = isPdf 
+              ? (state.language === 'ar' ? 'حجم ملف الـ PDF يتجاوز 10 ميغابايت' : 'PDF file size exceeds 10MB (Max 10MB for PDFs)')
+              : (state.language === 'ar' ? 'حجم الملف يتجاوز 5 ميغابايت' : 'File size exceeds 5MB');
+            showToast(limitMsg, 'error');
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const newRecord = {
+              name: nameVal,
+              category: catVal,
+              type: file.type,
+              size: file.size,
+              uploadDate: formatDateLocal(new Date()),
+              uploadedBy: state.currentUser.id,
+              data: e.target.result
+            };
+
+            window.BucklerDB.insert('media', newRecord);
+            showToast(state.language === 'ar' ? 'تم رفع الملف بنجاح' : 'File uploaded successfully', 'success');
+            els.modalBackdrop.style.display = 'none';
+            renderMediaTab();
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+    }
+  }
+
+  function openCategoryManagerModal() {
+    const categories = window.BucklerDB.get('mediaCategories') || [];
+    const mediaFiles = window.BucklerDB.get('media') || [];
+
+    const title = state.language === 'ar' ? 'إدارة التصنيفات' : 'Manage Categories';
+
+    const catRowsHTML = categories.map(c => {
+      const hasFiles = mediaFiles.some(f => f.category === c.id);
+      const displayName = state.language === 'ar' && t(c.name) !== c.name ? t(c.name) : c.name;
+      
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem; background:#F8FAFC; border:1px solid var(--border-color); border-radius:6px; margin-bottom:0.4rem;">
+          <input type="text" class="form-control category-name-input" data-id="${c.id}" value="${displayName}" style="font-size:0.85rem; height:32px; flex:1; max-width:200px;" />
+          <div style="display:flex; gap:0.25rem;">
+            <button class="btn btn-secondary btn-media-rename-cat" data-id="${c.id}" style="padding:0.25rem 0.5rem; font-size:0.75rem; font-weight:700;">
+              ${state.language === 'ar' ? 'حفظ' : 'Save'}
+            </button>
+            <button class="btn btn-secondary btn-media-delete-cat" data-id="${c.id}" ${hasFiles ? 'disabled title="Category contains files"' : ''} style="padding:0.25rem 0.5rem; font-size:0.75rem; color:var(--primary-red); font-weight:700;">
+              ${state.language === 'ar' ? 'حذف' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const bodyHTML = `
+      <div style="display:flex; flex-direction:column; gap:1rem;">
+        <div style="display:flex; flex-direction:column; gap:0.5rem; max-height:220px; overflow-y:auto; padding-right:0.25rem;">
+          ${catRowsHTML}
+        </div>
+        <div style="border-top:1px solid var(--border-color); padding-top:0.75rem; display:flex; flex-direction:column; gap:0.5rem;">
+          <label style="font-weight:700; font-size:0.8rem; color:var(--text-medium);">
+            ${state.language === 'ar' ? 'إضافة تصنيف جديد' : 'Create New Category'}
+          </label>
+          <div style="display:flex; gap:0.5rem;">
+            <input type="text" id="new-cat-name" class="form-control" placeholder="${state.language === 'ar' ? 'مثال: كتالوجات' : 'e.g. Catalogs'}" style="height:36px; flex:1;" />
+            <button class="btn btn-primary" id="btn-add-new-cat" style="height:36px; padding:0 1rem; font-weight:700;">
+              ${state.language === 'ar' ? 'إضافة' : 'Create'}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    showModal(title, bodyHTML, false, 'modal-md');
+
+    const modalBodyEl = els.modalBackdrop.querySelector('.modal-body');
+    
+    // Bind rename click events
+    modalBodyEl.querySelectorAll('.btn-media-rename-cat').forEach(btn => {
+      btn.onclick = () => {
+        const catId = btn.getAttribute('data-id');
+        const input = modalBodyEl.querySelector(`.category-name-input[data-id="${catId}"]`);
+        const nameVal = input.value.trim();
+        if (!nameVal) {
+          showToast(state.language === 'ar' ? 'الرجاء إدخال اسم تصنيف صالح' : 'Please enter a valid category name', 'error');
+          return;
+        }
+
+        const oldCat = categories.find(x => x.id === catId);
+        if (oldCat) {
+          const updated = { ...oldCat, name: nameVal };
+          window.BucklerDB.update('mediaCategories', catId, updated);
+          showToast(state.language === 'ar' ? 'تم تعديل اسم التصنيف بنجاح' : 'Category renamed successfully', 'success');
+          
+          openCategoryManagerModal();
+          renderMediaTab();
+        }
+      };
+    });
+
+    // Bind delete click events
+    modalBodyEl.querySelectorAll('.btn-media-delete-cat').forEach(btn => {
+      btn.onclick = () => {
+        const catId = btn.getAttribute('data-id');
+        const oldCat = categories.find(x => x.id === catId);
+        if (!oldCat) return;
+
+        const confirmText = state.language === 'ar' ? `هل أنت متأكد من حذف تصنيف "${oldCat.name}"؟` : `Are you sure you want to delete category "${oldCat.name}"?`;
+        if (confirm(confirmText)) {
+          window.BucklerDB.delete('mediaCategories', catId);
+          showToast(state.language === 'ar' ? 'تم حذف التصنيف بنجاح' : 'Category deleted successfully', 'success');
+          
+          openCategoryManagerModal();
+          renderMediaTab();
+        }
+      };
+    });
+
+    // Bind add new category event
+    modalBodyEl.querySelector('#btn-add-new-cat').onclick = () => {
+      const nameVal = modalBodyEl.querySelector('#new-cat-name').value.trim();
+      if (!nameVal) {
+        showToast(state.language === 'ar' ? 'الرجاء إدخال اسم تصنيف' : 'Please enter a category name', 'error');
+        return;
+      }
+
+      // Check duplicate
+      const duplicate = categories.some(c => c.name.toLowerCase() === nameVal.toLowerCase());
+      if (duplicate) {
+        showToast(state.language === 'ar' ? 'هذا التصنيف موجود بالفعل' : 'Category already exists', 'error');
+        return;
+      }
+
+      const newId = nameVal.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+      const newRecord = {
+        id: newId || `cat-${Date.now()}`,
+        name: nameVal
+      };
+
+      window.BucklerDB.insert('mediaCategories', newRecord);
+      showToast(state.language === 'ar' ? 'تم إضافة التصنيف بنجاح' : 'Category created successfully', 'success');
+      
+      openCategoryManagerModal();
+      renderMediaTab();
+    };
+  }
+
   // 13. Dynamic Modals Open templates
   function setupModalEvents() {
     const closeModal = () => {
@@ -4271,6 +5071,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const cityOptions = getCityOptions(initialRegion, initialCity, false);
     const regionOptions = getRegionOptions(initialRegion, false);
 
+    const allClients = window.BucklerDB.get('clients') || [];
+    const possibleParents = allClients.filter(c => !c.parentId && (!id || c.id !== id));
+    const parentClientOptions = possibleParents.map(p => `
+      <option value="${p.id}" ${client && client.parentId === p.id ? 'selected' : ''}>${p.name} (${p.clientCode || p.id})</option>
+    `).join('');
+
     const sectorsData = window.BucklerDB.get('sectors');
     const sectorOptions = sectorsData.map(s => `
       <option value="${s.name}" ${client && client.sector === s.name ? 'selected' : ''}>${s.name}</option>
@@ -4278,6 +5084,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const html = `
       <form id="client-form">
+        <div class="form-group">
+          <label for="cli-modal-parent">Parent Account / Main Client</label>
+          <select id="cli-modal-parent" class="form-control" ${!canEdit ? 'disabled' : ''}>
+            <option value="">None (This is a Main Account)</option>
+            ${parentClientOptions}
+          </select>
+        </div>
         <div class="form-group row-split">
           <div>
             <label for="cli-modal-code">Client Code *</label>
@@ -4371,6 +5184,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <label for="cli-modal-monthly-visits">Total Monthly Visits Target (Calculated)</label>
           <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || 0) : 0}" readonly disabled style="background:#F1F5F9; color:var(--text-muted); font-weight:700;">
         </div>
+        <div class="form-group">
+          <label for="cli-modal-bait-stations">Rodent Bait Stations Count (Profile Target)</label>
+          <input type="number" id="cli-modal-bait-stations" class="form-control" value="${client ? (client.baitStationsCount || '') : ''}" placeholder="e.g. 15" ${!canEdit ? 'disabled' : ''}>
+        </div>
         ${isEdit ? (() => {
           const logs = window.BucklerDB.get('operationLogs').filter(l => l.clientId === id);
           const allPics = [];
@@ -4415,7 +5232,32 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           `;
           
-          return visitChartHtml + photosHtml;
+          let branchesSectionHTML = '';
+          if (!client.parentId) {
+            const branches = allClients.filter(c => c.parentId === id);
+            const branchesList = branches.map(b => `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0.5rem; background:#F8FAFC; border:1px solid var(--border-color); border-radius:6px; font-size:0.8rem; margin-bottom:0.25rem;">
+                <div>
+                  <strong>${b.name}</strong> <code>${b.clientCode || b.id}</code> - <span style="font-size:0.75rem; color:var(--text-muted);">${b.region} (${b.city})</span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm edit-branch-link-btn" data-id="${b.id}" style="padding:0.2rem 0.4rem; font-size:0.72rem; margin:0;">Edit</button>
+              </div>
+            `).join('') || `<span style="color:var(--text-muted); font-size:0.75rem; font-style:italic;">No branches registered under this client.</span>`;
+
+            branchesSectionHTML = `
+              <div style="margin-top: 1.5rem; border-top: 2px solid var(--border-color); padding-top: 1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                  <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-dark); margin:0;">Associated Branches</h4>
+                  ${canEdit ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-branch-node" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; margin:0;">➕ Add Branch</button>` : ''}
+                </div>
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                  ${branchesList}
+                </div>
+              </div>
+            `;
+          }
+          
+          return visitChartHtml + photosHtml + branchesSectionHTML;
         })() : ''}
       </form>
     `;
@@ -4449,6 +5291,21 @@ document.addEventListener('DOMContentLoaded', () => {
           updateClientTotalVisits();
         });
       });
+
+      // Branch buttons logic
+      document.querySelectorAll('.edit-branch-link-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          openClientModal(btn.getAttribute('data-id'));
+        });
+      });
+      const addBranchBtn = document.getElementById('btn-add-branch-node');
+      if (addBranchBtn) {
+        addBranchBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          openClientModal(null, { parentId: id, name: client ? (client.name + ' - Branch') : '' });
+        });
+      }
     }, 50);
 
     const rSelect = document.getElementById('cli-modal-region');
@@ -4591,10 +5448,46 @@ document.addEventListener('DOMContentLoaded', () => {
             ${supplierListHTML || '<span style="color:var(--text-muted); font-size:0.78rem; padding:0.25rem;">No suppliers registered yet.</span>'}
           </div>
         </div>
+        <div class="form-group" style="margin-top:1rem;">
+          <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:block;">Product Image / Picture</label>
+          <div style="display:flex; align-items:center; gap:1rem;">
+            <div id="itm-image-preview-container" style="width:60px; height:60px; border-radius:6px; border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; background:#F8FAFC;">
+              ${item && item.picture ? `<img src="${item.picture}" style="width:100%; height:100%; object-fit:cover;" />` : `<span style="font-size:1.5rem; color:var(--text-muted);">📦</span>`}
+            </div>
+            <div style="flex:1;">
+              <input type="file" id="itm-modal-image-input" accept="image/*" class="form-control" style="font-size:0.8rem; padding: 0.25rem 0.5rem; height: auto;">
+              <input type="hidden" id="itm-modal-image-base64" value="${item && item.picture ? item.picture : ''}">
+            </div>
+          </div>
+        </div>
       </form>
     `;
 
     showModal(isEdit ? 'Edit Product details' : 'Add New Product to Inventory', html);
+
+    // Bind Image Upload Preview
+    const imgInput = document.getElementById('itm-modal-image-input');
+    const base64Input = document.getElementById('itm-modal-image-base64');
+    const previewContainer = document.getElementById('itm-image-preview-container');
+    if (imgInput && base64Input && previewContainer) {
+      imgInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 5 * 1024 * 1024) {
+            showToast('Image size exceeds 5MB limit', 'error');
+            imgInput.value = '';
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const base64 = event.target.result;
+            base64Input.value = base64;
+            previewContainer.innerHTML = `<img src="${base64}" style="width:100%; height:100%; object-fit:cover;" />`;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
   }
 
   // User Modal
@@ -4981,7 +5874,17 @@ document.addEventListener('DOMContentLoaded', () => {
         ` : ''}
 
         <div class="form-group">
-          <label for="log-modal-comments">Team Leader Operation Comments *</label>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+            <label for="log-modal-comments" style="margin:0; font-weight:700;">Team Leader Operation Comments *</label>
+            <div style="display:flex; align-items:center; gap:0.25rem;">
+              <span style="font-size:0.75rem; color:var(--text-muted);">Status:</span>
+              <select id="log-modal-comments-status" class="form-control" style="width:110px; height:28px; padding:0 0.4rem; font-size:0.75rem; margin:0;">
+                <option value="New">New</option>
+                <option value="Repetitive">Repetitive</option>
+                <option value="Solved">Solved</option>
+              </select>
+            </div>
+          </div>
           <textarea id="log-modal-comments" class="form-control" placeholder="Describe biological findings, treatments applied..." required></textarea>
         </div>
         
@@ -4994,7 +5897,17 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="border-top:1px solid var(--border-color); padding-top:1rem; margin-top:1.5rem;">
           <h4 style="font-size:0.95rem; font-weight:700; color:var(--text-dark); margin-bottom:0.5rem;">Client Review & Sign-Off</h4>
           <div class="form-group">
-            <label for="log-modal-client-comments">Client Feedback / Comments</label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+              <label for="log-modal-client-comments" style="margin:0; font-weight:700;">Client Feedback / Comments</label>
+              <div style="display:flex; align-items:center; gap:0.25rem;">
+                <span style="font-size:0.75rem; color:var(--text-muted);">Status:</span>
+                <select id="log-modal-client-comments-status" class="form-control" style="width:110px; height:28px; padding:0 0.4rem; font-size:0.75rem; margin:0;">
+                  <option value="New">New</option>
+                  <option value="Repetitive">Repetitive</option>
+                  <option value="Solved">Solved</option>
+                </select>
+              </div>
+            </div>
             <input type="text" id="log-modal-client-comments" class="form-control" placeholder="Client comments (Optional)">
           </div>
           <div class="form-group">
@@ -5431,7 +6344,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <div>
-          <h4 style="font-size:0.95rem; font-weight:700; color:var(--text-dark);">Operation Comments & Findings</h4>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="font-size:0.95rem; font-weight:700; color:var(--text-dark); margin:0;">Operation Comments & Findings</h4>
+            ${log.commentsStatus ? `<span style="background:${log.commentsStatus === 'Solved' ? '#D1FAE5' : log.commentsStatus === 'Repetitive' ? '#FEF3C7' : '#DBEAFE'}; color:${log.commentsStatus === 'Solved' ? '#065F46' : log.commentsStatus === 'Repetitive' ? '#92400E' : '#1E40AF'}; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.7rem; font-weight:700; text-transform:uppercase;">${log.commentsStatus}</span>` : ''}
+          </div>
           <p style="font-size:0.85rem; padding:0.5rem; background:#FAFAFA; border:1px solid var(--border-color); border-radius:6px; color:var(--text-medium); margin-top:0.25rem; font-style:italic;">
             "${log.comments}"
           </p>
@@ -5439,7 +6355,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <div style="border-top:1px solid var(--border-color); padding-top:0.75rem; margin-top:0.5rem;">
-          <h4 style="font-size:0.95rem; font-weight:700; color:var(--text-dark);">Client Sign-Off</h4>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+            <h4 style="font-size:0.95rem; font-weight:700; color:var(--text-dark); margin:0;">Client Sign-Off</h4>
+            ${log.clientCommentsStatus ? `<span style="background:${log.clientCommentsStatus === 'Solved' ? '#D1FAE5' : log.clientCommentsStatus === 'Repetitive' ? '#FEF3C7' : '#DBEAFE'}; color:${log.clientCommentsStatus === 'Solved' ? '#065F46' : log.clientCommentsStatus === 'Repetitive' ? '#92400E' : '#1E40AF'}; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.7rem; font-weight:700; text-transform:uppercase;">${log.clientCommentsStatus}</span>` : ''}
+          </div>
           <p style="font-size:0.85rem; color:var(--text-medium); margin-bottom:0.5rem;">
             Client Feedback: <strong>${log.clientComments || 'No comments'}</strong>
           </p>
@@ -5591,6 +6510,8 @@ document.addEventListener('DOMContentLoaded', () => {
         totalMonthlyVisits += val;
       });
 
+      const parentVal = document.getElementById('cli-modal-parent') ? document.getElementById('cli-modal-parent').value : '';
+
       const fields = {
         clientCode: document.getElementById('cli-modal-code').value,
         name: document.getElementById('cli-modal-name').value,
@@ -5605,7 +6526,9 @@ document.addEventListener('DOMContentLoaded', () => {
         lng: document.getElementById('cli-modal-lng').value !== '' ? parseFloat(document.getElementById('cli-modal-lng').value) : null,
         monthlyVisits: totalMonthlyVisits,
         contractTypes: selectedContracts,
-        serviceVisits: serviceVisits
+        serviceVisits: serviceVisits,
+        baitStationsCount: parseInt(document.getElementById('cli-modal-bait-stations').value) || 0,
+        parentId: parentVal || null
       };
 
       if (id) {
@@ -5629,8 +6552,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const fields = {
         name: document.getElementById('itm-modal-name').value,
         itemCode: document.getElementById('itm-modal-code').value,
+        category: document.getElementById('itm-modal-category') ? document.getElementById('itm-modal-category').value : 'Others',
         unit: document.getElementById('itm-modal-unit').value,
-        supplierIds: checkedSuppliers
+        supplierIds: checkedSuppliers,
+        picture: document.getElementById('itm-modal-image-base64') ? document.getElementById('itm-modal-image-base64').value : ''
       };
 
       let itemId = id;
@@ -5990,7 +6915,9 @@ document.addEventListener('DOMContentLoaded', () => {
         timeOut: timeOut,
         itemsConsumed: itemsConsumed,
         comments: document.getElementById('log-modal-comments').value,
+        commentsStatus: document.getElementById('log-modal-comments-status').value,
         clientComments: document.getElementById('log-modal-client-comments').value,
+        clientCommentsStatus: document.getElementById('log-modal-client-comments-status').value,
         clientSignature: sigCanvas.toDataURL(),
         geoLocation: document.getElementById('log-modal-geolocation').value,
         pictures: state.uploadedPictures || [],
@@ -6690,6 +7617,50 @@ document.addEventListener('DOMContentLoaded', () => {
     els.chatSendBtn.addEventListener('click', () => {
       sendChatMessage();
     });
+
+    if (els.chatAttachBtn && els.chatFileInput) {
+      els.chatAttachBtn.onclick = () => {
+        els.chatFileInput.click();
+      };
+
+      els.chatFileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Size check (max 5MB, or 10MB for PDF)
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const limit = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+        if (file.size > limit) {
+          const limitStr = isPdf ? '10MB' : '5MB';
+          showToast(`⛔ Attachment size cannot exceed ${limitStr}.`, 'error');
+          els.chatFileInput.value = '';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64Data = event.target.result;
+          
+          const newMessage = {
+            senderId: state.currentUser.id,
+            receiverId: state.activeChatTarget,
+            text: `📎 Attached file: ${file.name}`,
+            timestamp: new Date().toISOString(),
+            read: false,
+            attachment: {
+              name: file.name,
+              type: file.type,
+              data: base64Data
+            }
+          };
+
+          window.BucklerDB.insert('messages', newMessage);
+          els.chatFileInput.value = '';
+          renderActiveConversation();
+        };
+        reader.readAsDataURL(file);
+      };
+    }
   }
 
   function renderChat() {
@@ -6722,12 +7693,21 @@ document.addEventListener('DOMContentLoaded', () => {
       dmUsers = dmUsers.filter(u => u.city === city || u.city === 'All');
     }
     
-    els.chatUsersList.innerHTML = dmUsers.map(u => `
-      <button class="nav-link chat-target-btn" style="text-align:left; border:none; background:none; width:100%; display:flex; justify-content:space-between; align-items:center;" data-id="${u.id}">
-        <span>${u.name}</span>
-        <span style="font-size:0.6rem; color:var(--text-muted); font-weight:600;">${u.role.substring(0,3).toUpperCase()}</span>
-      </button>
-    `).join('');
+    const allMsgs = window.BucklerDB.get('messages') || [];
+    
+    els.chatUsersList.innerHTML = dmUsers.map(u => {
+      const hasUnread = allMsgs.some(m => m.senderId === u.id && m.receiverId === state.currentUser.id && m.read === false);
+      const dot = hasUnread ? `<span class="chat-unread-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#EF4444; margin-left:6px;" title="New message"></span>` : '';
+      return `
+        <button class="nav-link chat-target-btn" style="text-align:left; border:none; background:none; width:100%; display:flex; justify-content:space-between; align-items:center;" data-id="${u.id}">
+          <span style="display:flex; align-items:center;">
+            ${u.name}
+            ${dot}
+          </span>
+          <span style="font-size:0.6rem; color:var(--text-muted); font-weight:600;">${u.role.substring(0,3).toUpperCase()}</span>
+        </button>
+      `;
+    }).join('');
 
     document.querySelectorAll('.chat-target-btn').forEach(btn => {
       const id = btn.getAttribute('data-id');
@@ -6755,11 +7735,58 @@ document.addEventListener('DOMContentLoaded', () => {
       els.chatMessagesContainer.innerHTML = '<div style="margin:auto; color:var(--text-muted); font-size:0.85rem;">No active conversation.</div>';
       els.chatInput.disabled = true;
       els.chatSendBtn.disabled = true;
+      if (els.chatAttachBtn) els.chatAttachBtn.disabled = true;
       return;
     }
 
     els.chatInput.disabled = false;
     els.chatSendBtn.disabled = false;
+    if (els.chatAttachBtn) els.chatAttachBtn.disabled = false;
+
+    // Mark messages as read
+    let updatedAny = false;
+    const dbData = window.BucklerDB.getData();
+    if (dbData.messages) {
+      dbData.messages.forEach(m => {
+         if (m.senderId === targetId && m.receiverId === state.currentUser.id && m.read === false) {
+           m.read = true;
+           updatedAny = true;
+         }
+      });
+      if (updatedAny) {
+        window.BucklerDB.saveData(dbData);
+        // Refresh sidebar list to clear dot
+        setTimeout(() => {
+          const allMsgsList = window.BucklerDB.get('messages') || [];
+          const usersList = window.BucklerDB.get('users') || [];
+          let dmUsersList = usersList.filter(u => u.id !== state.currentUser.id);
+          const region = getRestrictedRegion();
+          if (region !== 'All') dmUsersList = dmUsersList.filter(u => u.region === region || u.region === 'All');
+          els.chatUsersList.innerHTML = dmUsersList.map(u => {
+            const hasUnread = allMsgsList.some(m => m.senderId === u.id && m.receiverId === state.currentUser.id && m.read === false);
+            const dot = hasUnread ? `<span class="chat-unread-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#EF4444; margin-left:6px;" title="New message"></span>` : '';
+            return `
+              <button class="nav-link chat-target-btn ${state.activeChatTarget === u.id ? 'active' : ''}" style="text-align:left; border:none; background:none; width:100%; display:flex; justify-content:space-between; align-items:center;" data-id="${u.id}">
+                <span style="display:flex; align-items:center;">
+                  ${u.name}
+                  ${dot}
+                </span>
+                <span style="font-size:0.6rem; color:var(--text-muted); font-weight:600;">${u.role.substring(0,3).toUpperCase()}</span>
+              </button>
+            `;
+          }).join('');
+          
+          document.querySelectorAll('.chat-target-btn').forEach(btn => {
+            const btnId = btn.getAttribute('data-id');
+            btn.addEventListener('click', () => {
+              state.activeChatTarget = btnId;
+              renderActiveConversation();
+              renderChat();
+            });
+          });
+        }, 10);
+      }
+    }
 
     const messages = window.BucklerDB.get('messages');
     const users = window.BucklerDB.get('users');
@@ -6796,6 +7823,29 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const timeStr = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+      let attachmentHTML = '';
+      if (msg.attachment) {
+        if (msg.attachment.type && msg.attachment.type.startsWith('image/')) {
+          attachmentHTML = `
+            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem;">
+              <img src="${msg.attachment.data}" style="max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);" />
+              <a href="${msg.attachment.data}" download="${msg.attachment.name}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: ${isSelf ? 'rgba(255,255,255,0.2)' : '#F1F5F9'}; color: ${isSelf ? '#FFFFFF' : 'var(--text-dark)'}; padding: 0.35rem 0.65rem; border-radius: 6px; text-decoration: none; font-size: 0.72rem; font-weight: 600; width: fit-content; margin-top: 0.35rem; transition: background 0.15s, transform 0.1s;" onmouseover="this.style.background='${isSelf ? 'rgba(255,255,255,0.3)' : '#E2E8F0'}'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='${isSelf ? 'rgba(255,255,255,0.2)' : '#F1F5F9'}'; this.style.transform='none';">
+                📥 Download Photo
+              </a>
+            </div>
+          `;
+        } else {
+          attachmentHTML = `
+            <div style="margin-top: 0.5rem; display: flex;">
+              <a href="${msg.attachment.data || '#'}" download="${msg.attachment.name || 'attachment'}" style="display: inline-flex; align-items: center; gap: 8px; background: ${isSelf ? '#B91C1C' : '#F1F5F9'}; color: ${isSelf ? '#FFFFFF' : 'var(--text-dark)'}; padding: 0.5rem 0.9rem; border-radius: 20px; text-decoration: none; font-size: 0.75rem; border: 1px solid ${isSelf ? 'transparent' : 'var(--border-color)'}; font-weight: 600; box-shadow: var(--shadow-sm); transition: opacity 0.15s, transform 0.1s;" onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)';" onmouseout="this.style.opacity='1'; this.style.transform='none';">
+                📁 <span style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${msg.attachment.name || 'Download File'}</span>
+                <span style="font-size:0.65rem; opacity:0.8;">(Click to Download)</span>
+              </a>
+            </div>
+          `;
+        }
+      }
+
       return `
         <div style="display:flex; flex-direction:column; align-self: ${isSelf ? 'flex-end' : 'flex-start'}; max-width: 75%;">
           <span style="font-size:0.65rem; color:var(--text-muted); margin-bottom: 2px; align-self: ${isSelf ? 'flex-end' : 'flex-start'};">
@@ -6803,6 +7853,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </span>
           <div style="background: ${isSelf ? 'var(--primary-red)' : '#FFFFFF'}; color: ${isSelf ? '#FFFFFF' : 'var(--text-dark)'}; padding:0.65rem 1rem; border-radius: ${isSelf ? '12px 12px 0 12px' : '12px 12px 12px 0'}; box-shadow:var(--shadow-sm); font-size:0.85rem; line-height:1.4;">
             ${msg.text}
+            ${attachmentHTML}
           </div>
         </div>
       `;
@@ -6819,7 +7870,8 @@ document.addEventListener('DOMContentLoaded', () => {
       senderId: state.currentUser.id,
       receiverId: state.activeChatTarget,
       text: text,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      read: false
     };
 
     window.BucklerDB.insert('messages', newMessage);
@@ -8809,15 +9861,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     populateClientAnalysisFilters();
     
-    const region = els.clientAnalysisRegion.value;
+    const selectedRegions = Array.from(els.clientAnalysisRegion.selectedOptions).map(opt => opt.value);
+    const hasAll = selectedRegions.includes('All') || selectedRegions.length === 0;
+    
     const sector = els.clientAnalysisSector.value;
     const tlId = els.clientAnalysisTl.value;
     
     let schedules = window.BucklerDB.get('schedules');
     const clients = window.BucklerDB.get('clients');
     
-    if (region !== 'All') {
-      schedules = schedules.filter(s => s.region === region);
+    if (!hasAll) {
+      schedules = schedules.filter(s => selectedRegions.includes(s.region));
     }
     
     if (sector !== 'All') {
@@ -9828,6 +10882,99 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function renderSalesPipelineFunnel(deals) {
+    const container = document.getElementById('sales-funnel-container');
+    if (!container) return;
+
+    const totalDeals = deals.length;
+    
+    // Counts at each stage (exclusive)
+    const prospectingCount = deals.filter(d => d.stage === 'Prospecting').length;
+    const proposalCount = deals.filter(d => d.stage === 'Proposal Sent').length;
+    const wonCount = deals.filter(d => d.stage === 'Closed Won').length;
+    const lostCount = deals.filter(d => d.stage === 'Closed Lost').length;
+
+    // Progression counts (inclusive of subsequent success)
+    const stage1Count = totalDeals; // Entry (All deals)
+    const stage2Count = proposalCount + wonCount; // Had Proposal
+    const stage3Count = wonCount; // Won
+
+    // Helper to sum currency values for a deal subset
+    const getSumStr = (subDeals) => {
+      const usd = subDeals.filter(d => d.currency !== 'IQD').reduce((s, d) => s + (parseFloat(d.expectedValue) || 0), 0);
+      const iqd = subDeals.filter(d => d.currency === 'IQD').reduce((s, d) => s + (parseFloat(d.expectedValue) || 0), 0);
+      const parts = [];
+      if (usd > 0 || usd === 0 && iqd === 0) parts.push(`$${usd.toLocaleString()}`);
+      if (iqd > 0) parts.push(`${iqd.toLocaleString()} IQD`);
+      return parts.join(' + ');
+    };
+
+    const stage1Value = getSumStr(deals);
+    const stage2Value = getSumStr(deals.filter(d => d.stage === 'Proposal Sent' || d.stage === 'Closed Won'));
+    const stage3Value = getSumStr(deals.filter(d => d.stage === 'Closed Won'));
+
+    // Percentages
+    const pct1 = 100;
+    const pct2 = totalDeals > 0 ? Math.round((stage2Count / totalDeals) * 100) : 0;
+    const pct3 = totalDeals > 0 ? Math.round((stage3Count / totalDeals) * 100) : 0;
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:1.2rem;">
+        <!-- Funnel Step 1: Prospecting / Entry -->
+        <div style="display:flex; align-items:center; gap:1rem;">
+          <div style="width:180px; font-weight:700; font-size:0.85rem; color:var(--text-dark);">1. Prospecting / Entry</div>
+          <div style="flex:1; background:var(--border-color); height:32px; border-radius:16px; overflow:hidden; position:relative; display:flex; align-items:center;">
+            <div style="width:${pct1}%; background:linear-gradient(90deg, #94A3B8, #64748B); height:100%; transition: width 0.4s ease-out; display:flex; align-items:center; padding:0 1rem; justify-content:space-between;">
+              <span style="color:#FFF; font-size:0.8rem; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.25);">${stage1Count} Deals (${stage1Value})</span>
+              <span style="color:#FFF; font-size:0.8rem; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,0.25);">${pct1}%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Funnel Step 2: Proposal Sent -->
+        <div style="display:flex; align-items:center; gap:1rem;">
+          <div style="width:180px; font-weight:700; font-size:0.85rem; color:var(--text-dark);">2. Proposal Sent</div>
+          <div style="flex:1; background:var(--border-color); height:32px; border-radius:16px; overflow:hidden; position:relative; display:flex; align-items:center;">
+            <div style="width:${pct2}%; background:linear-gradient(90deg, #60A5FA, #2563EB); height:100%; transition: width 0.4s ease-out; display:flex; align-items:center; padding:0 1rem; justify-content:space-between; min-width: ${pct2 > 0 ? '50px' : '0'};">
+              ${pct2 > 0 ? `
+                <span style="color:#FFF; font-size:0.8rem; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.25); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${stage2Count} Deals (${stage2Value})</span>
+                <span style="color:#FFF; font-size:0.8rem; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,0.25);">${pct2}%</span>
+              ` : '<span style="color:var(--text-muted); font-size:0.8rem; padding-left:0.5rem;">0%</span>'}
+            </div>
+          </div>
+        </div>
+
+        <!-- Funnel Step 3: Closed Won -->
+        <div style="display:flex; align-items:center; gap:1rem;">
+          <div style="width:180px; font-weight:700; font-size:0.85rem; color:var(--text-dark);">3. Closed Won (Conversion)</div>
+          <div style="flex:1; background:var(--border-color); height:32px; border-radius:16px; overflow:hidden; position:relative; display:flex; align-items:center;">
+            <div style="width:${pct3}%; background:linear-gradient(90deg, #34D399, #059669); height:100%; transition: width 0.4s ease-out; display:flex; align-items:center; padding:0 1rem; justify-content:space-between; min-width: ${pct3 > 0 ? '50px' : '0'};">
+              ${pct3 > 0 ? `
+                <span style="color:#FFF; font-size:0.8rem; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.25); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${stage3Count} Deals (${stage3Value})</span>
+                <span style="color:#FFF; font-size:0.8rem; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,0.25);">${pct3}%</span>
+              ` : '<span style="color:var(--text-muted); font-size:0.8rem; padding-left:0.5rem;">0%</span>'}
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline Funnel Insights & Dropout Stats -->
+        <div style="display:flex; gap:1.5rem; background:#F8FAFC; border:1px solid var(--border-color); border-radius:8px; padding:0.75rem 1rem; font-size:0.8rem; align-items:center; flex-wrap:wrap; margin-top:0.25rem;">
+          <div style="color:var(--text-medium);">
+            🚪 <strong>Closed Lost (Drop-out):</strong> <span style="font-weight:700; color:#EF4444;">${lostCount} Deals</span> (${getSumStr(deals.filter(d => d.stage === 'Closed Lost'))})
+          </div>
+          <div style="border-left:1px solid var(--border-color); height:16px; display:inline-block;"></div>
+          <div style="color:var(--text-medium);">
+            ⏱️ <strong>Active Backlog (Prospecting):</strong> <span style="font-weight:700; color:var(--text-dark);">${prospectingCount} Deals</span>
+          </div>
+          <div style="border-left:1px solid var(--border-color); height:16px; display:inline-block;"></div>
+          <div style="color:var(--text-medium);">
+            📊 <strong>Closed Won Rate:</strong> <span style="font-weight:700; color:var(--primary-red);">${pct3}% of total entry</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderSalesCRM() {
     _ensureSalesDealsArray();
     let deals = window.BucklerDB.get('salesDeals') || [];
@@ -9873,7 +11020,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // KPI Counters (based on filtered deals)
     const prospectsCount = filteredDeals.filter(d => d.stage === 'Prospecting').length;
     const proposalsCount = filteredDeals.filter(d => d.stage === 'Proposal Sent').length;
-    const negotiationsCount = filteredDeals.filter(d => d.stage === 'Negotiation').length;
     
     // Split Won values by Currency
     const wonDeals = filteredDeals.filter(d => d.stage === 'Closed Won');
@@ -9882,13 +11028,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const elProspects = document.getElementById('stat-sales-prospects');
     const elProposals = document.getElementById('stat-sales-proposals');
-    const elNegotiations = document.getElementById('stat-sales-negotiations');
     const elWonValueUsd = document.getElementById('stat-sales-won-value-usd');
     const elWonValueIqd = document.getElementById('stat-sales-won-value-iqd');
 
     if (elProspects) elProspects.textContent = prospectsCount;
     if (elProposals) elProposals.textContent = proposalsCount;
-    if (elNegotiations) elNegotiations.textContent = negotiationsCount;
     if (elWonValueUsd) elWonValueUsd.textContent = `$${wonUSD.toLocaleString()}`;
     if (elWonValueIqd) elWonValueIqd.textContent = `${wonIQD.toLocaleString()} IQD`;
 
@@ -9913,9 +11057,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     bindSalesKpiClick('card-sales-prospects', d => d.stage === 'Prospecting', 'Prospecting Deals');
     bindSalesKpiClick('card-sales-proposals', d => d.stage === 'Proposal Sent', 'Proposals Sent');
-    bindSalesKpiClick('card-sales-negotiations', d => d.stage === 'Negotiation', 'Negotiation Deals');
     bindSalesKpiClick('card-sales-won-usd', d => d.stage === 'Closed Won' && d.currency !== 'IQD', 'Closed Won Deals (USD)');
     bindSalesKpiClick('card-sales-won-iqd', d => d.stage === 'Closed Won' && d.currency === 'IQD', 'Closed Won Deals (IQD)');
+
+    // Render visual conversion funnel
+    renderSalesPipelineFunnel(filteredDeals);
 
     // Render visual dashboard charts
     const salesDashPanel = document.getElementById('sales-dashboard-panel');
@@ -9943,9 +11089,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Stages Config
     const stagesConfig = [
       { key: 'Prospecting', containerId: 'kanban-prospecting', countId: 'count-deal-prospecting' },
-      { key: 'Qualification', containerId: 'kanban-qualification', countId: 'count-deal-qualification' },
       { key: 'Proposal Sent', containerId: 'kanban-proposal', countId: 'count-deal-proposal' },
-      { key: 'Negotiation', containerId: 'kanban-negotiation', countId: 'count-deal-negotiation' },
       { key: 'Closed Won', containerId: 'kanban-won', countId: 'count-deal-won' },
       { key: 'Closed Lost', containerId: 'kanban-lost', countId: 'count-deal-lost' }
     ];
@@ -10245,7 +11389,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // 1. Pipeline Stages Value Chart
-    const stages = ['Prospecting', 'Qualification', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost'];
+    const stages = ['Prospecting', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
     const stageValues = stages.map(st => {
       return dealsList.filter(d => d.stage === st).reduce((sum, d) => sum + getUSDVal(d), 0);
     });
@@ -10259,7 +11403,7 @@ document.addEventListener('DOMContentLoaded', () => {
           labels: stages,
           datasets: [{
             data: stageValues,
-            backgroundColor: ['#94A3B8', '#3B82F6', '#60A5FA', '#F59E0B', '#10B981', '#EF4444'],
+            backgroundColor: ['#94A3B8', '#60A5FA', '#10B981', '#EF4444'],
             borderWidth: 1
           }]
         },
@@ -10280,9 +11424,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const stageLabel = stages[index];
               const colIds = {
                 'Prospecting': 'kanban-prospecting',
-                'Qualification': 'kanban-qualification',
                 'Proposal Sent': 'kanban-proposal',
-                'Negotiation': 'kanban-negotiation',
                 'Closed Won': 'kanban-won',
                 'Closed Lost': 'kanban-lost'
               };
@@ -10308,7 +11450,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return dealsList.filter(d => d.stage === 'Closed Won' && (d.currency === curr || (!d.currency && curr === 'USD'))).reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
     });
     const pendingData = currencies.map(curr => {
-      const pendingStages = ['Prospecting', 'Qualification', 'Proposal Sent', 'Negotiation'];
+      const pendingStages = ['Prospecting', 'Proposal Sent'];
       return dealsList.filter(d => pendingStages.includes(d.stage) && (d.currency === curr || (!d.currency && curr === 'USD'))).reduce((sum, d) => sum + (parseFloat(d.expectedValue) || 0), 0);
     });
 
@@ -10576,9 +11718,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <label for="deal-modal-stage">Pipeline Stage *</label>
             <select id="deal-modal-stage" class="form-control" required>
               <option value="Prospecting" ${!deal || deal.stage === 'Prospecting' ? 'selected' : ''}>🔍 Prospecting</option>
-              <option value="Qualification" ${deal && deal.stage === 'Qualification' ? 'selected' : ''}>📋 Qualification</option>
               <option value="Proposal Sent" ${deal && deal.stage === 'Proposal Sent' ? 'selected' : ''}>📄 Proposal Sent</option>
-              <option value="Negotiation" ${deal && deal.stage === 'Negotiation' ? 'selected' : ''}>🤝 Negotiation</option>
               <option value="Closed Won" ${deal && deal.stage === 'Closed Won' ? 'selected' : ''}>🎉 Closed Won</option>
               <option value="Closed Lost" ${deal && deal.stage === 'Closed Lost' ? 'selected' : ''}>❌ Closed Lost</option>
             </select>
@@ -11227,7 +12367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── POPULATE CLIENT / PROSPECT SELECTS ──
     const clients = window.BucklerDB.get('clients') || [];
     const deals = window.BucklerDB.get('salesDeals') || [];
-    const prospects = deals.filter(d => ['Prospecting', 'Qualification'].includes(d.stage));
+    const prospects = deals.filter(d => d.stage === 'Prospecting');
 
     let optionsHTML = '<option value="" disabled selected>Select Client / Prospect...</option>';
     clients.forEach(c => {
@@ -12058,8 +13198,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 2000);
   renderVisitTypeKPIs(); // initial call
 
-
-
+  // Global click event delegation for text truncation expand/collapse
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('.expandable-truncate');
+    if (target) {
+      target.classList.toggle('expanded');
+    }
+  });
 
 });
 

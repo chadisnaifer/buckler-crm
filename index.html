@@ -129,9 +129,17 @@
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
           <span data-i18n="nav_uv_sales">UV Machine Sales</span>
         </a>
+        <a class="nav-link" data-tab="bait-stations">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          <span data-i18n="nav_bait_stations">Rodent Bait Stations</span>
+        </a>
         <a class="nav-link" data-tab="reports">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 2v-6m-9-9h12a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path></svg>
           <span data-i18n="nav_reports">Sanitation IPM Reports</span>
+        </a>
+        <a class="nav-link" data-tab="media">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <span data-i18n="nav_media">Media Gallery</span>
         </a>
         <a class="nav-link" data-tab="forms">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -597,8 +605,21 @@
           </div>
         </div>
 
+        <!-- Sales Pipeline Funnel Visualizer -->
+        <div id="sales-funnel-card" class="card" style="margin-bottom:1.5rem;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <h3 class="card-title">Sales Conversion Funnel</h3>
+              <span class="card-subtitle">Visual progress pipeline and conversion rates from lead to won deal</span>
+            </div>
+          </div>
+          <div class="card-body" id="sales-funnel-container" style="padding:1.5rem; display:flex; flex-direction:column; gap:1rem;">
+            <!-- Rendered dynamically by renderSalesPipelineFunnel() -->
+          </div>
+        </div>
+
         <!-- Sales KPI Cards Row -->
-        <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.5rem;">
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.5rem;">
           <div class="stat-card" id="card-sales-prospects" style="border-left:4px solid #94A3B8; cursor: pointer;">
             <span class="stat-label">👥 Prospects</span>
             <div class="stat-value" id="stat-sales-prospects">0</div>
@@ -606,10 +627,6 @@
           <div class="stat-card" id="card-sales-proposals" style="border-left:4px solid #3B82F6; cursor: pointer;">
             <span class="stat-label">📄 Proposals Sent</span>
             <div class="stat-value" id="stat-sales-proposals">0</div>
-          </div>
-          <div class="stat-card" id="card-sales-negotiations" style="border-left:4px solid #F59E0B; cursor: pointer;">
-            <span class="stat-label">🤝 Negotiations</span>
-            <div class="stat-value" id="stat-sales-negotiations">0</div>
           </div>
           <div class="stat-card" id="card-sales-won-usd" style="border-left:4px solid #10B981; cursor: pointer;">
             <span class="stat-label">💰 Won (USD)</span>
@@ -642,8 +659,8 @@
         </div>
 
         <!-- Kanban Board Container -->
-        <!-- Kanban Board Container: Optimized 6-Column Grid Layout to Fit All Steps on 1 Screen -->
-        <div style="display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:0.5rem; width:100%; align-items:stretch; min-height:500px;">
+        <!-- Kanban Board Container: Optimized 4-Column Grid Layout to Fit All Steps on 1 Screen -->
+        <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:0.5rem; width:100%; align-items:stretch; min-height:500px;">
           <!-- Column: Prospecting -->
           <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
             <div style="font-weight:700; font-size:0.78rem; color:#64748B; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
@@ -653,15 +670,6 @@
             <div id="kanban-prospecting" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
           </div>
 
-          <!-- Column: Qualification -->
-          <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
-            <div style="font-weight:700; font-size:0.78rem; color:#3B82F6; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
-              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📋 Qualification</span>
-              <span id="count-deal-qualification" style="background:#DBEAFE; padding:1px 6px; border-radius:10px; font-size:0.7rem;">0</span>
-            </div>
-            <div id="kanban-qualification" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
-          </div>
-
           <!-- Column: Proposal -->
           <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
             <div style="font-weight:700; font-size:0.78rem; color:#8B5CF6; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
@@ -669,15 +677,6 @@
               <span id="count-deal-proposal" style="background:#EDE9FE; padding:1px 6px; border-radius:10px; font-size:0.7rem;">0</span>
             </div>
             <div id="kanban-proposal" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
-          </div>
-
-          <!-- Column: Negotiation -->
-          <div class="card" style="background:#F8FAFC; border:1px dashed var(--border-color); display:flex; flex-direction:column; padding:0.5rem; min-width:0;">
-            <div style="font-weight:700; font-size:0.78rem; color:#F59E0B; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
-              <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🤝 Negotiation</span>
-              <span id="count-deal-negotiation" style="background:#FEF3C7; padding:1px 6px; border-radius:10px; font-size:0.7rem;">0</span>
-            </div>
-            <div id="kanban-negotiation" style="display:flex; flex-direction:column; gap:0.4rem; flex:1; overflow-y:auto; max-height:480px;"></div>
           </div>
 
           <!-- Column: Closed Won -->
@@ -807,6 +806,24 @@
           <select id="filter-client-city" class="filter-select">
             <option value="All">All Cities</option>
           </select>
+          <select id="filter-client-service" class="filter-select">
+            <option value="All">All Services</option>
+            <option value="Pest Control">Pest Control</option>
+            <option value="Weed Removal">Weed Removal</option>
+            <option value="Termite Treatment">Termite Treatment</option>
+            <option value="Animal Control">Animal Control</option>
+            <option value="Bird Control">Bird Control</option>
+            <option value="Poultry Halls">Poultry Halls</option>
+            <option value="Landscaping">Landscaping</option>
+          </select>
+          <select id="filter-client-hierarchy" class="filter-select">
+            <option value="All">All Accounts</option>
+            <option value="Main">Main Accounts Only</option>
+            <option value="Branches">Branch Accounts Only</option>
+          </select>
+          <select id="filter-client-parent" class="filter-select" style="max-width:200px;">
+            <option value="All">All Parent Accounts</option>
+          </select>
           
           <div class="csv-upload-zone" id="upload-clients-zone">
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
@@ -821,44 +838,6 @@
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             Template
           </button>
-        </div>
-
-        <!-- Clients Geographic Map Visualizer Card -->
-        <div class="card" id="client-map-card" style="margin-bottom: 1.5rem;">
-          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-            <div>
-              <h3 class="card-title">Client Geographic Map Visualizer</h3>
-              <span class="card-subtitle">Interactive plotting of client coordinates based on multi-select filters</span>
-            </div>
-            <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Regions</span>
-                <div id="map-client-region-pills" class="tl-pills-container"></div>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Team Leaders</span>
-                <div id="map-client-tl-pills" class="tl-pills-container"></div>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Clients</span>
-                <div id="map-client-cli-pills" class="tl-pills-container"></div>
-              </div>
-            </div>
-          </div>
-          <div class="card-body" style="padding: 0;">
-            <div class="map-visualizer-container" style="display: grid; grid-template-columns: 2fr 1fr; border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden;">
-              <!-- Left: Map pane -->
-              <!-- Left: Map pane -->
-              <div class="map-svg-pane" style="padding:0; min-height:340px; position:relative; border-right:1px solid var(--border-color); display:block;">
-                <div id="client-real-map" style="width: 100%; height: 340px; background: #e5e3df; z-index: 1;"></div>
-              </div>
-              <!-- Right: Selected Client Panel -->
-              <div style="padding: 1.25rem; background: #F8FAFC; max-height: 340px; overflow-y: auto;">
-                <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">Mapped Client Sites</h4>
-                <div id="mapped-client-registry-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Table View -->
@@ -892,8 +871,8 @@
               <span class="card-subtitle">Aggregated analysis of visit types across business sectors and team allocations.</span>
             </div>
             <div style="display:flex; gap:0.5rem; align-items:center;">
-              <select id="client-analysis-region" class="filter-select" style="margin:0;">
-                <option value="All">All Regions</option>
+              <select id="client-analysis-region" class="filter-select" multiple style="margin:0; min-width:140px; height:38px; padding:2px 4px;">
+                <option value="All" selected>All Regions</option>
                 <option value="Central">Central</option>
                 <option value="Kurdistan">Kurdistan</option>
                 <option value="South">South</option>
@@ -965,6 +944,43 @@
             </div>
           </div>
         </div>
+
+        <!-- Clients Geographic Map Visualizer Card -->
+        <div class="card" id="client-map-card" style="margin-top: 1.5rem;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h3 class="card-title">Client Geographic Map Visualizer</h3>
+              <span class="card-subtitle">Interactive plotting of client coordinates based on multi-select filters</span>
+            </div>
+            <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Regions</span>
+                <div id="map-client-region-pills" class="tl-pills-container"></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Team Leaders</span>
+                <div id="map-client-tl-pills" class="tl-pills-container"></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filter Clients</span>
+                <div id="map-client-cli-pills" class="tl-pills-container"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="map-visualizer-container" style="display: grid; grid-template-columns: 2fr 1fr; border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden;">
+              <!-- Left: Map pane -->
+              <div class="map-svg-pane" style="padding:0; min-height:340px; position:relative; border-right:1px solid var(--border-color); display:block;">
+                <div id="client-real-map" style="width: 100%; height: 340px; background: #e5e3df; z-index: 1;"></div>
+              </div>
+              <!-- Right: Selected Client Panel -->
+              <div style="padding: 1.25rem; background: #F8FAFC; max-height: 340px; overflow-y: auto;">
+                <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">Mapped Client Sites</h4>
+                <div id="mapped-client-registry-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- TAB 4: PRODUCTS & INVENTORY CRUD -->
@@ -1007,6 +1023,7 @@
           <table class="data-table">
             <thead>
               <tr>
+                <th style="width: 60px; text-align: center;">Pic</th>
                 <th>Product Name</th>
                 <th>Item Code</th>
                 <th>Category</th>
@@ -1096,7 +1113,7 @@
         </div>
 
         <!-- Chat Split Panel -->
-        <div style="display:grid; grid-template-columns: 260px 1fr; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-lg); height: 500px; overflow: hidden; box-shadow: var(--shadow-sm);">
+        <div style="display:grid; grid-template-columns: 260px 1fr; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-lg); height: calc(100vh - 210px); overflow: hidden; box-shadow: var(--shadow-sm);">
           <!-- Chat sidebar -->
           <div style="border-right:1px solid var(--border-color); background:#F8FAFC; display:flex; flex-direction:column; overflow-y:auto;">
             <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); font-weight:700; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">
@@ -1122,7 +1139,11 @@
             <div id="chat-messages-container" style="flex:1; overflow-y:auto; padding:1.25rem; background:#F1F5F9; display:flex; flex-direction:column; gap:0.75rem;">
               <!-- Injected dynamically -->
             </div>
-            <div style="padding:0.75rem; border-top:1px solid var(--border-color); display:flex; gap:0.5rem; background:white;">
+            <div style="padding:0.75rem; border-top:1px solid var(--border-color); display:flex; gap:0.5rem; background:white; align-items:center;">
+              <button class="btn btn-secondary" id="chat-attach-btn" disabled style="padding:0.5rem; display:flex; align-items:center; justify-content:center; height:38px; min-width:38px; margin:0;" title="Attach file or photo">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:18px; height:18px;"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+              </button>
+              <input type="file" id="chat-file-input" style="display:none;">
               <input type="text" id="chat-input" class="form-control" placeholder="Type a message..." disabled>
               <button class="btn btn-primary" id="chat-send-btn" disabled>Send</button>
             </div>
@@ -1336,6 +1357,108 @@
         </div>
       </section>
 
+      <!-- TAB 8.5: RODENT BAIT STATIONS TAB -->
+      <section class="tab-content" id="bait-stations-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1 data-i18n="nav_bait_stations">Rodent Bait Stations</h1>
+            <p>Track rodent bait stations allocated per client and stickers consumed across regions.</p>
+          </div>
+        </div>
+
+        <!-- Filtering Panel -->
+        <div class="action-bar" style="flex-wrap: wrap; gap: 0.75rem; padding: 1.25rem; background: var(--bg-light); border-radius: var(--radius-md); border: 1px solid var(--border-color); align-items: center; margin-bottom: 1.5rem;">
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:140px; flex:1;">
+            <label for="bait-filter-region" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Region</label>
+            <select id="bait-filter-region" class="form-control" style="height:38px;"></select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:180px; flex:1.5;">
+            <label for="bait-filter-client" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Client</label>
+            <select id="bait-filter-client" class="form-control" style="height:38px;"></select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:140px; flex:1;">
+            <label for="bait-filter-sector" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Business Sector</label>
+            <select id="bait-filter-sector" class="form-control" style="height:38px;"></select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:130px; flex:1;">
+            <label for="bait-filter-start-date" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">Start Date</label>
+            <input type="date" id="bait-filter-start-date" class="form-control" style="height:38px;">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:130px; flex:1;">
+            <label for="bait-filter-end-date" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);">End Date</label>
+            <input type="date" id="bait-filter-end-date" class="form-control" style="height:38px;">
+          </div>
+          <div style="display:flex; align-items:flex-end; height:38px; margin-top: auto;">
+            <button id="btn-bait-clear-filters" class="btn btn-secondary" style="height:38px; white-space:nowrap; padding: 0 1rem; display:flex; align-items:center; justify-content:center; gap:4px; font-weight:700;">✕ Clear Filters</button>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="stats-grid" style="margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="stat-card" style="border-left: 4px solid var(--primary-red); padding: 1.25rem; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.25rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Target Bait Stations</span>
+            <span id="bait-kpi-target" style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">0</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Allocated in client profiles</span>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid #3B82F6; padding: 1.25rem; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.25rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Stations Audited / Checked</span>
+            <span id="bait-kpi-checked" style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">0</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Audit checks logged in selected period</span>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid #10B981; padding: 1.25rem; background: white; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 0.25rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Stickers Replaced / Consumed</span>
+            <span id="bait-kpi-stickers" style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">0</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Total station sticker replacements</span>
+          </div>
+        </div>
+
+        <!-- Tabs inside Bait Stations Tab: 1. Clients Summary, 2. Detailed Activity Logs -->
+        <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+          <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.75rem;">Bait Stations Summary by Client</h3>
+          <div class="table-container">
+            <table class="table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th>Client Code & Name</th>
+                  <th>Region</th>
+                  <th>Sector</th>
+                  <th style="text-align:center;">Profile Target</th>
+                  <th style="text-align:center;">Stations Audited</th>
+                  <th style="text-align:center;">Stickers Replaced</th>
+                  <th>Last Inspected Date</th>
+                </tr>
+              </thead>
+              <tbody id="bait-summary-table-body">
+                <!-- Dynamically injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem;">
+          <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.75rem;">Detailed Bait Station Activity Log</h3>
+          <div class="table-container">
+            <table class="table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Client Name</th>
+                  <th>Region</th>
+                  <th style="text-align:center;">Station #</th>
+                  <th>Location</th>
+                  <th>Activity Status</th>
+                  <th style="text-align:center;">Stickers Replaced</th>
+                  <th>Technician Comment</th>
+                </tr>
+              </thead>
+              <tbody id="bait-detailed-table-body">
+                <!-- Dynamically injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- TAB 9: REPORTS TAB -->
       <section class="tab-content" id="reports-tab">
         <div class="view-header">
@@ -1436,6 +1559,43 @@
         <!-- Sibling Output Display Area -->
         <div id="reports-output-container" style="display: none; margin-top: 1.5rem; margin-bottom: 2rem;">
           <!-- Content Injected dynamically in app.js -->
+        </div>
+      </section>
+
+      <!-- TAB: MEDIA GALLERY -->
+      <section class="tab-content" id="media-tab">
+        <div class="view-header">
+          <div class="view-title">
+            <h1 data-i18n="nav_media">Media Gallery</h1>
+            <p data-i18n="media_desc">Upload, categorize, manage and download company certificates, profiles, brochures, and catalogs.</p>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-secondary" id="btn-media-manage-categories" style="display:flex; align-items:center; gap:6px; font-weight:700;">
+              📁 <span data-i18n="manage_categories">Manage Categories</span>
+            </button>
+            <button class="btn btn-primary" id="btn-media-upload-file" style="display:flex; align-items:center; gap:6px; font-weight:700;">
+              📤 <span data-i18n="upload_file">Upload File</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter and Search Bar -->
+        <div class="action-bar" style="display:flex; flex-wrap:wrap; gap:0.75rem; padding:1.25rem; background:var(--bg-light); border-radius:var(--radius-md); border:1px solid var(--border-color); align-items:center; margin-bottom:1.5rem;">
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:200px; flex:1;">
+            <label for="media-search" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);" data-i18n="search_files">Search Files</label>
+            <input type="text" id="media-search" class="form-control" placeholder="Search by filename..." style="height:38px;">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem; min-width:180px; flex:1;">
+            <label for="media-filter-category" style="font-weight:700; font-size:0.75rem; color:var(--text-medium);" data-i18n="filter_category">Category Filter</label>
+            <select id="media-filter-category" class="form-control" style="height:38px;">
+              <option value="All" data-i18n="all_categories">All Categories</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Grid of Collapsible Category Panels -->
+        <div id="media-gallery-container" style="display:flex; flex-direction:column; gap:1.5rem;">
+          <!-- Dynamically populated in app.js -->
         </div>
       </section>
 

@@ -66,18 +66,20 @@ const DEFAULT_DATA = {
   ],
 
   clients: [
-    { id: 'cli-c1', clientCode: 'BGD-MALL', name: 'Baghdad Mall', contact: 'Zaid Mahmoud', phone: '+964 770 123 4567', email: 'info@baghdadmall.iq', region: 'Central', city: 'Baghdad', address: 'Al-Harthiya, Baghdad', lat: 33.3130, lng: 44.3640, sector: 'Retail', contractValue: 2500, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 12, uvMachinesCount: 4 },
-    { id: 'cli-c2', clientCode: 'MAN-HOTEL', name: 'Al-Mansour Hotel', contact: 'Mona Al-Alusi', phone: '+964 780 987 6543', email: 'frontdesk@mansourhotel.iq', region: 'Central', city: 'Baghdad', address: 'Al-Mansour, Baghdad', lat: 33.3032, lng: 44.3567, sector: 'Hospitality', contractValue: 3000, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 15, uvMachinesCount: 6 },
-    { id: 'cli-c3', clientCode: 'BBY-HOSP', name: 'Babylon Hospital', contact: 'Dr. Laith Ahmed', phone: '+964 790 333 4444', email: 'admin@babylonhosp.com', region: 'Central', city: 'Baghdad', address: 'Al-Karrada, Baghdad', lat: 33.3210, lng: 44.4250, sector: 'Healthcare', contractValue: 4000000, contractCurrency: 'IQD', monthlyVisits: 8, baitStationsCount: 30, uvMachinesCount: 10 },
-    { id: 'cli-c4', clientCode: 'ASIA-HQ', name: 'Asiacell HQ Baghdad', contact: 'Hassan Hadi', phone: '+964 771 888 9999', email: 'yasir.h@asiacell.com', region: 'Central', city: 'Baghdad', address: 'Al-Jadriyah, Baghdad', lat: 33.2840, lng: 44.3980, sector: 'Corporate', contractValue: 1500, contractCurrency: 'USD', monthlyVisits: 2, baitStationsCount: 8, uvMachinesCount: 2 },
-    { id: 'cli-k1', clientCode: 'FAM-ERB', name: 'Family Mall Erbil', contact: 'Sherzad Taha', phone: '+964 750 445 1122', email: 'ops@familymallerbir.com', region: 'Kurdistan', city: 'Erbil', address: '100m Road, Erbil', lat: 36.1950, lng: 43.9780, sector: 'Retail', contractValue: 2000, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 10, uvMachinesCount: 4 },
-    { id: 'cli-k2', clientCode: 'ROT-ERB', name: 'Rotana Hotel Erbil', contact: 'Nizar Salih', phone: '+964 750 889 0011', email: 'erbil@rotana.com', region: 'Kurdistan', city: 'Erbil', address: 'Gulan Street, Erbil', lat: 36.2110, lng: 44.0040, sector: 'Hospitality', contractValue: 3500, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 18, uvMachinesCount: 8 },
-    { id: 'cli-k3', clientCode: 'SUL-UNIV', name: 'Sulaymaniyah University', contact: 'Aram Qadir', phone: '+964 770 155 3344', email: 'estate@univsul.edu.iq', region: 'Kurdistan', city: 'Suleimaniah', address: 'Qlyasan Street, Sulaymaniyah', lat: 35.5620, lng: 45.3850, sector: 'Education', contractValue: 5000000, contractCurrency: 'IQD', monthlyVisits: 6, baitStationsCount: 25, uvMachinesCount: 5 },
-    { id: 'cli-k4', clientCode: 'KOR-TEL', name: 'Korek Telecom HQ', contact: 'Darya Karim', phone: '+964 750 111 2222', email: 'hq@korek.com', region: 'Kurdistan', city: 'Erbil', address: 'Erbil-Massif Road', lat: 36.2650, lng: 44.1120, sector: 'Corporate', contractValue: 1800, contractCurrency: 'USD', monthlyVisits: 2, baitStationsCount: 8, uvMachinesCount: 2 },
-    { id: 'cli-s1', clientCode: 'BGT-TERM', name: 'Basra Gateway Terminal', contact: 'Capt. Jaafar Radi', phone: '+964 781 222 3344', email: 'j.radi@bgt.com.iq', region: 'South', city: 'Basra', address: 'Umm Qasr Port, Basra', lat: 30.0380, lng: 47.9350, sector: 'Logistics', contractValue: 5000, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 20, uvMachinesCount: 10 },
-    { id: 'cli-s2', clientCode: 'SHER-BAS', name: 'Al-Basra Sheraton', contact: 'Karim Mansour', phone: '+964 782 555 6677', email: 'basra.sheraton@sheraton.com', region: 'South', city: 'Basra', address: 'Shatt Al-Arab Corniche, Basra', lat: 30.5220, lng: 47.8480, sector: 'Hospitality', contractValue: 3200, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 16, uvMachinesCount: 6 },
-    { id: 'cli-s3', clientCode: 'RUM-CLN', name: 'Rumaila Oil Field Clinic', contact: 'Dr. Amjad Ali', phone: '+964 780 111 9988', email: 'clinic@rumaila-ops.com', region: 'South', city: 'Roumailah', address: 'Rumaila North Camp, Basra', lat: 30.3450, lng: 47.4200, sector: 'Healthcare', contractValue: 1200, contractCurrency: 'USD', monthlyVisits: 2, baitStationsCount: 6, uvMachinesCount: 2 },
-    { id: 'cli-s4', clientCode: 'MAJ-CAMP', name: 'Majnoon Camp Services', contact: 'Mazin Salim', phone: '+964 783 777 8888', email: 'mazin.s@majnoon-field.com', region: 'South', city: 'Basra', address: 'Majnoon Oil Field, Basra', lat: 31.0500, lng: 47.3800, sector: 'Oil & Gas', contractValue: 4500, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 22, uvMachinesCount: 8 }
+    { id: 'cli-c1', clientCode: 'BGD-MALL', name: 'Baghdad Mall', contact: 'Zaid Mahmoud', phone: '+964 770 123 4567', email: 'info@baghdadmall.iq', region: 'Central', city: 'Baghdad', address: 'Al-Harthiya, Baghdad', lat: 33.3130, lng: 44.3640, sector: 'Retail', contractValue: 2500, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 12, uvMachinesCount: 4, parentId: null, contractTypes: ['Pest Control', 'Termite Treatment'] },
+    { id: 'cli-c1-b1', clientCode: 'BGD-MALL-FC', name: 'Baghdad Mall - Food Court Branch', contact: 'Zaid Mahmoud', phone: '+964 770 123 4567', email: 'foodcourt@baghdadmall.iq', region: 'Central', city: 'Baghdad', address: 'Al-Harthiya, Baghdad', lat: 33.3130, lng: 44.3640, sector: 'Retail', contractValue: 1200, contractCurrency: 'USD', monthlyVisits: 2, baitStationsCount: 6, uvMachinesCount: 2, parentId: 'cli-c1', contractTypes: ['Pest Control'] },
+    { id: 'cli-c1-b2', clientCode: 'BGD-MALL-ERB', name: 'Baghdad Mall - Erbil Branch', contact: 'Sherzad Taha', phone: '+964 750 445 1122', email: 'erbil@baghdadmall.iq', region: 'Kurdistan', city: 'Erbil', address: '100m Road, Erbil', lat: 36.1950, lng: 43.9780, sector: 'Retail', contractValue: 1500, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 8, uvMachinesCount: 3, parentId: 'cli-c1', contractTypes: ['Pest Control', 'Bird Control'] },
+    { id: 'cli-c2', clientCode: 'MAN-HOTEL', name: 'Al-Mansour Hotel', contact: 'Mona Al-Alusi', phone: '+964 780 987 6543', email: 'frontdesk@mansourhotel.iq', region: 'Central', city: 'Baghdad', address: 'Al-Mansour, Baghdad', lat: 33.3032, lng: 44.3567, sector: 'Hospitality', contractValue: 3000, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 15, uvMachinesCount: 6, parentId: null, contractTypes: ['Pest Control', 'Weed Removal'] },
+    { id: 'cli-c3', clientCode: 'BBY-HOSP', name: 'Babylon Hospital', contact: 'Dr. Laith Ahmed', phone: '+964 790 333 4444', email: 'admin@babylonhosp.com', region: 'Central', city: 'Baghdad', address: 'Al-Karrada, Baghdad', lat: 33.3210, lng: 44.4250, sector: 'Healthcare', contractValue: 4000000, contractCurrency: 'IQD', monthlyVisits: 8, baitStationsCount: 30, uvMachinesCount: 10, parentId: null, contractTypes: ['Pest Control', 'Animal Control'] },
+    { id: 'cli-c4', clientCode: 'ASIA-HQ', name: 'Asiacell HQ Baghdad', contact: 'Hassan Hadi', phone: '+964 771 888 9999', email: 'yasir.h@asiacell.com', region: 'Central', city: 'Baghdad', address: 'Al-Jadriyah, Baghdad', lat: 33.2840, lng: 44.3980, sector: 'Corporate', contractValue: 1500, contractCurrency: 'USD', monthlyVisits: 2, baitStationsCount: 8, uvMachinesCount: 2, parentId: null, contractTypes: ['Pest Control'] },
+    { id: 'cli-k1', clientCode: 'FAM-ERB', name: 'Family Mall Erbil', contact: 'Sherzad Taha', phone: '+964 750 445 1122', email: 'ops@familymallerbir.com', region: 'Kurdistan', city: 'Erbil', address: '100m Road, Erbil', lat: 36.1950, lng: 43.9780, sector: 'Retail', contractValue: 2000, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 10, uvMachinesCount: 4, parentId: null, contractTypes: ['Pest Control', 'Termite Treatment'] },
+    { id: 'cli-k2', clientCode: 'ROT-ERB', name: 'Rotana Hotel Erbil', contact: 'Nizar Salih', phone: '+964 750 889 0011', email: 'erbil@rotana.com', region: 'Kurdistan', city: 'Erbil', address: 'Gulan Street, Erbil', lat: 36.2110, lng: 44.0040, sector: 'Hospitality', contractValue: 3500, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 18, uvMachinesCount: 8, parentId: null, contractTypes: ['Pest Control', 'Weed Removal'] },
+    { id: 'cli-k3', clientCode: 'SUL-UNIV', name: 'Sulaymaniyah University', contact: 'Aram Qadir', phone: '+964 770 155 3344', email: 'estate@univsul.edu.iq', region: 'Kurdistan', city: 'Suleimaniah', address: 'Qlyasan Street, Sulaymaniyah', lat: 35.5620, lng: 45.3850, sector: 'Education', contractValue: 5000000, contractCurrency: 'IQD', monthlyVisits: 6, baitStationsCount: 25, uvMachinesCount: 5, parentId: null, contractTypes: ['Pest Control', 'Landscaping'] },
+    { id: 'cli-k4', clientCode: 'KOR-TEL', name: 'Korek Telecom HQ', contact: 'Darya Karim', phone: '+964 750 111 2222', email: 'hq@korek.com', region: 'Kurdistan', city: 'Erbil', address: 'Erbil-Massif Road', lat: 36.2650, lng: 44.1120, sector: 'Corporate', contractValue: 1800, contractCurrency: 'USD', monthlyVisits: 2, baitStationsCount: 8, uvMachinesCount: 2, parentId: null, contractTypes: ['Pest Control'] },
+    { id: 'cli-s1', clientCode: 'BGT-TERM', name: 'Basra Gateway Terminal', contact: 'Capt. Jaafar Radi', phone: '+964 781 222 3344', email: 'j.radi@bgt.com.iq', region: 'South', city: 'Basra', address: 'Umm Qasr Port, Basra', lat: 30.0380, lng: 47.9350, sector: 'Logistics', contractValue: 5000, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 20, uvMachinesCount: 10, parentId: null, contractTypes: ['Pest Control', 'Termite Treatment'] },
+    { id: 'cli-s2', clientCode: 'SHER-BAS', name: 'Al-Basra Sheraton', contact: 'Karim Mansour', phone: '+964 782 555 6677', email: 'basra.sheraton@sheraton.com', region: 'South', city: 'Basra', address: 'Shatt Al-Arab Corniche, Basra', lat: 30.5220, lng: 47.8480, sector: 'Hospitality', contractValue: 3200, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 16, uvMachinesCount: 6, parentId: null, contractTypes: ['Pest Control', 'Weed Removal'] },
+    { id: 'cli-s3', clientCode: 'RUM-CLN', name: 'Rumaila Oil Field Clinic', contact: 'Dr. Amjad Ali', phone: '+964 780 111 9988', email: 'clinic@rumaila-ops.com', region: 'South', city: 'Roumailah', address: 'Rumaila North Camp, Basra', lat: 30.3450, lng: 47.4200, sector: 'Healthcare', contractValue: 1200, contractCurrency: 'USD', monthlyVisits: 2, baitStationsCount: 6, uvMachinesCount: 2, parentId: null, contractTypes: ['Pest Control'] },
+    { id: 'cli-s4', clientCode: 'MAJ-CAMP', name: 'Majnoon Camp Services', contact: 'Mazin Salim', phone: '+964 783 777 8888', email: 'mazin.s@majnoon-field.com', region: 'South', city: 'Basra', address: 'Majnoon Oil Field, Basra', lat: 31.0500, lng: 47.3800, sector: 'Oil & Gas', contractValue: 4500, contractCurrency: 'USD', monthlyVisits: 4, baitStationsCount: 22, uvMachinesCount: 8, parentId: null, contractTypes: ['Pest Control', 'Termite Treatment'] }
   ],
 
   items: [
@@ -246,6 +248,16 @@ const DEFAULT_DATA = {
     { id: 'veh-1', type: 'Toyota Hilux', model: '2024', plateNo: 'A-10293 Baghdad', region: 'Central', teamLeaderId: 'tl-faris' },
     { id: 'veh-2', type: 'Nissan Frontier', model: '2023', plateNo: 'K-98721 Erbil', region: 'Kurdistan', teamLeaderId: 'tl-karwan' },
     { id: 'veh-3', type: 'Mitsubishi L200', model: '2022', plateNo: 'S-45302 Basra', region: 'South', teamLeaderId: 'tl-murtadha' }
+  ],
+  mediaCategories: [
+    { id: 'certificates', name: 'certificates' },
+    { id: 'profile', name: 'profile' },
+    { id: 'brochures', name: 'brochures' }
+  ],
+  media: [
+    { id: 'med-1', name: 'iso_certification_2026.pdf', category: 'certificates', type: 'application/pdf', size: 358400, uploadDate: '2026-06-01', uploadedBy: 'usr-gm', data: 'data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNTk1IDg0Ml0KL1Jlc291cmNlcyA8PAovRm9udCA8PAovRjEgNCAwIFIKPj4KPj4KL0NvbnRlbnRzIDUgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKNSAwIG9iago8PAovTGVuZ3RoIDQ0Cj4+CnN0cmVhbQpCVAovRjEgMTIgVGYKMTAwIDcwMCBUZAooQmFja2xlciBQZXN0IENvbnRyb2wgSVNPIENlcnRpZmljYXRlKSBUagogRVQKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA3MCAwMDAwMCBuIAowMDAwMDAwMTMwIDAwMDAwIGYgCjAwMDAwMDAyOTEgMDAwMDAgbiAKMDAwMDAwMDM3NCAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjQ2OQolJUVPRgo=' },
+    { id: 'med-2', name: 'buckler_profile_v2.pdf', category: 'profile', type: 'application/pdf', size: 1280000, uploadDate: '2026-06-02', uploadedBy: 'usr-gm', data: 'data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNTk1IDg0Ml0KL1Jlc291cmNlcyA8PAovRm9udCA8PAovRjEgNCAwIFIKPj4KPj4KL0NvbnRlbnRzIDUgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKNSAwIG9iago8PAovTGVuZ3RoIDQxCj4+CnN0cmVhbQpCVAovRjEgMTIgVGYKMTAwIDcwMCBUZAooQmFja2xlciBQZXN0IENvbnRyb2wgQ29tcGFueSBQcm9maWxlKSBUagogRVQKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA3MCAwMDAwMCBuIAowMDAwMDAwMTMwIDAwMDAwIGYgCjAwMDAwMDAyOTEgMDAwMDAgbiAKMDAwMDAwMDM3NCAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjQ2NgolJUVPRgo=' },
+    { id: 'med-3', name: 'brochure_commercial_pest_control.pdf', category: 'brochures', type: 'application/pdf', size: 737280, uploadDate: '2026-06-03', uploadedBy: 'usr-gm', data: 'data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNTk1IDg0Ml0KL1Jlc291cmNlcyA8PAovRm9udCA8PAovRjEgNCAwIFIKPj4KPj4KL0NvbnRlbnRzIDUgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKNSAwIG9iago8PAovTGVuZ3RoIDQzCj4+CnN0cmVhbQpCVAovRjEgMTIgVGYKMTAwIDcwMCBUZAooQmFja2xlciBQZXN0IENvbnRyb2wgQ29tbWVyY2lhbCBCcm9jaHVyZSkgVagogRVQKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA3MCAwMDAwMCBuIAowMDAwMDAwMTMwIDAwMDAwIGYgCjAwMDAwMDAyOTEgMDAwMDAgbiAKMDAwMDAwMDM3NCAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjQ2OApJJUVPRgo=' }
   ]
 };
 
@@ -263,7 +275,9 @@ const ENTITY_TO_TABLE = {
   attendanceLog: 'attendance_logs',
   vehicles: 'vehicles',
   sectors: 'sectors',
-  sanitationNotes: 'sanitation_notes'
+  sanitationNotes: 'sanitation_notes',
+  media: 'media',
+  mediaCategories: 'media_categories'
 };
 
 // ============================================================
@@ -764,7 +778,15 @@ class Database {
 
   get(entity) {
     const data = this.getData();
-    return data[entity] || [];
+    const list = data[entity] || [];
+    if (entity === 'salesDeals') {
+      return list.map(d => {
+        if (d.stage === 'Qualification') d.stage = 'Prospecting';
+        if (d.stage === 'Negotiation') d.stage = 'Proposal Sent';
+        return d;
+      });
+    }
+    return list;
   }
 
   insert(entity, record) {
