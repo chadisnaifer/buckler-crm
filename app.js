@@ -590,7 +590,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setupMediaEvents();
 
     // Load initial user & render
-    switchUser(els.roleSelector.value);
+    if (window.BucklerDB.isServer && !window.BucklerDB.currentUser) {
+      const defaultUser = window.BucklerDB.get('users').find(u => u.id === els.roleSelector.value);
+      if (defaultUser) {
+        openPasswordVerifyModal(defaultUser, (success) => {
+          if (success) {
+            switchUser(els.roleSelector.value);
+          }
+        });
+      }
+    } else {
+      switchUser(els.roleSelector.value);
+    }
     initDashFilterBar();
     
     // Reactive UI updates on local database writes
@@ -732,6 +743,10 @@ document.addEventListener('DOMContentLoaded', () => {
     els.roleSelector.innerHTML = users.map(u => `
       <option value="${u.id}">${u.name} (${u.role}${u.region !== 'All' ? ' - ' + u.region : ''})</option>
     `).join('');
+    
+    if (window.BucklerDB.isServer && window.BucklerDB.currentUser) {
+      els.roleSelector.value = window.BucklerDB.currentUser.id;
+    }
     
     let previousUserId = els.roleSelector.value;
     els.roleSelector.addEventListener('change', (e) => {
@@ -6753,16 +6768,30 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (entity === 'passwordVerify') {
       const entered = document.getElementById('verify-modal-password').value;
       const user = window.BucklerDB.get('users').find(u => u.id === id);
-      const correct = user ? (user.password || 'buckler123') : 'buckler123';
-      
-      if (entered === correct) {
-        els.modalBackdrop.style.display = 'none';
-        state.editingRecord = null;
-        if (state.passwordVerifyCallback) {
-          state.passwordVerifyCallback(true);
-        }
+      if (!user) return;
+
+      if (window.BucklerDB.isServer) {
+        window.BucklerDB.login(user.username, entered).then((profile) => {
+          state.currentUser = profile;
+          els.modalBackdrop.style.display = 'none';
+          state.editingRecord = null;
+          if (state.passwordVerifyCallback) {
+            state.passwordVerifyCallback(true);
+          }
+        }).catch((err) => {
+          showToast(err.message || 'Incorrect password. Access denied.', 'error');
+        });
       } else {
-        showToast('Incorrect password. Access denied.', 'error');
+        const correct = user.password || 'buckler123';
+        if (entered === correct) {
+          els.modalBackdrop.style.display = 'none';
+          state.editingRecord = null;
+          if (state.passwordVerifyCallback) {
+            state.passwordVerifyCallback(true);
+          }
+        } else {
+          showToast('Incorrect password. Access denied.', 'error');
+        }
       }
     }
 

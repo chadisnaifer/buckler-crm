@@ -290,23 +290,134 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 class Database {
   constructor() {
-    this.importSharedState();
-    this.init();
-
+    this.isServer = false;
+    this.currentUser = null;
     this.isSupabase = false;
     this.supabase = null;
     this.realtimeChannel = null;
-    try {
-      if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
-        this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        this.isSupabase = true;
-        console.log('Auto-connected to Supabase cloud database.');
 
-        this.fetchSupabaseData();
-        this.setupRealtimeSubscriptions();
+    if (window.location.protocol.startsWith('http')) {
+      this.initServerConnection();
+    } else {
+      console.log('Running locally as file. Falling back to local storage.');
+      this.importSharedState();
+      this.init();
+    }
+  }
+
+  async initServerConnection() {
+    try {
+      const res = await fetch('/api/auth/session');
+      if (res.ok) {
+        this.currentUser = await res.json();
+        this.isServer = true;
+        console.log('Connected to secure backend. Session verified for:', this.currentUser.username);
+        this.showServerStatusBadge(true);
+        await this.syncWithServer();
+        setInterval(() => this.syncWithServer(), 4000);
+      } else {
+        this.isServer = true;
+        this.showServerStatusBadge(true);
+        console.log('Connected to secure backend. Authentication required.');
+        await this.syncWithServer();
+        setInterval(() => this.syncWithServer(), 4000);
       }
     } catch (e) {
-      console.error('Error initializing Supabase client:', e);
+      console.error('Failed to connect to backend server. Falling back to local storage.', e);
+      this.isServer = false;
+      this.importSharedState();
+      this.init();
+      this.showServerStatusBadge(false);
+    }
+  }
+
+  showServerStatusBadge(connected) {
+    let badge = document.getElementById('backend-status-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'backend-status-badge';
+      badge.style.position = 'fixed';
+      badge.style.bottom = '10px';
+      badge.style.right = '10px';
+      badge.style.padding = '0.35rem 0.75rem';
+      badge.style.borderRadius = '20px';
+      badge.style.fontSize = '0.72rem';
+      badge.style.fontWeight = '700';
+      badge.style.zIndex = '9999';
+      badge.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+      badge.style.display = 'flex';
+      badge.style.alignItems = 'center';
+      badge.style.gap = '6px';
+      badge.style.pointerEvents = 'none';
+      document.body.appendChild(badge);
+    }
+    if (connected) {
+      badge.style.background = '#E8F5E9';
+      badge.style.color = '#2E7D32';
+      badge.style.border = '1px solid #A5D6A7';
+      badge.innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; display: inline-block;"></span> Hosted Backend Connected`;
+    } else {
+      badge.style.background = '#FFF3E0';
+      badge.style.color = '#E65100';
+      badge.style.border = '1px solid #FFCC80';
+      badge.innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background: #FF9800; display: inline-block;"></span> Offline Fallback (Local Storage)`;
+    }
+  }
+
+  async syncWithServer() {
+    if (!this.isServer) return;
+    try {
+      const entities = [
+        'users', 'clients', 'items', 'schedules', 'operationLogs', 'commuteLog',
+        'complaints', 'notifications', 'messages', 'attendanceLog', 'vehicles',
+        'sectors', 'sanitationNotes', 'media', 'mediaCategories', 'suppliers',
+        'salesDeals', 'driverShifts'
+      ];
+      
+      const data = {};
+      await Promise.all(entities.map(async (entity) => {
+        const res = await fetch(`/api/${entity}`);
+        if (res.ok) {
+          data[entity] = await res.json();
+        }
+      }));
+      
+      localStorage.setItem(DB_KEY, JSON.stringify({ ...this.getDataFromStorageOnly(), ...data }));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {
+      console.error('Failed to sync with server:', e);
+    }
+  }
+
+  getDataFromStorageOnly() {
+    if (!localStorage.getItem(DB_KEY)) {
+      localStorage.setItem(DB_KEY, JSON.stringify(DEFAULT_DATA));
+    }
+    return JSON.parse(localStorage.getItem(DB_KEY));
+  }
+
+  async login(username, password) {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Login failed');
+    }
+    const user = await res.json();
+    this.currentUser = user;
+    await this.syncWithServer();
+    return user;
+  }
+
+  async logout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      this.currentUser = null;
+    } catch (e) {
+      console.error('Logout error:', e);
     }
   }
 
@@ -794,14 +905,20 @@ class Database {
     if (!data[entity]) data[entity] = [];
     
     if (!record.id) {
-      const prefix = entity.substring(0, 3);
+      const prefix = entity.substring(0, 3).toLowerCase();
       record.id = `${prefix}-${Date.now()}`;
     }
     
     data[entity].push(record);
     this.saveData(data);
 
-    if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
+    if (this.isServer) {
+      fetch(`/api/${entity}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      }).catch(err => console.error(`Error inserting to backend table ${entity}:`, err));
+    } else if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
       this.supabase.from(ENTITY_TO_TABLE[entity]).insert({ id: record.id, data: record }).then(({ error }) => {
         if (error) console.error(`Error inserting to Supabase table ${ENTITY_TO_TABLE[entity]}:`, error);
       });
@@ -829,7 +946,13 @@ class Database {
     data[entity][idx] = updatedRecord;
     this.saveData(data);
 
-    if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
+    if (this.isServer) {
+      fetch(`/api/${entity}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields)
+      }).catch(err => console.error(`Error updating backend table ${entity}:`, err));
+    } else if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
       this.supabase.from(ENTITY_TO_TABLE[entity]).update({ data: updatedRecord }).eq('id', id).then(({ error }) => {
         if (error) console.error(`Error updating Supabase table ${ENTITY_TO_TABLE[entity]}:`, error);
       });
@@ -848,7 +971,11 @@ class Database {
     if (success) {
       this.saveData(data);
 
-      if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
+      if (this.isServer) {
+        fetch(`/api/${entity}/${id}`, {
+          method: 'DELETE'
+        }).catch(err => console.error(`Error deleting from backend table ${entity}:`, err));
+      } else if (this.isSupabase && ENTITY_TO_TABLE[entity]) {
         this.supabase.from(ENTITY_TO_TABLE[entity]).delete().eq('id', id).then(({ error }) => {
           if (error) console.error(`Error deleting from Supabase table ${ENTITY_TO_TABLE[entity]}:`, error);
         });
