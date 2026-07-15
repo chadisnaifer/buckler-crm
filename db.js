@@ -43,7 +43,7 @@ function verifyPassword(password, stored) {
 }
 
 const JSON_COLUMNS = {
-  clients: ['contractTypes', 'serviceVisits'],
+  clients: ['contractTypes', 'serviceVisits', 'contracts'],
   operationLogs: ['itemsConsumed', 'photos'],
   messages: ['attachment'],
   suppliers: ['suppliedItems']
@@ -105,7 +105,8 @@ async function initDatabase() {
     uvMachinesCount INTEGER,
     parentId TEXT,
     contractTypes TEXT, -- JSON array
-    serviceVisits TEXT -- JSON object
+    serviceVisits TEXT, -- JSON object
+    contracts TEXT -- JSON object by contract type
   )`);
 
   await run(`CREATE TABLE IF NOT EXISTS items (
@@ -323,9 +324,9 @@ async function seedDatabase() {
       // 3. Seed Clients
       if (data.clients) {
         for (const c of data.clients) {
-          await run(`INSERT INTO clients (id, clientCode, name, contact, phone, email, region, city, address, lat, lng, sector, contractValue, contractCurrency, monthlyVisits, baitStationsCount, uvMachinesCount, parentId, contractTypes, serviceVisits)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [c.id, c.clientCode || '', c.name, c.contact || '', c.phone || '', c.email || '', c.region, c.city || '', c.address || '', c.lat || 0, c.lng || 0, c.sector || '', c.contractValue || 0, c.contractCurrency || 'USD', c.monthlyVisits || 0, c.baitStationsCount || 0, c.uvMachinesCount || 0, c.parentId || null, JSON.stringify(c.contractTypes || []), JSON.stringify(c.serviceVisits || {})]);
+          await run(`INSERT INTO clients (id, clientCode, name, contact, phone, email, region, city, address, lat, lng, sector, contractValue, contractCurrency, monthlyVisits, baitStationsCount, uvMachinesCount, parentId, contractTypes, serviceVisits, contracts)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [c.id, c.clientCode || '', c.name, c.contact || '', c.phone || '', c.email || '', c.region, c.city || '', c.address || '', c.lat || 0, c.lng || 0, c.sector || '', c.contractValue || 0, c.contractCurrency || 'USD', c.monthlyVisits || 0, c.baitStationsCount || 0, c.uvMachinesCount || 0, c.parentId || null, JSON.stringify(c.contractTypes || []), JSON.stringify(c.serviceVisits || {}), JSON.stringify(c.contracts || {})]);
         }
       }
 

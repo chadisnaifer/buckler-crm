@@ -15,9 +15,9 @@ const {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Body parsing with 15MB limits for image attachments
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+// Body parsing with 30mb limits for PDF and image uploads
+app.use(express.json({ limit: '30mb' }));
+app.use(express.urlencoded({ extended: true, limit: '30mb' }));
 
 // Session management
 app.use(session({
@@ -368,6 +368,56 @@ app.delete('/api/:entity/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Automated Contract Expiry Warning Alert Check
+async function checkContractExpirations() {
+  try {
+    console.log('[Scheduler] Running contract expiry warning check...');
+    const clients = await all(`SELECT id, name, contracts FROM clients`);
+    const today = new Date();
+    const warningLimit = new Date();
+    warningLimit.setDate(today.getDate() + 30); // Alert 30 days prior to expiry
+
+    for (const row of clients) {
+      if (!row.contracts) continue;
+      let contractsObj = null;
+      try {
+        contractsObj = JSON.parse(row.contracts);
+      } catch (e) {
+        continue;
+      }
+      if (!contractsObj || typeof contractsObj !== 'object') continue;
+
+      for (const [type, criteria] of Object.entries(contractsObj)) {
+        if (criteria && criteria.contractExpiryDate) {
+          const expiry = new Date(criteria.contractExpiryDate);
+          // If contract expires within 30 days and has not expired yet
+          if (expiry >= today && expiry <= warningLimit) {
+            const daysLeft = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+            const message = `⚠️ Contract Expiry: The "${type}" contract for "${row.name}" expires in ${daysLeft} days (on ${criteria.contractExpiryDate}).`;
+            
+            // Check if notification already exists to prevent duplicates
+            const existing = await get(
+              `SELECT id FROM notifications WHERE type = 'expiry' AND targetUserId = ? AND message LIKE ?`,
+              ['usr-gm', `%${row.name}%${type}%`]
+            );
+
+            if (!existing) {
+              const ts = Date.now();
+              await run(
+                `INSERT INTO notifications (id, type, message, read, timestamp, targetUserId) VALUES (?, ?, ?, ?, ?, ?)`,
+                [`ntf-${ts}-exp`, 'expiry', message, 0, new Date().toISOString(), 'usr-gm']
+              );
+              console.log(`[Alert] Expiration notification dispatched for ${row.name} - ${type}`);
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error running contract expiry check:', e);
+  }
+}
+
 // Initialize database tables and start backend server
 initDatabase().then(() => {
   app.listen(PORT, () => {
@@ -376,6 +426,11 @@ initDatabase().then(() => {
     console.log(`  Url: http://localhost:${PORT}                  `);
     console.log(`================================================`);
   });
+
+  // Run initial expiry check
+  setTimeout(checkContractExpirations, 2000);
+  // Repeat check every 24 hours
+  setInterval(checkContractExpirations, 24 * 60 * 60 * 1000);
 }).catch(err => {
   console.error('Failed to initialize database tables:', err);
   process.exit(1);

@@ -3317,8 +3317,35 @@ document.addEventListener('DOMContentLoaded', () => {
       ` : `<span style="font-size:0.75rem; font-weight:700; color:var(--text-medium); background:#F1F5F9; padding:2px 8px; border-radius:4px; text-transform:uppercase;">${c.sector || 'N/A'}</span>`;
 
       const servicesInfo = (c.contractTypes || []).map(ct => {
+        const contract = (c.contracts && c.contracts[ct]) ? c.contracts[ct] : {};
         const v = c.serviceVisits && c.serviceVisits[ct] !== undefined ? c.serviceVisits[ct] : '';
-        return `<span style="font-size:0.7rem; background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; padding:1px 5px; border-radius:3px; margin-right:3px; display:inline-block; white-space:nowrap; margin-top:2px;">${ct}${v !== '' ? ` (${v})` : ''}</span>`;
+        
+        let details = '';
+        if (ct === 'Pest Control') {
+          const bait = contract.baitStationsCount !== undefined ? `, Bait: ${contract.baitStationsCount}` : '';
+          const uv = contract.uvMachinesCount !== undefined ? `, UV: ${contract.uvMachinesCount}` : '';
+          details = ` (Visits: ${v}${bait}${uv})`;
+        } else {
+          details = v !== '' && v > 0 ? ` (${v} visits)` : '';
+        }
+        
+        let expiryBadge = '';
+        if (contract.contractExpiryDate) {
+          const exp = new Date(contract.contractExpiryDate);
+          const today = new Date();
+          const warningLimit = new Date();
+          warningLimit.setDate(today.getDate() + 30);
+          
+          if (exp < today) {
+            expiryBadge = ` <span style="color:#EF4444; font-weight:bold;">[EXPIRED]</span>`;
+          } else if (exp <= warningLimit) {
+            expiryBadge = ` <span style="color:#F59E0B; font-weight:bold;">[EXPIRING SOON]</span>`;
+          } else {
+            expiryBadge = ` <span style="color:#10B981; font-size:0.65rem;">(Exp: ${contract.contractExpiryDate})</span>`;
+          }
+        }
+        
+        return `<span style="font-size:0.7rem; background:#EFF6FF; color:#1E40AF; border:1px solid #BFDBFE; padding:2px 6px; border-radius:4px; margin-right:4px; display:inline-block; white-space:nowrap; margin-top:2px;"><strong>${ct}</strong>${details}${expiryBadge}</span>`;
       }).join('') || '<span style="color:var(--text-muted); font-size:0.72rem;">No services</span>';
 
       let parentNameStr = '';
@@ -3346,7 +3373,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>${c.phone || '-'}</td>
           <td>${c.email}</td>
-          <td><code>${c.lat && c.lng ? `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}` : 'N/A'}</code></td>
           <td style="max-width:180px;"><div class="expandable-truncate" title="Click to expand/collapse">${c.address}</div></td>
           ${canManage ? `
             <td>
@@ -3358,7 +3384,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ` : '<td>-</td>'}
         </tr>
       `;
-    }).join('') : `<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No clients registered.</td></tr>`;
+    }).join('') : `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:2rem;">No clients registered.</td></tr>`;
 
     document.querySelectorAll('.edit-client-btn').forEach(b => {
       b.addEventListener('click', () => openClientModal(b.getAttribute('data-id')));
@@ -5157,38 +5183,119 @@ document.addEventListener('DOMContentLoaded', () => {
           <label for="cli-modal-address">Full Address *</label>
           <input type="text" id="cli-modal-address" class="form-control" value="${client ? client.address : ''}" required ${!canEdit ? 'disabled' : ''}>
         </div>
-        <div class="form-group row-split">
-          <div>
-            <label for="cli-modal-lat">Latitude (Decimal)</label>
-            <input type="number" step="0.000001" id="cli-modal-lat" class="form-control" value="${client && client.lat !== null && client.lat !== undefined ? client.lat : ''}" placeholder="e.g. 33.3128 (Optional)" ${!canEdit ? 'disabled' : ''}>
-          </div>
-          <div>
-            <label for="cli-modal-lng">Longitude (Decimal)</label>
-            <input type="number" step="0.000001" id="cli-modal-lng" class="form-control" value="${client && client.lng !== null && client.lng !== undefined ? client.lng : ''}" placeholder="e.g. 44.3615 (Optional)" ${!canEdit ? 'disabled' : ''}>
-          </div>
-        </div>
         <div class="form-group">
           <label style="font-weight:700; font-size:0.82rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
-            <span>Contract Types / Services &amp; Allocated Monthly Visits</span>
-            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">Specify target visits per active service</span>
+            <span>Contract Types / Services &amp; Criteria Settings</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">Enable services and enter details</span>
           </label>
-          <div style="display:flex; flex-direction:column; gap:0.4rem; padding:0.75rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+          <div style="display:flex; flex-direction:column; gap:0.5rem;">
             ${[
               'Pest Control', 'Weed Removal', 'Termite Treatment', 'Animal Control', 'Bird Control', 
               'Poultry Halls', 'Landscaping (Design)', 'Landscaping (Gardening)', 'Landscaping (Maintenance)', 
               'Cleaning', 'Maintenance'
             ].map(ct => {
               const isChecked = client && (client.contractTypes || []).includes(ct);
-              const allocatedVal = client && client.serviceVisits && client.serviceVisits[ct] !== undefined ? client.serviceVisits[ct] : '';
+              const users = window.BucklerDB.get('users') || [];
+              
+              const contractsObj = (client && client.contracts) ? client.contracts : {};
+              const c = contractsObj[ct] || {};
+              const valueVal = c.contractValue || '';
+              const currencyVal = c.contractCurrency || 'USD';
+              const expiryVal = c.contractExpiryDate || '';
+              const initiatedVal = c.initiatedBy || '';
+              
+              let specialFields = '';
+              if (ct === 'Pest Control') {
+                const mVisits = c.monthlyVisits || '';
+                const hVisit = c.hoursPerVisit || '';
+                const bCount = c.baitStationsCount || '';
+                const uvCount = c.uvMachinesCount || '';
+                
+                specialFields = `
+                  <div class="form-group row-split" style="margin-bottom: 0.5rem;">
+                    <div>
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Monthly Visits *</label>
+                      <input type="number" class="form-control cli-ctrl-visits" data-service="${ct}" value="${mVisits}" placeholder="e.g. 4" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Hours Per Visit *</label>
+                      <input type="number" step="0.5" class="form-control cli-ctrl-hours" data-service="${ct}" value="${hVisit}" placeholder="e.g. 2" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
+                    </div>
+                  </div>
+                  <div class="form-group row-split" style="margin-bottom: 0.5rem;">
+                    <div>
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Bait Stations *</label>
+                      <input type="number" class="form-control cli-ctrl-bait" data-service="${ct}" value="${bCount}" placeholder="e.g. 12" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">UV Machines Sold *</label>
+                      <input type="number" class="form-control cli-ctrl-uv" data-service="${ct}" value="${uvCount}" placeholder="e.g. 4" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0.5rem;">
+                    <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Site Maps (Upload Multiple)</label>
+                    <input type="file" class="form-control cli-ctrl-sitemaps" data-service="${ct}" multiple accept="image/*" ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:30px; font-size:0.7rem;">
+                    <div class="sitemap-previews" data-service="${ct}" style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.4rem;">
+                      ${(c.siteMaps || []).map((img, idx) => `
+                        <div style="position:relative; width:48px; height:48px; border:1px solid #CBD5E1; border-radius:4px; overflow:hidden;">
+                          <img src="${img}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="window.open('${img}', '_blank')" />
+                          ${canEdit ? `<span class="sitemap-delete" data-service="${ct}" data-index="${idx}" style="position:absolute; top:-2px; right:2px; color:#EF4444; font-weight:bold; cursor:pointer; font-size:12px; background:rgba(255,255,255,0.8); border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">×</span>` : ''}
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                `;
+              }
+              
+              const needsExpiry = ['Pest Control', 'Termite Treatment', 'Landscaping (Maintenance)', 'Cleaning', 'Maintenance'].includes(ct);
+              const salesUsers = users.filter(u => ['gm', 'sales manager', 'sales representative'].includes(u.role.toLowerCase()));
+              const initiatedOptions = salesUsers.map(u => `
+                <option value="${u.id}" ${initiatedVal === u.id ? 'selected' : ''}>${u.name} (${u.role})</option>
+              `).join('');
+
               return `
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:0.3rem 0.5rem; border-radius:4px; transition:background 0.15s;" onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='transparent'">
-                  <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; cursor:pointer; margin:0; flex:1;">
-                    <input type="checkbox" name="cli-contract-type-cb" value="${ct}" ${isChecked ? 'checked' : ''} style="accent-color:var(--primary-red); width:14px; height:14px;" ${!canEdit ? 'disabled' : ''}>
-                    <span style="color:var(--text-dark); font-weight:600;">${ct}</span>
+                <div style="padding:0.5rem; border:1px solid var(--border-color); border-radius:6px; background:#FAFAFA;">
+                  <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; cursor:pointer; margin:0; font-weight:700;">
+                    <input type="checkbox" name="cli-contract-type-cb" class="cli-contract-cb" data-service="${ct}" value="${ct}" ${isChecked ? 'checked' : ''} style="accent-color:var(--primary-red); width:14px; height:14px;" ${!canEdit ? 'disabled' : ''}>
+                    <span style="color:var(--text-dark);">${ct}</span>
                   </label>
-                  <div style="display:flex; align-items:center; gap:0.25rem;">
-                    <span style="font-size:0.75rem; color:var(--text-muted);">visits:</span>
-                    <input type="number" class="cli-service-visits-input form-control" data-service="${ct}" value="${allocatedVal}" placeholder="e.g. 2" style="width:70px; padding:0.2rem 0.4rem; height:28px; font-size:0.8rem; margin:0;" ${!isChecked || !canEdit ? 'disabled' : ''}>
+                  
+                  <div class="cli-contract-details-card" id="cli-details-${ct.replace(/[\s\(\)]+/g, '-')}" style="display: ${isChecked ? 'flex' : 'none'}; flex-direction: column; gap: 0.4rem; padding: 0.5rem; border: 1px solid #E2E8F0; border-radius: 6px; background: #FFFFFF; margin-top: 0.4rem; border-left: 3px solid var(--primary-red);">
+                    ${specialFields}
+                    
+                    <div class="form-group row-split" style="margin-bottom: 0.4rem;">
+                      <div>
+                        <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Contract Value *</label>
+                        <div style="display: flex; gap: 0.25rem;">
+                          <input type="number" class="form-control cli-ctrl-val" data-service="${ct}" value="${valueVal}" placeholder="Value" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem; flex:1;">
+                          <select class="form-control cli-ctrl-curr" data-service="${ct}" ${!canEdit ? 'disabled' : ''} style="max-width:65px; padding:0.25rem; height:30px; font-size:0.78rem;">
+                            <option value="USD" ${currencyVal === 'USD' ? 'selected' : ''}>USD</option>
+                            <option value="IQD" ${currencyVal === 'IQD' ? 'selected' : ''}>IQD</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Expiry Date ${needsExpiry ? '*' : '(Optional)'}</label>
+                        <input type="date" class="form-control cli-ctrl-expiry" data-service="${ct}" value="${expiryVal}" ${isChecked && needsExpiry ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem; line-height:1.2;">
+                      </div>
+                    </div>
+                    
+                    <div class="form-group row-split" style="margin-bottom: 0.1rem;">
+                      <div>
+                        <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Initiated By *</label>
+                        <select class="form-control cli-ctrl-initiated" data-service="${ct}" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem; height:30px; font-size:0.78rem;">
+                          <option value="" disabled ${!initiatedVal ? 'selected' : ''}>Select Sales Staff</option>
+                          ${initiatedOptions}
+                        </select>
+                      </div>
+                      <div>
+                        <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Contract PDF (Max 15MB)</label>
+                        <input type="file" class="form-control cli-ctrl-pdf" data-service="${ct}" accept="application/pdf" ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:30px; font-size:0.7rem;">
+                        <div class="pdf-preview-link" data-service="${ct}" style="margin-top:0.2rem;">
+                          ${c.contractPdf ? `<a href="#" class="view-pdf-link" data-service="${ct}" style="font-size:0.7rem; color:var(--primary-red); font-weight:700; text-decoration:none;">📄 View PDF Contract</a>` : '<span style="font-size:0.7rem; color:var(--text-muted);">No PDF uploaded</span>'}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               `;
@@ -5198,10 +5305,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="form-group">
           <label for="cli-modal-monthly-visits">Total Monthly Visits Target (Calculated)</label>
           <input type="number" id="cli-modal-monthly-visits" class="form-control" value="${client ? (client.monthlyVisits || 0) : 0}" readonly disabled style="background:#F1F5F9; color:var(--text-muted); font-weight:700;">
-        </div>
-        <div class="form-group">
-          <label for="cli-modal-bait-stations">Rodent Bait Stations Count (Profile Target)</label>
-          <input type="number" id="cli-modal-bait-stations" class="form-control" value="${client ? (client.baitStationsCount || '') : ''}" placeholder="e.g. 15" ${!canEdit ? 'disabled' : ''}>
         </div>
         ${isEdit ? (() => {
           const logs = window.BucklerDB.get('operationLogs').filter(l => l.clientId === id);
@@ -5281,29 +5384,150 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Setup real-time target visits summation and checkbox coupling
     setTimeout(() => {
-      const visitInputs = document.querySelectorAll('.cli-service-visits-input');
       const totalInput = document.getElementById('cli-modal-monthly-visits');
       const updateClientTotalVisits = () => {
         let sum = 0;
-        visitInputs.forEach(inp => {
+        document.querySelectorAll('.cli-ctrl-visits').forEach(inp => {
           if (!inp.disabled) {
             sum += parseInt(inp.value) || 0;
           }
         });
         if (totalInput) totalInput.value = sum;
       };
-      visitInputs.forEach(inp => {
+
+      document.querySelectorAll('.cli-ctrl-visits').forEach(inp => {
         inp.addEventListener('input', updateClientTotalVisits);
         inp.addEventListener('change', updateClientTotalVisits);
       });
-      document.querySelectorAll('input[name="cli-contract-type-cb"]').forEach(cb => {
+
+      // Initialize temp contract data
+      state.tempContractsData = (client && client.contracts) ? JSON.parse(JSON.stringify(client.contracts)) : {};
+
+      // Dynamic toggle for details cards
+      document.querySelectorAll('.cli-contract-cb').forEach(cb => {
         cb.addEventListener('change', () => {
-          const inp = cb.closest('div').querySelector('.cli-service-visits-input');
-          if (inp) {
-            inp.disabled = !cb.checked;
-            if (!cb.checked) inp.value = '';
+          const ct = cb.value;
+          const detailsCard = document.getElementById(`cli-details-${ct.replace(/[\s\(\)]+/g, '-')}`);
+          if (detailsCard) {
+            detailsCard.style.display = cb.checked ? 'flex' : 'none';
+            detailsCard.querySelectorAll('input, select').forEach(inp => {
+              inp.disabled = !cb.checked;
+              if (!cb.checked) {
+                inp.removeAttribute('required');
+              } else {
+                if (inp.classList.contains('cli-ctrl-val') || 
+                    inp.classList.contains('cli-ctrl-initiated') ||
+                    inp.classList.contains('cli-ctrl-visits') ||
+                    inp.classList.contains('cli-ctrl-hours') ||
+                    inp.classList.contains('cli-ctrl-bait') ||
+                    inp.classList.contains('cli-ctrl-uv')) {
+                  inp.setAttribute('required', 'required');
+                }
+                
+                if (inp.classList.contains('cli-ctrl-expiry')) {
+                  const needsExpiry = ['Pest Control', 'Termite Treatment', 'Landscaping (Maintenance)', 'Cleaning', 'Maintenance'].includes(ct);
+                  if (needsExpiry) {
+                    inp.setAttribute('required', 'required');
+                  }
+                }
+              }
+            });
           }
           updateClientTotalVisits();
+        });
+      });
+
+      // Bind PDF file loading up to 15MB
+      document.querySelectorAll('.cli-ctrl-pdf').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          const ct = e.target.getAttribute('data-service');
+          if (file) {
+            if (file.size > 15 * 1024 * 1024) { // 15MB limit
+              showToast('Contract PDF file size exceeds the 15MB limit.', 'error');
+              e.target.value = '';
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              if (!state.tempContractsData[ct]) state.tempContractsData[ct] = {};
+              state.tempContractsData[ct].contractPdf = evt.target.result;
+              showToast(`${ct} PDF loaded successfully!`, 'success');
+              
+              const previewLink = document.querySelector(`.pdf-preview-link[data-service="${ct}"]`);
+              if (previewLink) {
+                previewLink.innerHTML = `<a href="#" class="view-pdf-link" data-service="${ct}" style="font-size:0.7rem; color:var(--primary-red); font-weight:700; text-decoration:none;">📄 View PDF Contract</a>`;
+                const link = previewLink.querySelector('.view-pdf-link');
+                if (link) bindPdfViewLink(link, ct);
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      });
+
+      const bindPdfViewLink = (link, ct) => {
+        link.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          const base64 = state.tempContractsData[ct] ? state.tempContractsData[ct].contractPdf : null;
+          if (base64) {
+            const downloadLink = document.createElement('a');
+            downloadLink.href = base64;
+            downloadLink.download = `contract_${ct.replace(/[\s\(\)]+/g, '_')}.pdf`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+          }
+        });
+      };
+
+      document.querySelectorAll('.view-pdf-link').forEach(link => {
+        const ct = link.getAttribute('data-service');
+        bindPdfViewLink(link, ct);
+      });
+
+      // Bind Site Maps uploader
+      const renderSitemapPreviews = (ct) => {
+        const previewsDiv = document.querySelector(`.sitemap-previews[data-service="${ct}"]`);
+        if (!previewsDiv) return;
+        const siteMaps = (state.tempContractsData[ct] && state.tempContractsData[ct].siteMaps) ? state.tempContractsData[ct].siteMaps : [];
+        previewsDiv.innerHTML = siteMaps.map((img, idx) => `
+          <div style="position:relative; width:48px; height:48px; border:1px solid #CBD5E1; border-radius:4px; overflow:hidden;">
+            <img src="${img}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="window.open('${img}', '_blank')" />
+            <span class="sitemap-delete" data-service="${ct}" data-index="${idx}" style="position:absolute; top:-2px; right:2px; color:#EF4444; font-weight:bold; cursor:pointer; font-size:12px; background:rgba(255,255,255,0.8); border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">×</span>
+          </div>
+        `).join('');
+
+        previewsDiv.querySelectorAll('.sitemap-delete').forEach(delBtn => {
+          delBtn.addEventListener('click', (evt) => {
+            evt.stopPropagation();
+            const idx = parseInt(delBtn.getAttribute('data-index'));
+            state.tempContractsData[ct].siteMaps.splice(idx, 1);
+            renderSitemapPreviews(delBtn.getAttribute('data-service'));
+          });
+        });
+      };
+
+      document.querySelectorAll('.cli-ctrl-sitemaps').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+          const files = e.target.files;
+          const ct = e.target.getAttribute('data-service');
+          if (!state.tempContractsData[ct]) state.tempContractsData[ct] = {};
+          if (!state.tempContractsData[ct].siteMaps) state.tempContractsData[ct].siteMaps = [];
+
+          Array.from(files).forEach(file => {
+            if (file.size > 10 * 1024 * 1024) {
+              showToast(`Image ${file.name} exceeds 10MB limit.`, 'error');
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              state.tempContractsData[ct].siteMaps.push(evt.target.result);
+              renderSitemapPreviews(ct);
+            };
+            reader.readAsDataURL(file);
+          });
+          e.target.value = '';
         });
       });
 
@@ -6514,15 +6738,58 @@ document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('client-form');
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
+      const client = id ? window.BucklerDB.get('clients').find(c => c.id === id) : null;
       const selectedContracts = Array.from(document.querySelectorAll('input[name="cli-contract-type-cb"]:checked')).map(cb => cb.value);
+      const contracts = {};
       const serviceVisits = {};
       let totalMonthlyVisits = 0;
-      
+      let globalBaitStationsCount = 0;
+      let globalUvMachinesCount = 0;
+
       selectedContracts.forEach(ct => {
-        const inputEl = document.querySelector(`.cli-service-visits-input[data-service="${ct}"]`);
-        const val = inputEl ? parseInt(inputEl.value) || 0 : 0;
-        serviceVisits[ct] = val;
-        totalMonthlyVisits += val;
+        const card = document.getElementById(`cli-details-${ct.replace(/[\s\(\)]+/g, '-')}`);
+        if (card) {
+          if (!state.tempContractsData[ct]) state.tempContractsData[ct] = {};
+          
+          const valInput = card.querySelector('.cli-ctrl-val');
+          const currInput = card.querySelector('.cli-ctrl-curr');
+          const expInput = card.querySelector('.cli-ctrl-expiry');
+          const initInput = card.querySelector('.cli-ctrl-initiated');
+          
+          if (valInput) state.tempContractsData[ct].contractValue = parseFloat(valInput.value) || 0;
+          if (currInput) state.tempContractsData[ct].contractCurrency = currInput.value;
+          if (expInput) state.tempContractsData[ct].contractExpiryDate = expInput.value;
+          if (initInput) state.tempContractsData[ct].initiatedBy = initInput.value;
+          
+          if (ct === 'Pest Control') {
+            const visitsInput = card.querySelector('.cli-ctrl-visits');
+            const hoursInput = card.querySelector('.cli-ctrl-hours');
+            const baitInput = card.querySelector('.cli-ctrl-bait');
+            const uvInput = card.querySelector('.cli-ctrl-uv');
+            
+            if (visitsInput) {
+              const v = parseInt(visitsInput.value) || 0;
+              state.tempContractsData[ct].monthlyVisits = v;
+              serviceVisits[ct] = v;
+              totalMonthlyVisits += v;
+            }
+            if (hoursInput) state.tempContractsData[ct].hoursPerVisit = parseFloat(hoursInput.value) || 0;
+            if (baitInput) {
+              const b = parseInt(baitInput.value) || 0;
+              state.tempContractsData[ct].baitStationsCount = b;
+              globalBaitStationsCount = b;
+            }
+            if (uvInput) {
+              const uv = parseInt(uvInput.value) || 0;
+              state.tempContractsData[ct].uvMachinesCount = uv;
+              globalUvMachinesCount = uv;
+            }
+          } else {
+            serviceVisits[ct] = 0;
+          }
+          
+          contracts[ct] = state.tempContractsData[ct];
+        }
       });
 
       const parentVal = document.getElementById('cli-modal-parent') ? document.getElementById('cli-modal-parent').value : '';
@@ -6537,13 +6804,15 @@ document.addEventListener('DOMContentLoaded', () => {
         phone: document.getElementById('cli-modal-phone').value,
         email: document.getElementById('cli-modal-email').value,
         address: document.getElementById('cli-modal-address').value,
-        lat: document.getElementById('cli-modal-lat').value !== '' ? parseFloat(document.getElementById('cli-modal-lat').value) : null,
-        lng: document.getElementById('cli-modal-lng').value !== '' ? parseFloat(document.getElementById('cli-modal-lng').value) : null,
+        lat: client ? client.lat : null,
+        lng: client ? client.lng : null,
         monthlyVisits: totalMonthlyVisits,
         contractTypes: selectedContracts,
         serviceVisits: serviceVisits,
-        baitStationsCount: parseInt(document.getElementById('cli-modal-bait-stations').value) || 0,
-        parentId: parentVal || null
+        baitStationsCount: globalBaitStationsCount,
+        uvMachinesCount: globalUvMachinesCount,
+        parentId: parentVal || null,
+        contracts: contracts
       };
 
       if (id) {
