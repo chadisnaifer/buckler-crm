@@ -1,6 +1,25 @@
 // Buckler - Iraq Operations CRM Application Logic
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Helper to format numbers with commas (1,000,000)
+  const formatNumber = (num) => {
+    if (num === null || num === undefined || isNaN(num) || num === '') return '0';
+    return Number(num).toLocaleString('en-US');
+  };
+
+  // Helper to format currency values prioritizing IQD
+  const formatCurrency = (val, currency) => {
+    const v = Number(val) || 0;
+    const curr = currency || 'IQD';
+    if (curr === 'IQD') {
+      return `${Math.round(v).toLocaleString('en-US')} IQD`;
+    }
+    return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  };
+
+  window.formatNumber = formatNumber;
+  window.formatCurrency = formatCurrency;
+
   // App State
   let state = {
     currentUser: null,
@@ -5200,7 +5219,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const contractsObj = (client && client.contracts) ? client.contracts : {};
               const c = contractsObj[ct] || {};
               const valueVal = c.contractValue || '';
-              const currencyVal = c.contractCurrency || 'USD';
+              const currencyVal = c.contractCurrency || 'IQD';
               const expiryVal = c.contractExpiryDate || '';
               const initiatedVal = c.initiatedBy || '';
               
@@ -5232,18 +5251,6 @@ document.addEventListener('DOMContentLoaded', () => {
                       <input type="number" class="form-control cli-ctrl-uv" data-service="${ct}" value="${uvCount}" placeholder="e.g. 4" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
                     </div>
                   </div>
-                  <div class="form-group" style="margin-bottom: 0.5rem;">
-                    <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Site Maps (Upload Multiple)</label>
-                    <input type="file" class="form-control cli-ctrl-sitemaps" data-service="${ct}" multiple accept="image/*" ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:30px; font-size:0.7rem;">
-                    <div class="sitemap-previews" data-service="${ct}" style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.4rem;">
-                      ${(c.siteMaps || []).map((img, idx) => `
-                        <div style="position:relative; width:48px; height:48px; border:1px solid #CBD5E1; border-radius:4px; overflow:hidden;">
-                          <img src="${img}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="window.open('${img}', '_blank')" />
-                          ${canEdit ? `<span class="sitemap-delete" data-service="${ct}" data-index="${idx}" style="position:absolute; top:-2px; right:2px; color:#EF4444; font-weight:bold; cursor:pointer; font-size:12px; background:rgba(255,255,255,0.8); border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">×</span>` : ''}
-                        </div>
-                      `).join('')}
-                    </div>
-                  </div>
                 `;
               }
               
@@ -5269,8 +5276,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div style="display: flex; gap: 0.25rem;">
                           <input type="number" class="form-control cli-ctrl-val" data-service="${ct}" value="${valueVal}" placeholder="Value" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem; flex:1;">
                           <select class="form-control cli-ctrl-curr" data-service="${ct}" ${!canEdit ? 'disabled' : ''} style="max-width:65px; padding:0.25rem; height:30px; font-size:0.78rem;">
-                            <option value="USD" ${currencyVal === 'USD' ? 'selected' : ''}>USD</option>
                             <option value="IQD" ${currencyVal === 'IQD' ? 'selected' : ''}>IQD</option>
+                            <option value="USD" ${currencyVal === 'USD' ? 'selected' : ''}>USD</option>
                           </select>
                         </div>
                       </div>
@@ -5289,12 +5296,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         </select>
                       </div>
                       <div>
-                        <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Contract PDF (Max 15MB)</label>
-                        <input type="file" class="form-control cli-ctrl-pdf" data-service="${ct}" accept="application/pdf" ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:30px; font-size:0.7rem;">
+                        <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Contract Document (Max 15MB)</label>
+                        <input type="file" class="form-control cli-ctrl-pdf" data-service="${ct}" ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:30px; font-size:0.7rem;">
                         <div class="pdf-preview-link" data-service="${ct}" style="margin-top:0.2rem;">
-                          ${c.contractPdf ? `<a href="#" class="view-pdf-link" data-service="${ct}" style="font-size:0.7rem; color:var(--primary-red); font-weight:700; text-decoration:none;">📄 View PDF Contract</a>` : '<span style="font-size:0.7rem; color:var(--text-muted);">No PDF uploaded</span>'}
+                          ${c.contractPdf ? `<a href="#" class="view-pdf-link" data-service="${ct}" style="font-size:0.7rem; color:var(--primary-red); font-weight:700; text-decoration:none;">📄 View Uploaded Contract</a>` : '<span style="font-size:0.7rem; color:var(--text-muted);">No contract document uploaded</span>'}
                         </div>
                       </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0.5rem; margin-top: 0.5rem;">
+                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Site Maps / Layout Attachments (Upload Multiple - Max 15MB)</label>
+                      <input type="file" class="form-control cli-ctrl-sitemaps" data-service="${ct}" multiple ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:30px; font-size:0.7rem;">
+                      <div class="sitemap-previews" data-service="${ct}" style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.4rem;"></div>
                     </div>
                   </div>
                 </div>
@@ -5466,14 +5478,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
+      const getExtensionFromMime = (dataUrl, fallback = 'pdf') => {
+        if (!dataUrl) return fallback;
+        const match = dataUrl.match(/^data:([^;]+);base64/);
+        if (!match) return fallback;
+        const mime = match[1];
+        if (mime === 'application/pdf') return 'pdf';
+        if (mime === 'image/png') return 'png';
+        if (mime === 'image/jpeg' || mime === 'image/jpg') return 'jpg';
+        if (mime === 'image/gif') return 'gif';
+        if (mime.includes('word')) return 'doc';
+        if (mime.includes('excel') || mime.includes('spreadsheet')) return 'xls';
+        const parts = mime.split('/');
+        return parts.length > 1 ? parts[1].replace('jpeg', 'jpg') : fallback;
+      };
+
       const bindPdfViewLink = (link, ct) => {
         link.addEventListener('click', (evt) => {
           evt.preventDefault();
           const base64 = state.tempContractsData[ct] ? state.tempContractsData[ct].contractPdf : null;
           if (base64) {
+            const ext = getExtensionFromMime(base64, 'pdf');
             const downloadLink = document.createElement('a');
             downloadLink.href = base64;
-            downloadLink.download = `contract_${ct.replace(/[\s\(\)]+/g, '_')}.pdf`;
+            downloadLink.download = `contract_${ct.replace(/[\s\(\)]+/g, '_')}.${ext}`;
             document.body.appendChild(downloadLink);
             downloadLink.click();
             document.body.removeChild(downloadLink);
@@ -5486,27 +5514,72 @@ document.addEventListener('DOMContentLoaded', () => {
         bindPdfViewLink(link, ct);
       });
 
+      const bindSitemapViewLinks = (previewsDiv, ct) => {
+        previewsDiv.querySelectorAll('.view-sitemap-pdf-link').forEach(link => {
+          link.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            const idx = parseInt(link.getAttribute('data-index'));
+            const siteMaps = (state.tempContractsData[ct] && state.tempContractsData[ct].siteMaps) ? state.tempContractsData[ct].siteMaps : [];
+            const item = siteMaps[idx];
+            if (item) {
+              const data = typeof item === 'string' ? item : item.data;
+              const name = typeof item === 'string' ? `sitemap_${idx+1}` : item.name;
+              const ext = getExtensionFromMime(data, 'png');
+              const downloadLink = document.createElement('a');
+              downloadLink.href = data;
+              downloadLink.download = name.includes('.') ? name : `${name}.${ext}`;
+              document.body.appendChild(downloadLink);
+              downloadLink.click();
+              document.body.removeChild(downloadLink);
+            }
+          });
+        });
+      };
+
       // Bind Site Maps uploader
       const renderSitemapPreviews = (ct) => {
         const previewsDiv = document.querySelector(`.sitemap-previews[data-service="${ct}"]`);
         if (!previewsDiv) return;
         const siteMaps = (state.tempContractsData[ct] && state.tempContractsData[ct].siteMaps) ? state.tempContractsData[ct].siteMaps : [];
-        previewsDiv.innerHTML = siteMaps.map((img, idx) => `
-          <div style="position:relative; width:48px; height:48px; border:1px solid #CBD5E1; border-radius:4px; overflow:hidden;">
-            <img src="${img}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="window.open('${img}', '_blank')" />
-            <span class="sitemap-delete" data-service="${ct}" data-index="${idx}" style="position:absolute; top:-2px; right:2px; color:#EF4444; font-weight:bold; cursor:pointer; font-size:12px; background:rgba(255,255,255,0.8); border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">×</span>
-          </div>
-        `).join('');
+        previewsDiv.innerHTML = siteMaps.map((item, idx) => {
+          const data = typeof item === 'string' ? item : item.data;
+          const name = typeof item === 'string' ? `Site Map ${idx+1}` : item.name;
+          const isImage = data && data.startsWith('data:image/');
+          if (isImage) {
+            return `
+              <div style="position:relative; width:48px; height:48px; border:1px solid #CBD5E1; border-radius:4px; overflow:hidden;" title="${name}">
+                <img src="${data}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="window.open('${data}', '_blank')" />
+                <span class="sitemap-delete" data-service="${ct}" data-index="${idx}" style="position:absolute; top:-2px; right:2px; color:#EF4444; font-weight:bold; cursor:pointer; font-size:12px; background:rgba(255,255,255,0.8); border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">×</span>
+              </div>
+            `;
+          } else {
+            return `
+              <div style="position:relative; display:flex; align-items:center; gap:0.25rem; border:1px solid #CBD5E1; border-radius:4px; padding:0.2rem 0.4rem; background:#F8FAFC; max-width:180px; overflow:hidden;" title="${name}">
+                <span style="font-size:1.2rem;">📄</span>
+                <a href="#" class="view-sitemap-pdf-link" data-service="${ct}" data-index="${idx}" style="font-size:0.7rem; color:var(--primary-red); text-decoration:none; font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; max-width:110px;">${name}</a>
+                <span class="sitemap-delete" data-service="${ct}" data-index="${idx}" style="color:#EF4444; font-weight:bold; cursor:pointer; font-size:12px; margin-left:4px; display:inline-block; line-height:1;">×</span>
+              </div>
+            `;
+          }
+        }).join('');
 
         previewsDiv.querySelectorAll('.sitemap-delete').forEach(delBtn => {
           delBtn.addEventListener('click', (evt) => {
             evt.stopPropagation();
             const idx = parseInt(delBtn.getAttribute('data-index'));
             state.tempContractsData[ct].siteMaps.splice(idx, 1);
-            renderSitemapPreviews(delBtn.getAttribute('data-service'));
+            renderSitemapPreviews(ct);
           });
         });
+
+        bindSitemapViewLinks(previewsDiv, ct);
       };
+
+      // Populate sitemap previews initially
+      document.querySelectorAll('.sitemap-previews').forEach(div => {
+        const ct = div.getAttribute('data-service');
+        renderSitemapPreviews(ct);
+      });
 
       document.querySelectorAll('.cli-ctrl-sitemaps').forEach(inp => {
         inp.addEventListener('change', (e) => {
@@ -5516,13 +5589,16 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!state.tempContractsData[ct].siteMaps) state.tempContractsData[ct].siteMaps = [];
 
           Array.from(files).forEach(file => {
-            if (file.size > 10 * 1024 * 1024) {
-              showToast(`Image ${file.name} exceeds 10MB limit.`, 'error');
+            if (file.size > 15 * 1024 * 1024) {
+              showToast(`File ${file.name} exceeds 15MB limit.`, 'error');
               return;
             }
             const reader = new FileReader();
             reader.onload = (evt) => {
-              state.tempContractsData[ct].siteMaps.push(evt.target.result);
+              state.tempContractsData[ct].siteMaps.push({
+                name: file.name,
+                data: evt.target.result
+              });
               renderSitemapPreviews(ct);
             };
             reader.readAsDataURL(file);
@@ -11537,7 +11613,7 @@ document.addEventListener('DOMContentLoaded', () => {
             address: `${rep ? rep.city : 'Baghdad'}, Iraq (Sales Portal Won)`,
             sector: 'Commercial',
             contractValue: dealObj.expectedValue,
-            contractCurrency: dealObj.currency || 'USD',
+            contractCurrency: dealObj.currency || 'IQD',
             monthlyVisits: dealObj.costStructure ? dealObj.costStructure.visitsPerMonth : 4,
             baitStationsCount: dealObj.costStructure ? dealObj.costStructure.baitStations : 10,
             uvMachinesCount: 0,
@@ -12026,8 +12102,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="display:flex; gap:0.5rem; align-items:center;">
               <input type="number" id="deal-modal-value" class="form-control" style="flex:1;" required value="${deal ? (deal.expectedValue || '') : ''}" placeholder="Value">
               <select id="deal-modal-currency" class="form-control" style="max-width:90px; font-weight:700;">
+                <option value="IQD" ${!deal || deal.currency === 'IQD' ? 'selected' : ''}>IQD (IQD)</option>
                 <option value="USD" ${deal && deal.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
-                <option value="IQD" ${deal && deal.currency === 'IQD' ? 'selected' : ''}>IQD (IQD)</option>
               </select>
             </div>
           </div>
@@ -12191,8 +12267,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; background:#EFF6FF; border:1px solid #BFDBFE; padding:0.5rem 1rem; border-radius:6px;">
         <span style="font-weight:700; font-size:0.85rem; color:#1E40AF;">Select Costing Currency:</span>
         <select id="cost-currency" class="form-control" style="max-width:120px; font-weight:700;">
-          <option value="USD" ${deal.currency === 'USD' || !deal.currency ? 'selected' : ''}>USD ($)</option>
-          <option value="IQD" ${deal.currency === 'IQD' ? 'selected' : ''}>IQD (IQD)</option>
+          <option value="IQD" ${deal.currency === 'IQD' || !deal.currency ? 'selected' : ''}>IQD (IQD)</option>
+          <option value="USD" ${deal.currency === 'USD' ? 'selected' : ''}>USD ($)</option>
         </select>
       </div>
     `;
@@ -12361,7 +12437,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currency === 'IQD') {
         return `${Math.round(val).toLocaleString()} IQD`;
       }
-      return `$${val.toFixed(2)}`;
+      return `$${parseFloat(val.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const updatePricingSummary = () => {
