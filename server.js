@@ -51,7 +51,10 @@ const WRITE_PERMISSIONS = {
   sectors: ['gm', 'tech manager'],
   suppliers: ['gm', 'tech manager', 'operations manager', 'admin coordinator', 'team leader', 'sales manager', 'sales representative'],
   salesDeals: ['gm', 'sales manager', 'sales representative'],
-  complaints: ['gm', 'tech manager', 'operations manager', 'admin coordinator', 'team leader']
+  complaints: ['gm', 'tech manager', 'operations manager', 'admin coordinator', 'team leader'],
+  inspections: ['gm', 'tech manager', 'operations manager', 'admin coordinator', 'team leader'],
+  riskAssessments: ['gm', 'tech manager', 'operations manager', 'admin coordinator', 'team leader'],
+  formTemplates: ['gm', 'tech manager', 'operations manager', 'admin coordinator']
 };
 
 function hasWritePermission(role, entity) {
@@ -127,7 +130,7 @@ const VALID_ENTITIES = [
   'users', 'clients', 'items', 'schedules', 'operationLogs', 'commuteLog',
   'complaints', 'notifications', 'messages', 'attendanceLog', 'vehicles',
   'sectors', 'sanitationNotes', 'media', 'mediaCategories', 'suppliers',
-  'salesDeals', 'driverShifts'
+  'salesDeals', 'driverShifts', 'inspections', 'riskAssessments', 'formTemplates'
 ];
 
 // Helper to filter results by region constraints on the server
@@ -195,6 +198,24 @@ async function applyRegionFilter(entity, user, rows) {
   // 5. Users (Only show users of the same region)
   if (entity === 'users') {
     return rows.filter(r => r.region === userRegion || r.id === user.id);
+  }
+
+  // 6. Inspections and Risk Assessments (Filter by client/prospect region)
+  if (['inspections', 'riskAssessments'].includes(entity)) {
+    const clients = await all(`SELECT id, region FROM clients`);
+    const deals = await all(`SELECT id, clientId FROM salesDeals`);
+    const clientRegionMap = clients.reduce((map, c) => ({ ...map, [c.id]: c.region }), {});
+    const dealClientMap = deals.reduce((map, d) => ({ ...map, [d.id]: d.clientId }), {});
+    return rows.filter(r => {
+      if (!r.clientRef) return false;
+      const [type, refId] = r.clientRef.split(':');
+      if (type === 'client') {
+        return clientRegionMap[refId] === userRegion;
+      } else {
+        const cId = dealClientMap[refId];
+        return !cId || clientRegionMap[cId] === userRegion;
+      }
+    });
   }
 
   return rows;

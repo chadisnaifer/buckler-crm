@@ -1,4 +1,5 @@
 edge_user_data/
+edge_user_data_test/
 *.bat
 *.ps1
 *.py

@@ -171,7 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
     filterScheduleTL: document.getElementById('filter-schedule-tl'),
     filterScheduleService: document.getElementById('filter-schedule-service'),
     filterScheduleStatus: document.getElementById('filter-schedule-status'),
-    filterScheduleDate: document.getElementById('filter-schedule-date'),
+    filterScheduleDateFrom: document.getElementById('filter-schedule-date-from'),
+    filterScheduleDateTo: document.getElementById('filter-schedule-date-to'),
     btnClearScheduleFilters: document.getElementById('btn-clear-schedule-filters'),
     
     // Schedules Layout Toggle and Calendar Controls
@@ -319,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnExportReportCsv: document.getElementById('btn-export-report-csv'),
     btnCopyReportLink: document.getElementById('btn-copy-report-link'),
     btnEmailReport: document.getElementById('btn-email-report'),
+    btnWhatsAppReport: document.getElementById('btn-whatsapp-report'),
     
     // UV Sales visual elements
     uvSalesVisualContainer: document.getElementById('uv-sales-visual-container'),
@@ -441,12 +443,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = state.currentUser.role.toLowerCase();
     if (role === 'gm') return true;
     
+    if (role === 'team leader') {
+      if (!isTLCheckedIn()) {
+        return tabId === 'schedules';
+      }
+    }
+    
     if (state.currentUser.permissions && state.currentUser.permissions[tabId] !== undefined) {
       return state.currentUser.permissions[tabId] !== 'none';
     }
     
     if (role === 'team leader') {
-      return ['schedules', 'complaints', 'messages'].includes(tabId);
+      return ['schedules', 'complaints', 'messages', 'media'].includes(tabId);
     }
     return true;
   }
@@ -457,6 +465,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (role === 'gm') return true;
     if (role === 'team leader' && tabId === 'suppliers') return false;
     if (tabId === 'suppliers') return true; // Allow other roles to manage suppliers
+    
+    if (role === 'team leader' && !isTLCheckedIn()) {
+      return false;
+    }
     
     if (state.currentUser.permissions && state.currentUser.permissions[tabId] !== undefined) {
       return state.currentUser.permissions[tabId] === 'edit';
@@ -824,7 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto-redirect if on a blocked tab
     if (!hasAccessPermission(state.activeTab)) {
-      const allTabs = ['dashboard', 'sales', 'schedules', 'clients', 'items', 'suppliers', 'complaints', 'messages', 'uv-sales', 'reports', 'users', 'forms'];
+      const allTabs = ['dashboard', 'sales', 'schedules', 'clients', 'items', 'suppliers', 'complaints', 'messages', 'uv-sales', 'reports', 'users', 'forms', 'vehicles', 'media'];
       const allowed = allTabs.find(t => hasAccessPermission(t));
       if (allowed) {
         switchTab(allowed);
@@ -929,7 +941,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (els.filterScheduleClient) els.filterScheduleClient.value = 'All';
     if (els.filterScheduleService) els.filterScheduleService.value = 'All';
     if (els.filterScheduleStatus) els.filterScheduleStatus.value = 'All';
-    if (els.filterScheduleDate) els.filterScheduleDate.value = '';
+    if (els.filterScheduleDateFrom) els.filterScheduleDateFrom.value = '';
+    if (els.filterScheduleDateTo) els.filterScheduleDateTo.value = '';
     populateScheduleClientFilter(getRestrictedRegion());
     populateTLFilterOptions(getRestrictedRegion());
 
@@ -940,7 +953,8 @@ document.addEventListener('DOMContentLoaded', () => {
       els.filterScheduleTL,
       els.filterScheduleService,
       els.filterScheduleStatus,
-      els.filterScheduleDate,
+      els.filterScheduleDateFrom,
+      els.filterScheduleDateTo,
       els.searchSchedule ? els.searchSchedule.closest('.search-input-wrapper') : null,
       document.getElementById('btn-clear-schedule-filters')
     ];
@@ -970,9 +984,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (tabId === 'schedules') {
       state.calendarCurrentDate = new Date();
-      if (els.filterScheduleDate) {
+      if (els.filterScheduleDateFrom) {
         const todayStr = formatDateLocal(new Date());
-        els.filterScheduleDate.value = todayStr;
+        els.filterScheduleDateFrom.value = todayStr;
+      }
+      if (els.filterScheduleDateTo) {
+        els.filterScheduleDateTo.value = '';
       }
     }
     
@@ -1031,6 +1048,8 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 'users':
         renderUsers();
+        break;
+      case 'vehicles':
         renderVehicles();
         break;
       case 'uv-sales':
@@ -1200,7 +1219,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     els.filterScheduleStatus.addEventListener('change', updateSchFilters);
-    els.filterScheduleDate.addEventListener('change', updateSchFilters);
+    if (els.filterScheduleDateFrom) els.filterScheduleDateFrom.addEventListener('change', updateSchFilters);
+    if (els.filterScheduleDateTo) els.filterScheduleDateTo.addEventListener('change', updateSchFilters);
     
     els.btnClearScheduleFilters.addEventListener('click', () => {
       els.searchSchedule.value = '';
@@ -1218,7 +1238,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       lastSelectedTLs = ['All'];
       els.filterScheduleStatus.value = 'All';
-      els.filterScheduleDate.value = '';
+      if (els.filterScheduleDateFrom) els.filterScheduleDateFrom.value = '';
+      if (els.filterScheduleDateTo) els.filterScheduleDateTo.value = '';
       if (els.filterScheduleService) els.filterScheduleService.value = 'All';
 
       renderSchedules();
@@ -2402,8 +2423,8 @@ document.addEventListener('DOMContentLoaded', () => {
           route.push({
             id: sch.clientId,
             name: client ? client.name : 'Unknown Client',
-            lat: client ? client.lat : hubCoords.lat,
-            lng: client ? client.lng : hubCoords.lng,
+            lat: (client && client.lat) ? client.lat : hubCoords.lat,
+            lng: (client && client.lng) ? client.lng : hubCoords.lng,
             x: svgPoint.x,
             y: svgPoint.y,
             time: sch.time,
@@ -2624,7 +2645,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     const targetStatus = els.filterScheduleStatus.value;
-    const targetDate = els.filterScheduleDate.value;
+    const targetDateFrom = els.filterScheduleDateFrom ? els.filterScheduleDateFrom.value : '';
+    const targetDateTo = els.filterScheduleDateTo ? els.filterScheduleDateTo.value : '';
     const targetService = els.filterScheduleService ? els.filterScheduleService.value : 'All';
     const searchQuery = els.searchSchedule.value.toLowerCase();
 
@@ -2641,7 +2663,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const matchStatus = targetStatus === 'All' ? true : sch.status === targetStatus;
       const matchDate = (state.scheduleActiveView === 'calendar' && state.calendarPeriod !== 'Day')
         ? true
-        : (targetDate === '' ? true : sch.date === targetDate);
+        : ((!targetDateFrom || sch.date >= targetDateFrom) && (!targetDateTo || sch.date <= targetDateTo));
       const matchClient = targetClient === 'All' ? true : sch.clientId === targetClient;
       const matchCity = targetCity === 'All' ? true : sch.city === targetCity;
       const matchService = targetService === 'All' ? true : sch.service === targetService;
@@ -3459,7 +3481,7 @@ document.addEventListener('DOMContentLoaded', () => {
     els.itemsTableBody.innerHTML = filteredItems.length ? filteredItems.map(i => {
       const picHtml = i.picture 
         ? `<img src="${i.picture}" class="product-thumb-click" data-id="${i.id}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; cursor: pointer; border: 1.5px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.08)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)'" />`
-        : `<div style="width: 40px; height: 40px; border-radius: 6px; background: #F1F5F9; border: 1.5px dashed var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.2rem; font-weight: 700; margin: 0 auto; user-select: none;">📦</div>`;
+        : `<div class="product-thumb-click" data-id="${i.id}" style="width: 40px; height: 40px; border-radius: 6px; background: #F1F5F9; border: 1.5px dashed var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.2rem; font-weight: 700; margin: 0 auto; user-select: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.08)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)'">📦</div>`;
       return `
         <tr>
           <td style="text-align: center; vertical-align: middle; padding: 0.5rem 0.25rem;">${picHtml}</td>
@@ -3503,7 +3525,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.product-thumb-click').forEach(img => {
       img.addEventListener('click', () => {
-        openProductImageLightbox(img.getAttribute('data-id'));
+        openItemModal(img.getAttribute('data-id'));
       });
     });
 
@@ -3814,7 +3836,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSectors();
   }
 
-  // Vehicles Fleet Registry Management
+  // Vehicles Registry Management
   function renderVehicles() {
     const vehicles = window.BucklerDB.get('vehicles');
     const users = window.BucklerDB.get('users');
@@ -3849,7 +3871,8 @@ document.addEventListener('DOMContentLoaded', () => {
       filtered = filtered.filter(v => 
         (v.type || '').toLowerCase().includes(searchQuery) ||
         (v.model || '').toLowerCase().includes(searchQuery) ||
-        (v.plateNo || '').toLowerCase().includes(searchQuery)
+        (v.plateNo || '').toLowerCase().includes(searchQuery) ||
+        (v.registryNo || '').toLowerCase().includes(searchQuery)
       );
     }
 
@@ -3866,6 +3889,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><strong>${v.type}</strong></td>
           <td>${v.model}</td>
           <td><code>${v.plateNo}</code></td>
+          <td>${v.registryNo ? `<code>${v.registryNo}</code>` : '<span style="color:var(--text-muted); font-style:italic;">N/A</span>'}</td>
+          <td>${v.registryDoc ? `<a href="#" onclick="window.openBase64Document('${v.registryDoc}'); return false;" style="color:var(--primary-red); font-weight:700; text-decoration:none;">📄 View</a>` : '<span style="color:var(--text-muted); font-style:italic;">None</span>'}</td>
           <td><span class="badge-region badge-region-${v.region.toLowerCase()}">${v.region}</span></td>
           <td>${tlName}</td>
           ${canManage ? `
@@ -3878,7 +3903,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ` : '<td>-</td>'}
         </tr>
       `;
-    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No vehicles found.</td></tr>`;
+    }).join('') : `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No vehicles found.</td></tr>`;
 
     // Hook vehicle buttons
     tableBody.querySelectorAll('.edit-vehicle-btn').forEach(b => {
@@ -3938,6 +3963,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-group row-split">
           <div>
+            <label for="veh-modal-regno">Registry No.</label>
+            <input type="text" id="veh-modal-regno" class="form-control" value="${vehicle ? (vehicle.registryNo || '') : ''}" placeholder="e.g. 12345" />
+          </div>
+          <div>
+            <label for="veh-modal-regdoc">Registration Document (PDF/Image)</label>
+            <input type="file" id="veh-modal-regdoc" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="font-size:0.8rem;" />
+            ${vehicle && vehicle.registryDoc ? `<div style="margin-top:4px; font-size:0.75rem;"><a href="${vehicle.registryDoc}" target="_blank" style="color:var(--primary-red); font-weight:700; text-decoration:none;">📄 View current document</a></div>` : ''}
+          </div>
+        </div>
+        <div class="form-group row-split">
+          <div>
             <label for="veh-modal-region">Region *</label>
             <select id="veh-modal-region" class="form-control" required>
               ${regionOptions}
@@ -3954,6 +3990,24 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     showModal(isEdit ? 'Edit Vehicle Details' : 'Log New Vehicle', html);
+
+    // Handle registry document file upload
+    const regDocInput = document.getElementById('veh-modal-regdoc');
+    if (regDocInput) {
+      regDocInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const maxSize = 15 * 1024 * 1024;
+        if (file.size > maxSize) {
+          showToast(`File too large. Max 15MB.`, 'error');
+          regDocInput.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => { regDocInput.dataset.base64 = reader.result; };
+        reader.readAsDataURL(file);
+      });
+    }
   }
 
   // --- UV Machine Sales Registry ---
@@ -4358,8 +4412,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // KPI 3: Total Stickers Replaced
-    let totalStickers = filteredLogs.reduce((sum, l) => sum + (l.baitStickersReplaced || 0), 0);
+    // KPI 3: Total Replaced (using new outcome field, fallback to baitStickersReplaced)
+    let totalStickers = 0;
+    filteredLogs.forEach(l => {
+      if (l.baitStationsAudit && l.baitStationsAudit.length) {
+        l.baitStationsAudit.forEach(a => {
+          if ((a.outcome || a.activity) === 'Replaced') totalStickers++;
+        });
+      } else {
+        totalStickers += l.baitStickersReplaced || 0;
+      }
+    });
 
     document.getElementById('bait-kpi-target').textContent = totalTarget;
     document.getElementById('bait-kpi-checked').textContent = totalChecked;
@@ -4443,9 +4506,9 @@ document.addEventListener('DOMContentLoaded', () => {
             clientName: c.name,
             region: c.region,
             stationNumber: audit.number,
+            stationType: audit.type || 'Internal',
+            outcome: audit.outcome || audit.activity || 'Replaced',
             location: audit.location || 'N/A',
-            activity: audit.activity || 'No Activity',
-            stickersReplaced: l.baitStickersReplaced || 0,
             comment: audit.comments || audit.comment || '—'
           });
         });
@@ -4456,19 +4519,20 @@ document.addEventListener('DOMContentLoaded', () => {
       detailedBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">No bait station activity logs found in the selected period.</td></tr>`;
     } else {
       detailedBody.innerHTML = auditRows.map(r => {
-        const hasAct = r.activity !== 'No Activity';
-        const actBg = hasAct ? '#FEE2E2' : '#ECFDF5';
-        const actColor = hasAct ? '#991B1B' : '#065F46';
+        const isExternal = r.stationType === 'External';
+        const isCaptured = r.outcome === 'Captured';
+        const outcomeColor = isCaptured ? { bg: '#FEF3C7', color: '#92400E' } : { bg: '#DCFCE7', color: '#065F46' };
+        const typeColor = isExternal ? { bg: '#EFF6FF', color: '#1D4ED8' } : { bg: '#F3F4F6', color: '#374151' };
         return `
           <tr>
             <td><strong>${r.date}</strong></td>
             <td><strong><a href="#" class="client-click" data-id="${r.clientId}" style="color:inherit; font-weight:700; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${r.clientName}</a></strong></td>
             <td><span class="badge-region badge-region-${r.region.toLowerCase()}">${r.region}</span></td>
             <td style="text-align:center; font-weight:700;">${r.stationNumber}</td>
+            <td><span style="background:${typeColor.bg}; color:${typeColor.color}; padding:0.2rem 0.45rem; border-radius:10px; font-size:0.72rem; font-weight:700;">${isExternal ? '🌿 External' : '🏠 Internal'}</span></td>
+            <td><span style="background:${outcomeColor.bg}; color:${outcomeColor.color}; padding:0.2rem 0.45rem; border-radius:10px; font-size:0.72rem; font-weight:700;">${isCaptured ? '🪤 Captured' : '✅ Replaced'}</span></td>
             <td>${r.location}</td>
-            <td><span style="background:${actBg}; color:${actColor}; padding:0.25rem 0.5rem; border-radius:12px; font-size:0.75rem; font-weight:700; display:inline-block;">${r.activity}</span></td>
-            <td style="text-align:center; font-weight:700; color:#10B981;">${r.stickersReplaced}</td>
-            <td><div style="font-size:0.75rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.comment}">${r.comment}</div></td>
+            <td><div style="font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.comment}">${r.comment}</div></td>
           </tr>
         `;
       }).join('');
@@ -4497,6 +4561,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderMediaTab() {
+    const canEditMedia = hasEditPermission('media');
+    if (els.btnMediaUploadFile) els.btnMediaUploadFile.style.display = canEditMedia ? 'inline-flex' : 'none';
+    if (els.btnMediaManageCategories) els.btnMediaManageCategories.style.display = canEditMedia ? 'inline-flex' : 'none';
+
     const searchVal = els.mediaSearch ? els.mediaSearch.value.trim().toLowerCase() : '';
     const catVal = els.mediaFilterCategory ? els.mediaFilterCategory.value : 'All';
 
@@ -4589,12 +4657,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="${f.data}" download="${f.name}" class="btn btn-secondary" style="flex:1; padding:0.3rem; font-size:0.75rem; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:3px;" title="Download file">
                   📥 <span>Download</span>
                 </a>
+                ${canEditMedia ? `
                 <button class="btn btn-secondary btn-media-edit-file" data-id="${f.id}" style="padding:0.3rem; font-size:0.75rem; display:flex; align-items:center; justify-content:center;" title="Edit file details">
                   ✏️
                 </button>
                 <button class="btn btn-secondary btn-media-delete-file" data-id="${f.id}" style="padding:0.3rem; font-size:0.75rem; display:flex; align-items:center; justify-content:center; color:var(--primary-red);" title="Delete file">
                   🗑️
                 </button>
+                ` : ''}
               </div>
             </div>
           `;
@@ -4735,11 +4805,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-          const limit = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+          const limit = 15 * 1024 * 1024;
           if (file.size > limit) {
-            const limitMsg = isPdf 
-              ? (state.language === 'ar' ? 'حجم ملف الـ PDF يتجاوز 10 ميغابايت' : 'PDF file size exceeds 10MB (Max 10MB for PDFs)')
-              : (state.language === 'ar' ? 'حجم الملف يتجاوز 5 ميغابايت' : 'File size exceeds 5MB');
+            const limitMsg = state.language === 'ar' ? 'حجم الملف يتجاوز 15 ميغابايت' : 'File size exceeds 15MB';
             showToast(limitMsg, 'error');
             return;
           }
@@ -4927,6 +4995,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Schedule Modal
   function openScheduleModal(id = null, prefillDate = null, prefillTime = null) {
+    const canEdit = hasEditPermission('schedules');
+    if (!id && !canEdit) {
+      showToast('You do not have permission to schedule new operations.', 'error');
+      return;
+    }
     const isEdit = !!id;
     state.editingRecord = { entity: 'schedules', id: id };
     
@@ -4949,8 +5022,19 @@ document.addEventListener('DOMContentLoaded', () => {
       tls = tls.filter(t => t.city === cityRestr);
     }
 
-    const clientOptions = clients.map(c => `
-      <option value="${c.id}" ${schedule && schedule.clientId === c.id ? 'selected' : ''}>${c.name} (${c.region})</option>
+    const sortedClients = [...clients].sort((a, b) => {
+      if (a.region !== b.region) return a.region.localeCompare(b.region);
+      return a.name.localeCompare(b.name);
+    });
+    const regionGroups = {};
+    sortedClients.forEach(c => {
+      if (!regionGroups[c.region]) regionGroups[c.region] = [];
+      regionGroups[c.region].push(c);
+    });
+    const clientOptions = Object.entries(regionGroups).map(([region, regionClients]) => `
+      <optgroup label="── ${region} Region ──">
+        ${regionClients.map(c => `<option value="${c.id}" ${schedule && schedule.clientId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+      </optgroup>
     `).join('');
 
     const serviceCheckboxes = services.map(s => {
@@ -4961,7 +5045,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       return `
         <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; cursor:pointer; padding:0.2rem 0.4rem; border-radius:4px; transition:background 0.15s;" onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='transparent'">
-          <input type="checkbox" name="sch-modal-service-cb" value="${s}" ${isChecked ? 'checked' : ''} style="accent-color:var(--primary-red); width:14px; height:14px;">
+          <input type="checkbox" name="sch-modal-service-cb" value="${s}" ${isChecked ? 'checked' : ''} style="accent-color:var(--primary-red); width:14px; height:14px;" ${!canEdit ? 'disabled' : ''}>
           <span style="text-transform:capitalize;">${s}</span>
         </label>
       `;
@@ -4981,7 +5065,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <form id="schedule-form">
         <div class="form-group">
           <label for="sch-modal-client">Client *</label>
-          <select id="sch-modal-client" class="form-control" required>
+          <select id="sch-modal-client" class="form-control" required ${!canEdit ? 'disabled' : ''}>
             ${clientOptions}
           </select>
         </div>
@@ -4994,13 +5078,13 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="form-group row-split">
           <div>
             <label for="sch-modal-region">Region *</label>
-            <select id="sch-modal-region" class="form-control" required>
+            <select id="sch-modal-region" class="form-control" required ${!canEdit ? 'disabled' : ''}>
               ${regionOptions}
             </select>
           </div>
           <div>
             <label for="sch-modal-city">City *</label>
-            <select id="sch-modal-city" class="form-control" required>
+            <select id="sch-modal-city" class="form-control" required ${!canEdit ? 'disabled' : ''}>
               ${cityOptions}
             </select>
           </div>
@@ -5008,17 +5092,17 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="form-group row-split">
           <div>
             <label for="sch-modal-date">Date *</label>
-            <input type="date" id="sch-modal-date" class="form-control" value="${dateVal}" required>
+            <input type="date" id="sch-modal-date" class="form-control" value="${dateVal}" required ${!canEdit ? 'disabled' : ''}>
           </div>
           <div>
             <label for="sch-modal-time">Time *</label>
-            <input type="time" id="sch-modal-time" class="form-control" value="${timeVal}" required>
+            <input type="time" id="sch-modal-time" class="form-control" value="${timeVal}" required ${!canEdit ? 'disabled' : ''}>
           </div>
         </div>
         <div class="form-group">
           <label>Allocate Team Leader(s) *</label>
           <div class="multiselect-dropdown" id="sch-modal-tl-dropdown">
-            <button type="button" class="multiselect-toggle" id="sch-modal-tl-btn">
+            <button type="button" class="multiselect-toggle" id="sch-modal-tl-btn" ${!canEdit ? 'disabled' : ''}>
               <span id="multiselect-label">Select Team Leader(s)</span>
               <span style="font-size: 0.7rem; color: var(--text-muted); pointer-events: none;">▼</span>
             </button>
@@ -5029,16 +5113,21 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-group">
           <label for="sch-modal-visittype">Visit Type *</label>
-          <select id="sch-modal-visittype" class="form-control" required>
+          <select id="sch-modal-visittype" class="form-control" required ${!canEdit ? 'disabled' : ''}>
             <option value="Regular" ${schedule && schedule.visitType === 'Regular' ? 'selected' : ''}>Regular</option>
             <option value="Call-back" ${schedule && schedule.visitType === 'Call-back' ? 'selected' : ''}>Call-back</option>
             <option value="Inspection" ${schedule && schedule.visitType === 'Inspection' ? 'selected' : ''}>Inspection</option>
+            <option value="Sales" ${schedule && schedule.visitType === 'Sales' ? 'selected' : ''}>Sales</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label for="sch-modal-notes">Notes <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">(visible to team leader during visit)</span></label>
+          <textarea id="sch-modal-notes" class="form-control" placeholder="Instructions, special requirements, access codes, etc." style="min-height:60px; resize:vertical;" ${!canEdit ? 'disabled' : ''}>${schedule ? (schedule.notes || '') : ''}</textarea>
         </div>
       </form>
     `;
 
-    showModal(isEdit ? 'Edit Scheduled Operation' : 'Schedule New Operation', html, true, 'modal-lg');
+    showModal(isEdit ? 'Edit Scheduled Operation' : 'Schedule New Operation', html, canEdit, 'modal-lg');
 
     const clientSelect = document.getElementById('sch-modal-client');
     const rSelect = document.getElementById('sch-modal-region');
@@ -5048,6 +5137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuEl = document.getElementById('sch-modal-tl-menu');
 
     toggleBtn.addEventListener('click', (e) => {
+      if (!canEdit) return;
       e.stopPropagation();
       const isShown = menuEl.style.display === 'flex';
       menuEl.style.display = isShown ? 'none' : 'flex';
@@ -5089,7 +5179,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (menuContainer) {
         menuContainer.innerHTML = activeTLs.length ? activeTLs.map(t => `
           <label style="display:flex; align-items:center; gap:6px; font-weight:normal; margin:0; cursor:pointer; font-size:0.85rem; padding: 4px 6px; border-radius: 4px;" class="multiselect-item-label">
-            <input type="checkbox" name="sch-modal-tl-cb" value="${t.id}" data-name="${t.name}" ${curAssigned.includes(t.id) ? 'checked' : ''} style="width:16px; height:16px; margin:0; cursor:pointer;">
+            <input type="checkbox" name="sch-modal-tl-cb" value="${t.id}" data-name="${t.name}" ${curAssigned.includes(t.id) ? 'checked' : ''} style="width:16px; height:16px; margin:0; cursor:pointer;" ${!canEdit ? 'disabled' : ''}>
             <span>${t.name}</span>
           </label>
         `).join('') : `<span style="font-size:0.8rem; color:var(--text-muted); font-style:italic; padding: 4px;">No team leaders in this region</span>`;
@@ -5153,8 +5243,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-group row-split">
           <div>
-            <label for="cli-modal-code">Client Code *</label>
-            <input type="text" id="cli-modal-code" class="form-control" value="${client ? (client.clientCode || '') : ''}" placeholder="e.g. BGD-MALL" required ${!canEdit ? 'disabled' : ''}>
+            <label for="cli-modal-code">Client Code</label>
+            <input type="text" id="cli-modal-code" class="form-control" value="${client ? (client.clientCode || '') : ''}" placeholder="e.g. BGD-MALL (optional)" ${!canEdit ? 'disabled' : ''}>
           </div>
           <div>
             <label for="cli-modal-name">Client Name *</label>
@@ -5227,7 +5317,9 @@ document.addEventListener('DOMContentLoaded', () => {
               if (ct === 'Pest Control') {
                 const mVisits = c.monthlyVisits || '';
                 const hVisit = c.hoursPerVisit || '';
-                const bCount = c.baitStationsCount || '';
+                const internalBait = c.internalBaitStationsCount !== undefined ? c.internalBaitStationsCount : '';
+                const externalBait = c.externalBaitStationsCount !== undefined ? c.externalBaitStationsCount : '';
+                const bTotal = (parseInt(internalBait) || 0) + (parseInt(externalBait) || 0);
                 const uvCount = c.uvMachinesCount || '';
                 
                 specialFields = `
@@ -5241,15 +5333,26 @@ document.addEventListener('DOMContentLoaded', () => {
                       <input type="number" step="0.5" class="form-control cli-ctrl-hours" data-service="${ct}" value="${hVisit}" placeholder="e.g. 2" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
                     </div>
                   </div>
-                  <div class="form-group row-split" style="margin-bottom: 0.5rem;">
-                    <div>
-                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">Bait Stations *</label>
-                      <input type="number" class="form-control cli-ctrl-bait" data-service="${ct}" value="${bCount}" placeholder="e.g. 12" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
+                  <div style="margin-bottom:0.5rem; padding:0.5rem; border:1px solid #E2E8F0; border-radius:6px; background:white;">
+                    <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium); display:block; margin-bottom:0.35rem;">Bait Stations Breakdown *</label>
+                    <div class="form-group row-split" style="margin-bottom:0.25rem;">
+                      <div>
+                        <label style="font-size:0.68rem; color:var(--text-muted);">🏠 Internal</label>
+                        <input type="number" class="form-control cli-ctrl-bait-internal" data-service="${ct}" value="${internalBait}" placeholder="e.g. 8" min="0" ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:28px; font-size:0.78rem;">
+                      </div>
+                      <div>
+                        <label style="font-size:0.68rem; color:var(--text-muted);">🌿 External</label>
+                        <input type="number" class="form-control cli-ctrl-bait-external" data-service="${ct}" value="${externalBait}" placeholder="e.g. 4" min="0" ${!canEdit ? 'disabled' : ''} style="padding:0.2rem 0.4rem; height:28px; font-size:0.78rem;">
+                      </div>
+                      <div style="display:flex; flex-direction:column; justify-content:flex-end;">
+                        <label style="font-size:0.68rem; color:var(--text-muted);">Total</label>
+                        <div class="cli-bait-total-display" style="padding:0.2rem 0.6rem; height:28px; border:1px solid var(--border-color); border-radius:6px; background:#F1F5F9; font-size:0.78rem; font-weight:700; color:var(--text-dark); display:flex; align-items:center;">${bTotal || 0}</div>
+                      </div>
                     </div>
-                    <div>
-                      <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">UV Machines Sold *</label>
-                      <input type="number" class="form-control cli-ctrl-uv" data-service="${ct}" value="${uvCount}" placeholder="e.g. 4" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
-                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0.5rem;">
+                    <label style="font-size:0.72rem; font-weight:700; color:var(--text-medium);">UV Machines Sold *</label>
+                    <input type="number" class="form-control cli-ctrl-uv" data-service="${ct}" value="${uvCount}" placeholder="e.g. 4" ${isChecked ? 'required' : ''} ${!canEdit ? 'disabled' : ''} style="padding:0.25rem 0.5rem; height:30px; font-size:0.78rem;">
                   </div>
                 `;
               }
@@ -5432,6 +5535,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     inp.classList.contains('cli-ctrl-visits') ||
                     inp.classList.contains('cli-ctrl-hours') ||
                     inp.classList.contains('cli-ctrl-bait') ||
+            inp.classList.contains('cli-ctrl-bait-internal') ||
+            inp.classList.contains('cli-ctrl-bait-external') ||
                     inp.classList.contains('cli-ctrl-uv')) {
                   inp.setAttribute('required', 'required');
                 }
@@ -5788,8 +5893,8 @@ document.addEventListener('DOMContentLoaded', () => {
       imgInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-          if (file.size > 5 * 1024 * 1024) {
-            showToast('Image size exceeds 5MB limit', 'error');
+          if (file.size > 15 * 1024 * 1024) {
+            showToast('Image size exceeds 15MB limit', 'error');
             imgInput.value = '';
             return;
           }
@@ -5829,25 +5934,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
           dashboard: 'edit', schedules: 'edit', clients: 'edit', items: 'edit',
           complaints: 'edit', messages: 'edit', 'uv-sales': 'edit',
-          reports: 'see', 'sanitation-report': 'edit', users: 'edit'
+          reports: 'see', 'sanitation-report': 'edit', users: 'edit', media: 'edit'
         };
       } else if (r === 'tech manager' || r === 'operations manager' || r === 'admin coordinator') {
         return {
           dashboard: 'see', schedules: 'edit', clients: 'edit', items: 'edit',
           complaints: 'edit', messages: 'edit', 'uv-sales': 'see',
-          reports: 'see', 'sanitation-report': 'see', users: 'see'
+          reports: 'see', 'sanitation-report': 'see', users: 'see', media: 'edit'
         };
       } else if (r === 'tech supervisor') {
         return {
           dashboard: 'see', schedules: 'see', clients: 'see', items: 'see',
           complaints: 'edit', messages: 'edit', 'uv-sales': 'see',
-          reports: 'see', 'sanitation-report': 'see', users: 'none'
+          reports: 'see', 'sanitation-report': 'see', users: 'none', media: 'see'
         };
       } else { // team leader
         return {
           dashboard: 'none', schedules: 'edit', clients: 'none', items: 'none',
           complaints: 'see', messages: 'edit', 'uv-sales': 'none',
-          reports: 'none', 'sanitation-report': 'none', users: 'none'
+          reports: 'none', 'sanitation-report': 'none', users: 'none', media: 'see'
         };
       }
     };
@@ -5862,10 +5967,11 @@ document.addEventListener('DOMContentLoaded', () => {
       'uv-sales': 'UV Machine Sales',
       'reports': 'Operational Reports',
       'sanitation-report': 'Sanitation Report',
-      'users': 'User & CRM Admin'
+      'users': 'User & CRM Admin',
+      'media': 'Media Gallery'
     };
 
-    const permissionsHTML = ['dashboard', 'schedules', 'clients', 'items', 'complaints', 'messages', 'uv-sales', 'reports', 'sanitation-report', 'users'].map(tab => {
+    const permissionsHTML = ['dashboard', 'schedules', 'clients', 'items', 'complaints', 'messages', 'uv-sales', 'reports', 'sanitation-report', 'users', 'media'].map(tab => {
       const currentVal = user && user.permissions ? user.permissions[tab] : (user ? getDefaultPermissions(user.role)[tab] : 'none');
       return `
         <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr; gap:0.5rem; align-items:center; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size: 0.75rem;">
@@ -6086,24 +6192,15 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="margin-bottom:1rem; padding:0.75rem; background-color:var(--primary-red-light); border-radius:8px; border-left:4px solid var(--primary-red); font-size:0.85rem;">
         Client: <strong>${client ? client.name : 'Unknown'}</strong><br/>
         Service Scheduled: <strong>${sch.service}</strong> | Scheduled Time: ${sch.time}
+        ${sch.notes ? `<div style="margin-top:0.5rem; padding:0.5rem; background:rgba(255,255,255,0.7); border-radius:6px; border:1px solid var(--border-color);"><strong style="color:var(--primary-red);">📝 Notes:</strong> <span style="color:var(--text-dark);">${sch.notes}</span></div>` : ''}
       </div>
       <form id="op-log-form">
-        <div class="form-group row-split">
-          <div>
-            <label for="log-modal-time-in">Time-In (Arrival) *</label>
-            <input type="time" id="log-modal-time-in" class="form-control" value="${new Date().toTimeString().slice(0,5)}" required>
-          </div>
-          <div>
-            <label for="log-modal-time-out">Time-Out (Departure) *</label>
-            <input type="time" id="log-modal-time-out" class="form-control" value="${new Date(Date.now() + 2*3600*1000).toTimeString().slice(0,5)}" required>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="log-modal-geolocation">Geographical Coordinates (GPS) *</label>
-          <div style="display:flex; gap:0.5rem;">
-            <input type="text" id="log-modal-geolocation" class="form-control" value="${defaultGPS}" placeholder="Lat, Lng (e.g. 33.3128, 44.3615)" required>
-            <button type="button" class="btn btn-secondary" id="log-modal-geo-btn" style="white-space:nowrap; padding: 0.5rem 1rem;">📍 Current GPS</button>
+        <div class="form-group" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: #FAFAFA; margin-bottom: 1rem;">
+          <label style="font-weight:700; font-size:0.85rem; color:var(--text-dark); display:block; margin-bottom:0.5rem;">Arrival Check-In (Time-In) *</label>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <input type="time" id="log-modal-time-in" class="form-control" placeholder="Time In" required readonly style="background:#F1F5F9; color:var(--text-medium); font-weight:700; max-width:120px;">
+            <input type="text" id="log-modal-geolocation-in" class="form-control" placeholder="Arrival GPS (Click button to log)" required readonly style="background:#F1F5F9; color:var(--text-medium); font-weight:700;">
+            <button type="button" class="btn btn-secondary" id="btn-gps-time-in" style="white-space:nowrap; padding: 0.5rem 1rem;">📍 Log GPS Arrival</button>
           </div>
         </div>
         
@@ -6120,33 +6217,54 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="margin-top: 1.5rem; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
           <div class="form-check" style="display:flex; align-items:center; gap:0.5rem; margin-bottom: 0.5rem;">
             <input type="checkbox" id="log-modal-enable-bait" style="width:18px; height:18px; cursor:pointer;" />
-            <label for="log-modal-enable-bait" style="font-weight:700; cursor:pointer; margin:0; font-size:0.85rem; color:var(--text-dark); user-select:none;">Log Bait Stations Audit (${client.baitStationsCount} stations)</label>
+            <label for="log-modal-enable-bait" style="font-weight:700; cursor:pointer; margin:0; font-size:0.85rem; color:var(--text-dark); user-select:none;">Log Bait Stations Audit &nbsp;—&nbsp; <span style="color:var(--text-muted); font-weight:400;">Total: ${client.baitStationsCount} &nbsp;(🏠 Internal: ${client.internalBaitStationsCount || 0} &nbsp;| 🌿 External: ${client.externalBaitStationsCount || 0})</span></label>
           </div>
           
           <div id="log-modal-bait-section" style="display:none; margin-top:0.5rem; border:1px solid var(--border-color); border-radius:8px; padding:1rem; background:#F8FAFC; margin-bottom:1.5rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px dashed var(--border-color); padding-bottom:0.25rem;">
-              <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); margin:0;">Bait Stations Audit</h4>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-bait-audit-row" style="padding:0.25rem 0.5rem; font-size:0.75rem; line-height:1; min-width:auto; height:auto;">+ Add Station Log</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px dashed var(--border-color); padding-bottom:0.5rem;">
+              <div>
+                <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-dark); margin:0 0 0.2rem;">Bait Stations Audit</h4>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">Log each Replaced or Captured station individually. Follow-up count is calculated automatically.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-bait-audit-row" style="padding:0.3rem 0.7rem; font-size:0.75rem; line-height:1; min-width:auto; height:auto; white-space:nowrap;">+ Add Entry</button>
             </div>
-            <div style="max-height:220px; overflow-y:auto; margin-bottom:0.75rem; border:1px solid var(--border-color); border-radius:4px; background:white;">
+
+            <!-- Follow-up counter banner -->
+            <div style="display:flex; gap:1rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+              <div style="flex:1; min-width:100px; padding:0.5rem 0.75rem; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; text-align:center;">
+                <div style="font-size:0.68rem; font-weight:600; color:#1D4ED8; margin-bottom:0.1rem;">TOTAL STATIONS</div>
+                <div style="font-size:1.2rem; font-weight:800; color:#1E40AF;" id="bait-kpi-total">${client.baitStationsCount}</div>
+              </div>
+              <div style="flex:1; min-width:100px; padding:0.5rem 0.75rem; background:#ECFDF5; border:1px solid #A7F3D0; border-radius:8px; text-align:center;">
+                <div style="font-size:0.68rem; font-weight:600; color:#059669; margin-bottom:0.1rem;">REPLACED</div>
+                <div style="font-size:1.2rem; font-weight:800; color:#065F46;" id="bait-kpi-replaced">0</div>
+              </div>
+              <div style="flex:1; min-width:100px; padding:0.5rem 0.75rem; background:#FEF3C7; border:1px solid #FDE68A; border-radius:8px; text-align:center;">
+                <div style="font-size:0.68rem; font-weight:600; color:#D97706; margin-bottom:0.1rem;">CAPTURED</div>
+                <div style="font-size:1.2rem; font-weight:800; color:#92400E;" id="bait-kpi-captured">0</div>
+              </div>
+              <div style="flex:1; min-width:100px; padding:0.5rem 0.75rem; background:#FEE2E2; border:1px solid #FECACA; border-radius:8px; text-align:center;">
+                <div style="font-size:0.68rem; font-weight:600; color:#DC2626; margin-bottom:0.1rem;">FOLLOW-UP</div>
+                <div style="font-size:1.2rem; font-weight:800; color:#991B1B;" id="bait-kpi-followup">${client.baitStationsCount}</div>
+              </div>
+            </div>
+
+            <div style="max-height:240px; overflow-y:auto; margin-bottom:0.75rem; border:1px solid var(--border-color); border-radius:4px; background:white;">
               <table class="data-table" style="font-size:0.8rem; width:100%; margin:0;">
                 <thead>
                   <tr>
-                    <th style="width:75px;">Station #</th>
+                    <th style="width:55px;">#</th>
+                    <th style="width:110px;">Type</th>
+                    <th style="width:115px;">Outcome</th>
                     <th>Location</th>
-                    <th style="width:185px;">Activity</th>
                     <th>Comments</th>
-                    <th style="width:40px;"></th>
+                    <th style="width:32px;"></th>
                   </tr>
                 </thead>
                 <tbody id="bait-audit-table-body">
                   <!-- Dynamically logged -->
                 </tbody>
               </table>
-            </div>
-            <div style="display:flex; align-items:center; gap:0.5rem;">
-              <input type="number" id="log-modal-bait-replaced" class="form-control" value="" min="0" style="width:70px; padding:0.25rem; margin:0; height:auto; min-height:auto;" />
-              <span style="font-size:0.8rem; font-weight:600; color:var(--text-medium);">bait stations stickers & poisons were replaced</span>
             </div>
           </div>
         </div>
@@ -6180,9 +6298,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tbody>
               </table>
             </div>
-            <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span style="font-size:0.8rem; font-weight:600; color:var(--text-medium);">Total no. of flies' stickers replaced:</span>
-              <input type="number" id="log-modal-uv-replaced" class="form-control" value="" min="0" style="width:70px; padding:0.25rem; margin:0; height:auto; min-height:auto;" />
+            <div style="display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; background:#EFF6FF; border-radius:6px; font-size:0.8rem; color:#1E40AF;">
+              <span style="font-weight:600;">📊 UV audit results (catch rate) are logged per machine above.</span>
             </div>
           </div>
         </div>
@@ -6223,7 +6340,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </select>
               </div>
             </div>
-            <input type="text" id="log-modal-client-comments" class="form-control" placeholder="Client comments (Optional)">
+            <input type="text" id="log-modal-client-comments" class="form-control" placeholder="Client feedback (required before signing)" required>
           </div>
           <div class="form-group">
             <label>Client Signature Pad *</label>
@@ -6233,6 +6350,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" class="btn btn-secondary btn-sm" id="sig-clear-btn">Clear Signature</button>
               </div>
             </div>
+          </div>
+        </div>
+        
+        <div class="form-group" style="margin-top:1.5rem; border-top:1px solid var(--border-color); padding-top:1.2rem; background: #FAFAFA; border-radius: 8px; padding: 0.75rem; border: 1px solid var(--border-color);">
+          <label style="font-weight:700; font-size:0.85rem; color:var(--text-dark); display:block; margin-bottom:0.5rem;">Departure Check-Out (Time-Out) *</label>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <input type="time" id="log-modal-time-out" class="form-control" placeholder="Time Out" required readonly style="background:#F1F5F9; color:var(--text-medium); font-weight:700; max-width:120px;">
+            <input type="text" id="log-modal-geolocation-out" class="form-control" placeholder="Departure GPS (Click button to log)" required readonly style="background:#F1F5F9; color:var(--text-medium); font-weight:700;">
+            <button type="button" class="btn btn-secondary" id="btn-gps-time-out" style="white-space:nowrap; padding: 0.5rem 1rem;">📍 Log GPS Departure</button>
           </div>
         </div>
       </form>
@@ -6251,7 +6377,8 @@ document.addEventListener('DOMContentLoaded', () => {
       div.style = 'display:flex; gap:0.5rem; margin-bottom:0.5rem; align-items:center; flex-wrap:wrap;';
       
       const initialQtyVal = (initialQty !== undefined && initialQty !== null && initialQty !== 0 && initialQty !== '0' && initialQty !== '') ? initialQty : '';
-      
+      const defaultBoxSVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>`;
+
       div.innerHTML = `
         <select class="form-control consume-category-select" style="max-width:140px;">
           <option value="" disabled selected>Category...</option>
@@ -6260,8 +6387,31 @@ document.addEventListener('DOMContentLoaded', () => {
           <option value="UV Machines">UV Machines</option>
           <option value="Others">Others</option>
         </select>
-        <select class="form-control consume-item-select" required style="flex: 1; min-width:180px;">
+        
+        <img class="consume-item-thumb" src="" style="width:32px; height:32px; border-radius:4px; object-fit:cover; border:1px solid var(--border-color); display:none; cursor:pointer;" />
+        
+        <select class="consume-item-select" required style="display:none;">
           <option value="" disabled selected>Select item...</option>
+        </select>
+
+        <div class="custom-select-container" style="position:relative; flex:1; min-width:180px;">
+          <div class="custom-select-trigger" style="display:flex; align-items:center; gap:8px; padding:0.4rem 0.75rem; border:1px solid var(--border-color); border-radius:6px; background:#fff; cursor:pointer; min-height:38px; position:relative; user-select:none;">
+            <img class="custom-select-trigger-img" src="" style="width:22px; height:22px; border-radius:4px; object-fit:cover; border:1px solid var(--border-color); display:none;" />
+            <span class="custom-select-trigger-text" style="font-size:0.85rem; color:var(--text-muted); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Select item...</span>
+            <span class="custom-select-trigger-arrow" style="font-size:0.65rem; color:var(--text-muted); margin-left:auto;">▼</span>
+          </div>
+          <div class="custom-select-dropdown" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); max-height:250px; overflow-y:auto; background:white; border:1px solid var(--border-color); border-radius:6px; z-index:9999; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); padding:4px 0;">
+            <div style="padding:6px 8px; border-bottom:1px solid #f1f5f9; position:sticky; top:0; background:white; z-index:10;">
+              <input type="text" class="form-control custom-select-search-input" placeholder="🔍 Search item by name..." style="font-size:0.82rem; padding:4px 8px; height:auto; width:100%; border:1px solid var(--border-color); border-radius:4px;" />
+            </div>
+            <div class="custom-select-options-list" style="display:flex; flex-direction:column;"></div>
+          </div>
+        </div>
+
+        <select class="form-control consume-location-select" style="max-width:130px; display:none;" title="Application location (Pesticides only)">
+          <option value="Internal">🏠 Internal</option>
+          <option value="External">🌿 External</option>
+          <option value="Both">🔄 Both</option>
         </select>
         <div style="display: flex; align-items: center; gap: 4px; flex-wrap:wrap;">
           <input type="number" class="form-control consume-qty-input" value="${initialQtyVal}" min="0.001" step="any" required placeholder="Qty" style="max-width:90px;">
@@ -6282,6 +6432,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const warningLabel = div.querySelector('.consume-warning-label');
       const removeBtn = div.querySelector('.btn-danger');
 
+      // Custom Select Elements
+      const trigger = div.querySelector('.custom-select-trigger');
+      const triggerImg = div.querySelector('.custom-select-trigger-img');
+      const triggerText = div.querySelector('.custom-select-trigger-text');
+      const dropdown = div.querySelector('.custom-select-dropdown');
+      const searchInput = div.querySelector('.custom-select-search-input');
+      const optionsList = div.querySelector('.custom-select-options-list');
+
       removeBtn.addEventListener('click', () => div.remove());
 
       const updateUOM = () => {
@@ -6289,15 +6447,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const item = sortedItems.find(i => i.id === selectedId);
         const uomSpan = div.querySelector('.consume-uom-label');
         const stockSpan = div.querySelector('.consume-stock-label');
+        const thumb = div.querySelector('.consume-item-thumb');
         
         if (item) {
+          triggerText.textContent = item.name;
+          triggerText.style.color = 'var(--text-dark)';
+          triggerText.style.fontWeight = '600';
+          triggerImg.src = item.picture || defaultBoxSVG;
+          triggerImg.style.display = 'block';
+
           if (uomSpan) uomSpan.textContent = item.unit || 'Units';
           if (stockSpan) stockSpan.textContent = `(Avail: ${item.stock})`;
           qtyInput.setAttribute('max', item.stock);
+          if (thumb) {
+            if (item.picture) {
+              thumb.src = item.picture;
+              thumb.style.display = 'block';
+              thumb.onclick = () => openItemModal(item.id);
+            } else {
+              thumb.style.display = 'none';
+            }
+          }
         } else {
+          triggerText.textContent = 'Select item...';
+          triggerText.style.color = 'var(--text-muted)';
+          triggerText.style.fontWeight = '400';
+          triggerImg.style.display = 'none';
+
           if (uomSpan) uomSpan.textContent = '';
           if (stockSpan) stockSpan.textContent = '';
           qtyInput.removeAttribute('max');
+          if (thumb) thumb.style.display = 'none';
         }
         validateQty();
       };
@@ -6318,6 +6498,68 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       };
 
+      const renderCustomOptions = () => {
+        const cat = catSelect.value;
+        const query = searchInput.value.toLowerCase().trim();
+        const catItems = sortedItems.filter(i => (i.category || 'Others') === cat && i.name.toLowerCase().includes(query));
+        
+        if (catItems.length) {
+          optionsList.innerHTML = catItems.map(i => {
+            const imgSrc = i.picture || defaultBoxSVG;
+            return `
+              <div class="custom-select-option" data-id="${i.id}" style="display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; transition:background 0.15s; border-bottom:1px solid #f8fafc; user-select:none;">
+                <img src="${imgSrc}" style="width:36px; height:36px; border-radius:4px; object-fit:cover; border:1px solid var(--border-color); background:#f8fafc;" />
+                <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
+                  <strong style="font-size:0.85rem; color:var(--text-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${i.name}</strong>
+                  <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">Stock: ${i.stock} ${i.unit}</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+          
+          optionsList.querySelectorAll('.custom-select-option').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const selectedId = opt.getAttribute('data-id');
+              itemSelect.value = selectedId;
+              itemSelect.dispatchEvent(new Event('change'));
+              dropdown.style.display = 'none';
+            });
+            opt.addEventListener('mouseenter', () => { opt.style.backgroundColor = '#f1f5f9'; });
+            opt.addEventListener('mouseleave', () => { opt.style.backgroundColor = ''; });
+          });
+        } else {
+          optionsList.innerHTML = `<div style="padding:12px; font-size:0.82rem; color:var(--text-muted); text-align:center;">No items found</div>`;
+        }
+      };
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (itemSelect.disabled) return;
+        document.querySelectorAll('.custom-select-dropdown').forEach(d => {
+          if (d !== dropdown) d.style.display = 'none';
+        });
+        const isClosed = dropdown.style.display === 'none' || !dropdown.style.display;
+        if (isClosed) {
+          dropdown.style.display = 'block';
+          searchInput.value = '';
+          searchInput.focus();
+          renderCustomOptions();
+        } else {
+          dropdown.style.display = 'none';
+        }
+      });
+
+      searchInput.addEventListener('input', () => {
+        renderCustomOptions();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!div.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
+
       const updateItems = (keepQty = false) => {
         const cat = catSelect.value;
         const catItems = sortedItems.filter(i => (i.category || 'Others') === cat);
@@ -6332,18 +6574,28 @@ document.addEventListener('DOMContentLoaded', () => {
             ${catItems.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('')}
           `;
           itemSelect.disabled = false;
+          trigger.style.pointerEvents = 'auto';
+          trigger.style.opacity = '1';
         } else {
           itemSelect.innerHTML = `<option value="">No items in category</option>`;
           itemSelect.disabled = true;
+          trigger.style.pointerEvents = 'none';
+          trigger.style.opacity = '0.6';
+          triggerText.textContent = 'No items in category';
         }
         updateUOM();
       };
 
-      catSelect.addEventListener('change', () => updateItems(false));
+      catSelect.addEventListener('change', () => {
+        updateItems(false);
+        const locationSel = div.querySelector('.consume-location-select');
+        if (locationSel) locationSel.style.display = catSelect.value === 'Pesticides' ? '' : 'none';
+      });
+      
       itemSelect.addEventListener('change', () => {
-        qtyInput.value = '';
         updateUOM();
       });
+      
       qtyInput.addEventListener('input', validateQty);
       
       if (initialItemId) {
@@ -6426,34 +6678,52 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    document.getElementById('log-modal-geo-btn').addEventListener('click', () => {
-      const geoInput = document.getElementById('log-modal-geolocation');
-      const origPlaceholder = geoInput.placeholder;
-      geoInput.placeholder = "Locating coordinates...";
-      geoInput.value = "";
+    const getGPSLocation = (targetTimeInputId, targetGeoInputId, btnId) => {
+      const timeInput = document.getElementById(targetTimeInputId);
+      const geoInput = document.getElementById(targetGeoInputId);
+      const btn = document.getElementById(btnId);
+      const originalText = btn.textContent;
+      
+      btn.textContent = "Locating...";
+      btn.disabled = true;
+      
+      const setSuccess = (coords) => {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        timeInput.value = `${hrs}:${mins}`;
+        geoInput.value = coords;
+        btn.textContent = originalText;
+        btn.disabled = false;
+        showToast('GPS details captured successfully!', 'success');
+      };
       
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            geoInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
-            showToast('GPS coordinates captured successfully!', 'success');
+            setSuccess(`${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`);
           },
           (error) => {
             console.error(error);
-            if (client && client.lat && client.lng) {
-              geoInput.value = `${client.lat}, ${client.lng}`;
-              showToast('Location permission denied. Loaded client default coordinates.', 'warning');
-            } else {
-              geoInput.value = "33.3128, 44.3615";
-              showToast('Location error. Fallback GPS coordinates loaded.', 'warning');
-            }
+            const fallback = client && client.lat && client.lng ? `${client.lat}, ${client.lng}` : "33.3128, 44.3615";
+            setSuccess(fallback);
+            showToast('GPS check failed. Fallback client coordinates loaded.', 'warning');
           },
           { enableHighAccuracy: true, timeout: 6000 }
         );
       } else {
         showToast('Geolocation is not supported by your browser', 'error');
-        geoInput.placeholder = origPlaceholder;
+        const fallback = client && client.lat && client.lng ? `${client.lat}, ${client.lng}` : "33.3128, 44.3615";
+        setSuccess(fallback);
       }
+    };
+
+    document.getElementById('btn-gps-time-in').addEventListener('click', () => {
+      getGPSLocation('log-modal-time-in', 'log-modal-geolocation-in', 'btn-gps-time-in');
+    });
+
+    document.getElementById('btn-gps-time-out').addEventListener('click', () => {
+      getGPSLocation('log-modal-time-out', 'log-modal-geolocation-out', 'btn-gps-time-out');
     });
 
     const canvas = document.getElementById('sig-pad-canvas');
@@ -6512,31 +6782,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const addBaitRowBtn = document.getElementById('btn-add-bait-audit-row');
     const addUvRowBtn = document.getElementById('btn-add-uv-audit-row');
 
-    const addBaitAuditRow = (stationNum = '', locationVal = '', activityVal = 'No Activity', commentVal = '') => {
+    const baitTotal = client ? (client.baitStationsCount || 0) : 0;
+
+    const recalcBaitKPIs = () => {
+      let replaced = 0, captured = 0;
+      baitTableBody.querySelectorAll('tr').forEach(row => {
+        const outcome = row.querySelector('.log-bait-outcome');
+        if (!outcome) return;
+        if (outcome.value === 'Replaced') replaced++;
+        else if (outcome.value === 'Captured') captured++;
+      });
+      const followUp = Math.max(0, baitTotal - replaced - captured);
+      const kpiReplaced = document.getElementById('bait-kpi-replaced');
+      const kpiCaptured = document.getElementById('bait-kpi-captured');
+      const kpiFollowup = document.getElementById('bait-kpi-followup');
+      if (kpiReplaced) kpiReplaced.textContent = replaced;
+      if (kpiCaptured) kpiCaptured.textContent = captured;
+      if (kpiFollowup) kpiFollowup.textContent = followUp;
+    };
+
+    const addBaitAuditRow = (stationNum = '', stationType = 'Internal', outcomeVal = 'Replaced', locationVal = '', commentVal = '') => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
-          <input type="number" class="form-control log-bait-number" value="${stationNum}" min="1" required style="padding:0.25rem; font-size:0.75rem; margin:0; height:auto; min-height:auto;" />
+          <input type="number" class="form-control log-bait-number" value="${stationNum}" min="1" required style="padding:0.2rem 0.3rem; font-size:0.75rem; margin:0; height:28px; min-height:auto; width:50px;" />
         </td>
         <td>
-          <input type="text" class="form-control log-bait-location" value="${locationVal}" required placeholder="e.g. Back corridor" style="padding:0.35rem 0.5rem; font-size:0.85rem; margin:0; height:auto; min-height:auto;" />
-        </td>
-        <td>
-          <select class="form-control log-bait-activity" style="padding:0.35rem 0.5rem; font-size:0.85rem; margin:0; height:auto; min-height:auto; cursor:pointer;">
-            <option value="No Activity" ${activityVal === 'No Activity' ? 'selected' : ''}>No Activity</option>
-            <option value="Captured & Replaced" ${activityVal === 'Captured & Replaced' ? 'selected' : ''}>Captured & Replaced</option>
-            <option value="Eaten" ${activityVal === 'Eaten' ? 'selected' : ''}>Eaten</option>
+          <select class="form-control log-bait-type" style="padding:0.2rem 0.3rem; font-size:0.75rem; margin:0; height:28px; min-height:auto; cursor:pointer;">
+            <option value="Internal" ${stationType === 'Internal' ? 'selected' : ''}>🏠 Internal</option>
+            <option value="External" ${stationType === 'External' ? 'selected' : ''}>🌿 External</option>
           </select>
         </td>
         <td>
-          <input type="text" class="form-control log-bait-comment" value="${commentVal}" placeholder="Notes..." style="padding:0.25rem; font-size:0.75rem; margin:0; height:auto; min-height:auto;" />
+          <select class="form-control log-bait-outcome" style="padding:0.2rem 0.3rem; font-size:0.75rem; margin:0; height:28px; min-height:auto; cursor:pointer;">
+            <option value="Replaced" ${outcomeVal === 'Replaced' ? 'selected' : ''}>✅ Replaced</option>
+            <option value="Captured" ${outcomeVal === 'Captured' ? 'selected' : ''}>🪤 Captured</option>
+          </select>
+        </td>
+        <td>
+          <input type="text" class="form-control log-bait-location" value="${locationVal}" required placeholder="e.g. Back corridor" style="padding:0.2rem 0.3rem; font-size:0.75rem; margin:0; height:28px; min-height:auto;" />
+        </td>
+        <td>
+          <input type="text" class="form-control log-bait-comment" value="${commentVal}" placeholder="Notes..." style="padding:0.2rem 0.3rem; font-size:0.75rem; margin:0; height:28px; min-height:auto;" />
         </td>
         <td style="text-align:center;">
-          <button type="button" class="btn btn-danger btn-sm remove-audit-row-btn" style="padding:0.2rem 0.4rem; font-size:0.75rem; line-height:1; min-width:auto; height:auto; margin:0;">✕</button>
+          <button type="button" class="btn btn-danger btn-sm remove-audit-row-btn" style="padding:0.15rem 0.35rem; font-size:0.7rem; line-height:1; min-width:auto; height:auto; margin:0;">✕</button>
         </td>
       `;
-      tr.querySelector('.remove-audit-row-btn').addEventListener('click', () => tr.remove());
+      tr.querySelector('.remove-audit-row-btn').addEventListener('click', () => { tr.remove(); recalcBaitKPIs(); });
+      tr.querySelector('.log-bait-outcome').addEventListener('change', recalcBaitKPIs);
       baitTableBody.appendChild(tr);
+      recalcBaitKPIs();
     };
 
     const addUvAuditRow = (machineNum = '', locationVal = '', catchRateVal = 0) => {
@@ -6563,7 +6859,7 @@ document.addEventListener('DOMContentLoaded', () => {
       baitCheckbox.addEventListener('change', (e) => {
         baitSec.style.display = e.target.checked ? 'block' : 'none';
         if (e.target.checked && baitTableBody.children.length === 0) {
-          addBaitAuditRow(1, 'External Wall 1');
+          addBaitAuditRow(1, 'Internal', 'Replaced', '');
         }
       });
     }
@@ -6574,7 +6870,7 @@ document.addEventListener('DOMContentLoaded', () => {
           .map(inp => parseInt(inp.value))
           .filter(n => !isNaN(n));
         const nextNum = existingNums.length ? Math.max(...existingNums) + 1 : 1;
-        addBaitAuditRow(nextNum, `External Wall ${nextNum}`);
+        addBaitAuditRow(nextNum, 'Internal', 'Replaced', '');
       });
     }
 
@@ -6648,7 +6944,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div>Time-Out (Departure): <strong>${log.timeOut || 'N/A'}</strong></div>
           <div>Total Duration: <strong>${log.timeSpent || 'N/A'}</strong></div>
           <div>Team Leader: <strong><a href="#" class="user-click" data-id="${sch.teamLeaderId}" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--text-muted);">${tl ? tl.name : 'Unassigned'}</a></strong></div>
-          <div style="grid-column: span 2;">Geographical Coordinates: <strong>📍 ${log.geoLocation || 'N/A'}</strong></div>
+          <div style="grid-column: span 2;">Arrival GPS Check-In: <strong>📍 ${log.geoLocationIn || log.geoLocation || 'N/A'}</strong></div>
+          <div style="grid-column: span 2;">Departure GPS Check-Out: <strong>📍 ${log.geoLocationOut || log.geoLocation || 'N/A'}</strong></div>
         </div>
 
         <div>
@@ -6686,10 +6983,38 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         </div>
+
+        <!-- Share Toolbar inside modal -->
+        <div style="border-top:1px solid var(--border-color); padding-top:0.75rem; margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" id="btn-modal-open-report" style="font-weight:700;">🌐 Open Report</button>
+          <button class="btn btn-secondary btn-sm" id="btn-modal-copy-report" style="font-weight:700;">🔗 Copy Link</button>
+          <button class="btn btn-secondary btn-sm" id="btn-modal-email-report" style="font-weight:700;">📧 Email Client</button>
+          <button class="btn btn-secondary btn-sm" id="btn-modal-whatsapp-report" style="background:#25D366; color:white; border-color:#25D366; font-weight:700;">🟢 WhatsApp</button>
+        </div>
       </div>
     `;
 
     showModal('Operation Visit Log Details', html, false);
+
+    const reportUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}client-report.html?logId=${log.id}`;
+    
+    document.getElementById('btn-modal-open-report').onclick = () => window.open(reportUrl, '_blank');
+    document.getElementById('btn-modal-copy-report').onclick = () => {
+      navigator.clipboard.writeText(reportUrl).then(() => showToast('Visit report link copied!', 'success'));
+    };
+    document.getElementById('btn-modal-email-report').onclick = () => {
+      if (!client || !client.email) { showToast('No email on file for this client.', 'warning'); return; }
+      const subject = encodeURIComponent(`Visit Report — ${client.name} — ${log.dateConducted}`);
+      const body = encodeURIComponent(`Dear ${client.contact || client.name},\n\nPlease find your service visit report for ${log.dateConducted} below:\n\n${reportUrl}\n\nBest regards,\nBuckler Operations Team`);
+      window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_blank');
+    };
+    document.getElementById('btn-modal-whatsapp-report').onclick = () => {
+      const clientPhone = client ? (client.phone || '').trim().replace(/[^\d+]/g, '') : '';
+      const text = encodeURIComponent(`Dear ${client.contact || client.name},\n\nPlease find your service visit report for ${log.dateConducted} below:\n\n${reportUrl}\n\nBest regards,\nBuckler Operations Team`);
+      const waUrl = clientPhone ? `https://api.whatsapp.com/send?phone=${clientPhone}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+      window.open(waUrl, '_blank');
+    };
+
     bindEntityClicks(document.getElementById('log-details-modal'));
   }
 
@@ -6786,6 +7111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         time: document.getElementById('sch-modal-time').value,
         teamLeaderId: checkedTls.join(','),
         visitType: document.getElementById('sch-modal-visittype').value,
+        notes: document.getElementById('sch-modal-notes') ? document.getElementById('sch-modal-notes').value : '',
         status: 'Scheduled',
         assignedBy: state.currentUser.username
       };
@@ -6799,8 +7125,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       // Update filters so that the newly created/updated schedule is visible immediately
-      if (els.filterScheduleDate) {
-        els.filterScheduleDate.value = fields.date;
+      if (els.filterScheduleDateFrom) {
+        els.filterScheduleDateFrom.value = fields.date;
+      }
+      if (els.filterScheduleDateTo) {
+        els.filterScheduleDateTo.value = fields.date;
       }
       if (els.searchSchedule) {
         els.searchSchedule.value = '';
@@ -6840,7 +7169,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (ct === 'Pest Control') {
             const visitsInput = card.querySelector('.cli-ctrl-visits');
             const hoursInput = card.querySelector('.cli-ctrl-hours');
-            const baitInput = card.querySelector('.cli-ctrl-bait');
+            const baitInternalInput = card.querySelector('.cli-ctrl-bait-internal');
+            const baitExternalInput = card.querySelector('.cli-ctrl-bait-external');
             const uvInput = card.querySelector('.cli-ctrl-uv');
             
             if (visitsInput) {
@@ -6850,10 +7180,13 @@ document.addEventListener('DOMContentLoaded', () => {
               totalMonthlyVisits += v;
             }
             if (hoursInput) state.tempContractsData[ct].hoursPerVisit = parseFloat(hoursInput.value) || 0;
-            if (baitInput) {
-              const b = parseInt(baitInput.value) || 0;
-              state.tempContractsData[ct].baitStationsCount = b;
-              globalBaitStationsCount = b;
+            if (baitInternalInput) {
+              const bInternal = parseInt(baitInternalInput.value) || 0;
+              const bExternal = parseInt(baitExternalInput ? baitExternalInput.value : 0) || 0;
+              state.tempContractsData[ct].internalBaitStationsCount = bInternal;
+              state.tempContractsData[ct].externalBaitStationsCount = bExternal;
+              state.tempContractsData[ct].baitStationsCount = bInternal + bExternal;
+              globalBaitStationsCount = bInternal + bExternal;
             }
             if (uvInput) {
               const uv = parseInt(uvInput.value) || 0;
@@ -6960,7 +7293,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
       const permissions = {};
-      ['dashboard', 'schedules', 'clients', 'items', 'complaints', 'messages', 'uv-sales', 'reports', 'sanitation-report', 'users'].forEach(tab => {
+      ['dashboard', 'schedules', 'clients', 'items', 'complaints', 'messages', 'uv-sales', 'reports', 'sanitation-report', 'users', 'media'].forEach(tab => {
         const rad = document.querySelector(`input[name="perm-${tab}"]:checked`);
         permissions[tab] = rad ? rad.value : 'none';
       });
@@ -7059,10 +7392,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (oldVeh) oldTLId = oldVeh.teamLeaderId;
       }
 
+      const regDocInput = document.getElementById('veh-modal-regdoc');
+      const existingVeh = id ? window.BucklerDB.get('vehicles').find(v => v.id === id) : null;
       const fields = {
         type: document.getElementById('veh-modal-type').value,
         model: document.getElementById('veh-modal-model').value,
         plateNo: document.getElementById('veh-modal-plateno').value,
+        registryNo: document.getElementById('veh-modal-regno') ? document.getElementById('veh-modal-regno').value : '',
+        registryDoc: (regDocInput && regDocInput.dataset.base64) ? regDocInput.dataset.base64 : (existingVeh ? existingVeh.registryDoc || '' : ''),
         region: document.getElementById('veh-modal-region').value,
         teamLeaderId: document.getElementById('veh-modal-tl').value
       };
@@ -7154,6 +7491,9 @@ document.addEventListener('DOMContentLoaded', () => {
         status: document.getElementById('cmp-modal-status').value,
         assignedStaffId: document.getElementById('cmp-modal-staff').value,
         details: document.getElementById('cmp-modal-details').value,
+        notePending: document.getElementById('cmp-note-pending') ? document.getElementById('cmp-note-pending').value : '',
+        noteInProgress: document.getElementById('cmp-note-inprogress') ? document.getElementById('cmp-note-inprogress').value : '',
+        noteResolved: document.getElementById('cmp-note-resolved') ? document.getElementById('cmp-note-resolved').value : '',
         dateSubmitted: formatDateLocal(new Date())
       };
 
@@ -7225,6 +7565,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const timeIn = document.getElementById('log-modal-time-in').value;
       const timeOut = document.getElementById('log-modal-time-out').value;
+      const geoLocationIn = document.getElementById('log-modal-geolocation-in').value;
+      const geoLocationOut = document.getElementById('log-modal-geolocation-out').value;
+      
+      if (!timeIn || !geoLocationIn) {
+        showToast('⚠️ You must log GPS check-in (Arrival) before submitting.', 'error');
+        return;
+      }
+      if (!timeOut || !geoLocationOut) {
+        showToast('⚠️ You must log GPS check-out (Departure) before submitting.', 'error');
+        return;
+      }
       
       const itemsConsumed = [];
       let stockValidationOk = true;
@@ -7232,8 +7583,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const itemId = row.querySelector('.consume-item-select').value;
         const qtyInput = row.querySelector('.consume-qty-input');
         const qty = parseFloat(qtyInput.value) || 0;
+        const locationSel = row.querySelector('.consume-location-select');
+        const location = locationSel && locationSel.style.display !== 'none' ? locationSel.value : null;
         if (itemId) {
-          itemsConsumed.push({ itemId, qty });
+          if (qty <= 0) {
+            showToast('⚠️ Quantity must be greater than 0 for selected items.', 'error');
+            qtyInput.style.borderColor = 'red';
+            qtyInput.focus();
+            stockValidationOk = false;
+            return;
+          }
+          itemsConsumed.push({ itemId, qty, ...(location ? { location } : {}) });
           const item = window.BucklerDB.get('items').find(i => i.id === itemId);
           if (item && qty > item.stock) {
             showToast(state.language === 'ar' ? `⛔ لا يمكن استهلاك كمية أكبر من المتاحة في المخزن لـ ${item.name} (المتاح: ${item.stock} ${item.unit})` : `⛔ Cannot consume more than available stock for ${item.name} (Available: ${item.stock} ${item.unit}).`, 'error');
@@ -7243,6 +7603,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
+
       if (!stockValidationOk) return;
 
       const baitStationsAudit = [];
@@ -7250,13 +7611,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (logBaitCheckbox && logBaitCheckbox.checked) {
         document.querySelectorAll('#bait-audit-table-body tr').forEach(row => {
           const numberInput = row.querySelector('.log-bait-number');
-          const number = parseInt(numberInput.value) || 0;
+          const number = parseInt(numberInput ? numberInput.value : 0) || 0;
+          const stationType = row.querySelector('.log-bait-type') ? row.querySelector('.log-bait-type').value : 'Internal';
+          const outcome = row.querySelector('.log-bait-outcome') ? row.querySelector('.log-bait-outcome').value : 'Replaced';
           const locationInput = row.querySelector('.log-bait-location');
-          const location = locationInput.value.trim();
-          const activity = row.querySelector('.log-bait-activity').value;
-          const comments = row.querySelector('.log-bait-comment').value.trim();
+          const location = locationInput ? locationInput.value.trim() : '';
+          const comments = row.querySelector('.log-bait-comment') ? row.querySelector('.log-bait-comment').value.trim() : '';
           if (number > 0 && location) {
-            baitStationsAudit.push({ number, location, activity, comments });
+            baitStationsAudit.push({ number, type: stationType, outcome, location, comments });
           }
         });
       }
@@ -7276,13 +7638,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      const baitStickersReplaced = logBaitCheckbox && logBaitCheckbox.checked 
-        ? parseInt(document.getElementById('log-modal-bait-replaced').value) || 0 
-        : 0;
+      // Derive stickers replaced = count of 'Replaced' outcome entries
+      const baitStickersReplaced = baitStationsAudit.filter(a => a.outcome === 'Replaced').length;
 
-      const uvStickersReplaced = logUvCheckbox && logUvCheckbox.checked 
-        ? parseInt(document.getElementById('log-modal-uv-replaced').value) || 0 
-        : 0;
+      const uvStickersReplaced = 0;
 
       const logDetails = {
         timeIn: timeIn,
@@ -7293,7 +7652,9 @@ document.addEventListener('DOMContentLoaded', () => {
         clientComments: document.getElementById('log-modal-client-comments').value,
         clientCommentsStatus: document.getElementById('log-modal-client-comments-status').value,
         clientSignature: sigCanvas.toDataURL(),
-        geoLocation: document.getElementById('log-modal-geolocation').value,
+        geoLocation: geoLocationIn,
+        geoLocationIn: geoLocationIn,
+        geoLocationOut: geoLocationOut,
         pictures: state.uploadedPictures || [],
         baitStationsAudit: baitStationsAudit.length ? baitStationsAudit : null,
         uvMachinesAudit: uvMachinesAudit.length ? uvMachinesAudit : null,
@@ -7306,6 +7667,36 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Operation log saved and visit conducted!', 'success');
         els.modalBackdrop.style.display = 'none';
         renderSchedules();
+
+        // Check if all of today's visits are completed for this Team Leader
+        const isAllTodayVisitsCompleted = () => {
+          if (!state.currentUser || state.currentUser.role.toLowerCase() !== 'team leader') return false;
+          
+          const todayStr = formatDateLocal(new Date());
+          const allSchedules = window.BucklerDB.get('schedules') || [];
+          
+          // Find all schedules assigned to this Team Leader for today
+          const todaySchedules = allSchedules.filter(s => {
+            if (s.date !== todayStr) return false;
+            const tlIds = s.teamLeaderId ? s.teamLeaderId.split(',').map(tid => tid.trim()) : [];
+            return tlIds.includes(state.currentUser.id);
+          });
+          
+          if (todaySchedules.length === 0) return false;
+          
+          // Check if all of them are "Conducted" or "Cancelled"
+          const incomplete = todaySchedules.filter(s => s.status === 'Scheduled');
+          return incomplete.length === 0;
+        };
+
+        if (isAllTodayVisitsCompleted()) {
+          setTimeout(() => {
+            alert('🎉 Congratulations! You have completed all scheduled visits for today. Please remember to Check-Out (End Day) from the Shift Widget in the schedules tab.');
+            switchTab('schedules');
+            const widget = document.getElementById('tl-shift-widget');
+            if (widget) widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 600);
+        }
       } else {
         showToast('Failed to log operation details', 'error');
       }
@@ -7970,6 +8361,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function openBase64Document(base64Str) {
+    if (!base64Str) return;
+    try {
+      const parts = base64Str.split(';base64,');
+      if (parts.length < 2) {
+        window.open(base64Str, '_blank');
+        return;
+      }
+      const contentType = parts[0].split(':')[1];
+      const raw = window.atob(parts[1]);
+      const rawLength = raw.length;
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+      }
+      const blob = new Blob([uInt8Array], { type: contentType });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (e) {
+      console.error('Failed to open base64 document:', e);
+      window.open(base64Str, '_blank');
+    }
+  }
+  window.openBase64Document = openBase64Document;
+
   function downloadFile(content, fileName, contentType) {
     const a = document.createElement('a');
     a.href = `data:${contentType};charset=utf-8,` + encodeURIComponent(content);
@@ -8001,12 +8417,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Size check (max 5MB, or 10MB for PDF)
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        const limit = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+        // Size check (max 15MB)
+        const limit = 15 * 1024 * 1024;
         if (file.size > limit) {
-          const limitStr = isPdf ? '10MB' : '5MB';
-          showToast(`⛔ Attachment size cannot exceed ${limitStr}.`, 'error');
+          showToast(`⛔ Attachment size cannot exceed 15MB.`, 'error');
           els.chatFileInput.value = '';
           return;
         }
@@ -8578,6 +8992,29 @@ document.addEventListener('DOMContentLoaded', () => {
           <label for="cmp-modal-details">Complaint / Issue Details *</label>
           <textarea id="cmp-modal-details" class="form-control" placeholder="Describe the service issue in detail..." required>${complaint ? complaint.details : ''}</textarea>
         </div>
+
+        <!-- Step Notes Section -->
+        <div style="border-top:2px dashed var(--border-color); padding-top:1rem; margin-top:0.5rem;">
+          <p style="font-size:0.78rem; font-weight:700; color:var(--text-medium); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.75rem;">📝 Progress Notes (per step)</p>
+          <div class="form-group">
+            <label for="cmp-note-pending" style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:700;">PENDING</span> Note
+            </label>
+            <textarea id="cmp-note-pending" class="form-control" rows="2" placeholder="Note recorded when status is set to Pending..." style="min-height:60px; resize:vertical;">${complaint && complaint.notePending ? complaint.notePending : ''}</textarea>
+          </div>
+          <div class="form-group">
+            <label for="cmp-note-inprogress" style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="background:#EFF6FF; color:#1E40AF; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:700;">IN PROGRESS</span> Note
+            </label>
+            <textarea id="cmp-note-inprogress" class="form-control" rows="2" placeholder="Note recorded when status is set to In Progress..." style="min-height:60px; resize:vertical;">${complaint && complaint.noteInProgress ? complaint.noteInProgress : ''}</textarea>
+          </div>
+          <div class="form-group">
+            <label for="cmp-note-resolved" style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="background:#ECFDF5; color:#065F46; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:700;">RESOLVED</span> Note
+            </label>
+            <textarea id="cmp-note-resolved" class="form-control" rows="2" placeholder="Resolution actions taken..." style="min-height:60px; resize:vertical;">${complaint && complaint.noteResolved ? complaint.noteResolved : ''}</textarea>
+          </div>
+        </div>
       </form>
     `;
 
@@ -8764,6 +9201,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (els.btnPrintReport) els.btnPrintReport.style.display = 'none';
     if (els.btnEmailReport) els.btnEmailReport.style.display = 'none';
     if (els.btnCopyReportLink) els.btnCopyReportLink.style.display = 'none';
+    if (els.btnWhatsAppReport) els.btnWhatsAppReport.style.display = 'none';
     
     if (reportType === 'client-dashboard') {
       generateClientHistoryDashboard(clientId);
@@ -8798,8 +9236,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const materials = log.itemsConsumed && log.itemsConsumed.length
         ? log.itemsConsumed.map(cons => {
             const item = items.find(i => i.id === cons.itemId);
-            return `${item ? item.name : cons.itemId} (${cons.qty} ${item ? item.unit : ''})`;
-          }).join(', ')
+            const uom = item ? (item.unit || '') : '';
+            const loc = cons.location ? ` - ${cons.location}` : '';
+            const pic = item && item.picture ? `<img src="${item.picture}" style="width:18px; height:18px; border-radius:3px; object-fit:cover; margin-right:4px; vertical-align:middle;" />` : '';
+            return `<span style="display:inline-flex; align-items:center; background:#F1F5F9; border:1px solid var(--border-color); padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:4px; margin-bottom:4px;" title="${item ? item.name : cons.itemId}">${pic}${item ? item.name : cons.itemId} (${cons.qty}${uom ? ' ' + uom : ''}${loc})</span>`;
+          }).join('')
         : 'None';
         
       let picsHTML = '';
@@ -8893,6 +9334,23 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!clientEmail) showToast('No email address on file for this client.', 'warning');
         };
       }
+
+      if (els.btnWhatsAppReport) {
+        els.btnWhatsAppReport.style.display = 'inline-flex';
+        els.btnWhatsAppReport.onclick = () => {
+          const clientPhone = client ? (client.phone || '').trim().replace(/[^\d+]/g, '') : '';
+          const text = encodeURIComponent(
+            `Dear ${client.contact || client.name},\n\n` +
+            `Please find the interactive visit report for our service conducted on ${log.dateConducted} below:\n` +
+            `🔗 ${reportUrl}\n\n` +
+            `Thank you for choosing Buckler Pest Control.\n` +
+            `Best regards,\n` +
+            `Buckler Operations Team`
+          );
+          const waUrl = clientPhone ? `https://api.whatsapp.com/send?phone=${clientPhone}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+          window.open(waUrl, '_blank');
+        };
+      }
       
       return;
     }
@@ -8919,7 +9377,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let detailedLogsHTML = '';
     
     if (logs.length === 0) {
-      summaryRows = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No visits conducted in this period.</td></tr>';
+      summaryRows = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">No visits conducted in this period.</td></tr>';
       detailedLogsHTML = '<p style="color:var(--text-muted); text-align:center; padding:2rem; border:1px dashed var(--border-color); border-radius:8px;">No operational logs recorded.</p>';
     } else {
       summaryRows = logs.map(log => {
@@ -8931,6 +9389,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const service = sched ? (sched.service.charAt(0).toUpperCase() + sched.service.slice(1)) : 'N/A';
         const dateObj = new Date(log.dateConducted);
         const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        const mats = log.itemsConsumed && log.itemsConsumed.length ? log.itemsConsumed.map(c => {
+          const it = items.find(i => i.id === c.itemId);
+          const uom = it ? (it.unit || '') : '';
+          const loc = c.location ? ` - ${c.location}` : '';
+          return `${it ? it.name : c.itemId} (${c.qty}${uom ? ' ' + uom : ''}${loc})`;
+        }).join(', ') : 'None';
         
         return `
           <tr>
@@ -8940,6 +9404,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td>${tlNames}</td>
             <td>${log.timeIn} - ${log.timeOut}</td>
             <td>${log.timeSpent}</td>
+            <td>${mats}</td>
           </tr>
         `;
       }).join('');
@@ -8955,8 +9420,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const materials = log.itemsConsumed && log.itemsConsumed.length
           ? log.itemsConsumed.map(cons => {
               const item = items.find(i => i.id === cons.itemId);
-              return `${item ? item.name : cons.itemId} (${cons.qty} ${item ? item.unit : ''})`;
-            }).join(', ')
+              const uom = item ? (item.unit || '') : '';
+              const loc = cons.location ? ` - ${cons.location}` : '';
+              const pic = item && item.picture ? `<img src="${item.picture}" style="width:18px; height:18px; border-radius:3px; object-fit:cover; margin-right:4px; vertical-align:middle;" />` : '';
+              return `<span style="display:inline-flex; align-items:center; background:#F1F5F9; border:1px solid var(--border-color); padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:4px; margin-bottom:4px;" title="${item ? item.name : cons.itemId}">${pic}${item ? item.name : cons.itemId} (${cons.qty}${uom ? ' ' + uom : ''}${loc})</span>`;
+            }).join('')
           : 'None';
           
         let pics = '';
@@ -9058,6 +9526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <th>Team Leader in Charge</th>
                 <th>Time Window</th>
                 <th>Duration Spent</th>
+                <th>Materials Consumed</th>
               </tr>
             </thead>
             <tbody id="reports-table-body">
@@ -9179,7 +9648,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-dark);">
                   <div><strong>Total no of UV machines:</strong> <span>${uvAudit.length}</span></div>
-                  <div><strong>Total no. of flies' stickers replaced:</strong> <span style="background:var(--info-blue-light); color:var(--info-blue); padding:2px 8px; border-radius:4px; font-family:monospace; margin-left:4px;">${log.uvStickersReplaced || 0}</span></div>
                 </div>
               </div>
             </div>
@@ -9296,14 +9764,25 @@ document.addEventListener('DOMContentLoaded', () => {
           const tl = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => { const u = users.find(x => x.id === tid.trim()); return u ? u.name : tid; }).join(', ') : 'N/A';
           const svc = sch ? (sch.service.charAt(0).toUpperCase() + sch.service.slice(1)) : 'N/A';
           const day = new Date(l.dateConducted).toLocaleDateString('en-US', { weekday: 'long' });
-          return `<tr><td>${l.dateConducted}</td><td>${day}</td><td>${svc}</td><td>${tl}</td><td>${l.timeIn||''} - ${l.timeOut||''}</td><td>${l.timeSpent||''}</td></tr>`;
+          const mats = l.itemsConsumed && l.itemsConsumed.length ? l.itemsConsumed.map(cn => {
+            const it = items.find(i => i.id === cn.itemId);
+            const uom = it ? (it.unit || '') : '';
+            const loc = cn.location ? ` - ${cn.location}` : '';
+            return `${it ? it.name : cn.itemId} (${cn.qty}${uom ? ' ' + uom : ''}${loc})`;
+          }).join(', ') : 'None';
+          return `<tr><td>${l.dateConducted}</td><td>${day}</td><td>${svc}</td><td>${tl}</td><td>${l.timeIn||''} - ${l.timeOut||''}</td><td>${l.timeSpent||''}</td><td>${mats}</td></tr>`;
         }).join('');
 
         const detailRows = cLogs.map((l, idx) => {
           const sch = schedules.find(s => s.id === l.scheduleId);
           const tl = sch && sch.teamLeaderId ? sch.teamLeaderId.split(',').map(tid => { const u = users.find(x => x.id === tid.trim()); return u ? u.name : tid; }).join(', ') : 'N/A';
           const svc = sch ? (sch.service.charAt(0).toUpperCase() + sch.service.slice(1)) : 'N/A';
-          const mats = l.itemsConsumed && l.itemsConsumed.length ? l.itemsConsumed.map(cn => { const it = items.find(i => i.id === cn.itemId); return `${it ? it.name : cn.itemId} (${cn.qty})`; }).join(', ') : 'None';
+          const mats = l.itemsConsumed && l.itemsConsumed.length ? l.itemsConsumed.map(cn => {
+            const it = items.find(i => i.id === cn.itemId);
+            const uom = it ? (it.unit || '') : '';
+            const loc = cn.location ? ` - ${cn.location}` : '';
+            return `${it ? it.name : cn.itemId} (${cn.qty}${uom ? ' ' + uom : ''}${loc})`;
+          }).join(', ') : 'None';
           return `<div style="border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:0.75rem;background:#FAFBFD;">
             <strong>Visit #${idx+1} — ${l.dateConducted} (${svc})</strong><br/>
             <span style="font-size:0.82rem;color:var(--text-medium);">Team Leader: ${tl} | Materials: ${mats} | Notes: ${l.comments || 'N/A'}</span>
@@ -9332,8 +9811,8 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
               <div style="margin-top:1.5rem;">
                 <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-dark);margin-bottom:0.75rem;border-bottom:2px solid var(--primary-red);padding-bottom:0.25rem;">Operational Service Summary</h3>
-                <table class="data-table" style="width:100%;"><thead><tr><th>Date</th><th>Day</th><th>Service</th><th>Team Leader</th><th>Time Window</th><th>Duration</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No visits in this period.</td></tr>'}</tbody></table>
+                <table class="data-table" style="width:100%;"><thead><tr><th>Date</th><th>Day</th><th>Service</th><th>Team Leader</th><th>Time Window</th><th>Duration</th><th>Materials Consumed</th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No visits in this period.</td></tr>'}</tbody></table>
               </div>
               <div style="margin-top:1.5rem;">
                 <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-dark);margin-bottom:0.75rem;border-bottom:2px solid var(--primary-red);padding-bottom:0.25rem;">Visit Highlights</h3>
@@ -9375,6 +9854,25 @@ document.addEventListener('DOMContentLoaded', () => {
         );
         window.open(`mailto:${fc.email || ''}?subject=${subject}&body=${body}`, '_blank');
         if (!fc.email) showToast('No email address on file for this client.', 'warning');
+      };
+    }
+
+    if (els.btnWhatsAppReport) {
+      els.btnWhatsAppReport.style.display = 'inline-flex';
+      els.btnWhatsAppReport.onclick = () => {
+        const fc = window.BucklerDB.get('clients').find(c => c.id === clientId);
+        if (!fc) return;
+        const clientPhone = (fc.phone || '').trim().replace(/[^\d+]/g, '');
+        const text = encodeURIComponent(
+          `Dear ${fc.contact || fc.name},\n\n` +
+          `We have generated a real-time Sanitation & IPM History Dashboard for your account.\n` +
+          `🔗 ${portalUrl}\n\n` +
+          `Thank you for choosing Buckler Pest Control.\n` +
+          `Best regards,\n` +
+          `Buckler Operations Team`
+        );
+        const waUrl = clientPhone ? `https://api.whatsapp.com/send?phone=${clientPhone}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+        window.open(waUrl, '_blank');
       };
     }
   }
@@ -9544,6 +10042,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="btn btn-secondary btn-sm" id="btn-dash-open-portal" style="border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:white; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700;">🌐 Open Portal</button>
             <button class="btn btn-secondary btn-sm" id="btn-dash-copy-link" style="border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:white; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700;">🔗 Copy Link</button>
             <button class="btn btn-secondary btn-sm" id="btn-dash-email-client" style="border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:white; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700;">📧 Email Client</button>
+            <button class="btn btn-secondary btn-sm" id="btn-dash-whatsapp-client" style="border:1px solid rgba(255,255,255,0.2); background:#25D366; color:white; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700;">🟢 WhatsApp</button>
             <button class="btn btn-primary btn-sm" id="btn-dash-print" style="background:#FFFFFF; color:#C62828; font-size:0.75rem; padding:0.4rem 0.80rem; border-radius:6px; cursor:pointer; font-weight:700; border:none;">🖨️ Print Dashboard</button>
           </div>
         </div>
@@ -9719,6 +10218,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const body = encodeURIComponent(`Dear ${client.contact || client.name},\n\nPlease find your real-time Sanitation & IPM History Dashboard portal link below:\n\n${portalUrl}\n\nBest regards,\nBuckler Operations Team`);
       window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_blank');
     };
+    document.getElementById('btn-dash-whatsapp-client').onclick = () => {
+      const clientPhone = client ? (client.phone || '').trim().replace(/[^\d+]/g, '') : '';
+      const text = encodeURIComponent(`Dear ${client.contact || client.name},\n\nPlease find your real-time Sanitation & IPM History Dashboard portal link below:\n\n${portalUrl}\n\nBest regards,\nBuckler Operations Team`);
+      const waUrl = clientPhone ? `https://api.whatsapp.com/send?phone=${clientPhone}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+      window.open(waUrl, '_blank');
+    };
     document.getElementById('btn-dash-print').onclick = () => window.print();
 
     // Render Charts
@@ -9846,6 +10351,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderSectors() {
     if (!els.sectorsTableBody) return;
 
+    const sectors = window.BucklerDB.get('sectors') || [];
     if (!sectors.length) {
       els.sectorsTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No sectors registered.</td></tr>`;
       return;
@@ -10417,6 +10923,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const timeNow = new Date().toTimeString().slice(0, 5);
         window.BucklerDB.checkInDriver(state.currentUser.id, timeNow);
         showToast('Checked in successfully. Have a safe drive!', 'success');
+        enforceRoleAccess();
         renderShiftWidget();
         if (state.activeTab === 'dashboard') renderDashboard();
       });
@@ -10432,6 +10939,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           showToast('Error closing shift', 'error');
         }
+        enforceRoleAccess();
         renderShiftWidget();
         if (state.activeTab === 'dashboard') renderDashboard();
       });
@@ -12757,6 +13265,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selectInspectClient) selectInspectClient.innerHTML = optionsHTML;
     if (selectRisk) selectRisk.innerHTML = optionsHTML;
 
+    // ── SET TODAY'S DATE ON DATE INPUTS ──
+    const todayStr = new Date().toISOString().split('T')[0];
+    const insDateEl = document.getElementById('ins-date');
+    const riskDateEl = document.getElementById('risk-date');
+    if (insDateEl && !insDateEl._dateSet) { insDateEl.value = todayStr; insDateEl._dateSet = true; }
+    if (riskDateEl && !riskDateEl._dateSet) { riskDateEl.value = todayStr; riskDateEl._dateSet = true; }
+
     // ── RENDER INSPECTIONS LIST ──
     renderSavedInspections();
 
@@ -12857,14 +13372,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     tbody.innerHTML = list.length ? list.map(item => {
-      const pestBadge = item.pestActivity === 'None' ? '<span class="badge-status badge-status-conducted">None</span>'
-                      : item.pestActivity === 'Low' ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">Low</span>'
-                      : item.pestActivity === 'Medium' ? '<span class="badge-status badge-status-scheduled" style="background:#FFEDD5;color:#EA580C;">Medium</span>'
-                      : '<span class="badge-status badge-status-cancelled">High</span>';
+      const pestBadge = item.pestActivity === 'None'
+        ? '<span class="badge-status badge-status-conducted">🟢 None</span>'
+        : item.pestActivity === 'Low'
+        ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">🟡 Low</span>'
+        : item.pestActivity === 'Medium'
+        ? '<span class="badge-status badge-status-scheduled" style="background:#FFEDD5;color:#EA580C;">🟠 Medium</span>'
+        : '<span class="badge-status badge-status-cancelled">🔴 High</span>';
 
-      const hygieneBadge = item.hygiene === 'Good' ? '<span class="badge-status badge-status-conducted">Good</span>'
-                         : item.hygiene === 'Fair' ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">Fair</span>'
-                         : '<span class="badge-status badge-status-cancelled">Poor</span>';
+      const hygieneBadge = item.hygiene === 'Good'
+        ? '<span class="badge-status badge-status-conducted">✅ Good</span>'
+        : item.hygiene === 'Fair'
+        ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">⚠️ Fair</span>'
+        : '<span class="badge-status badge-status-cancelled">❌ Poor</span>';
 
       return `
         <tr>
@@ -12875,13 +13395,23 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${hygieneBadge}</td>
           <td>
             <div class="table-cell-actions">
-              <button class="btn btn-secondary btn-sm dl-ins-pdf" data-id="${item.id}">Download PDF</button>
+              <button class="btn btn-secondary btn-sm view-ins-btn" data-id="${item.id}">👁 View</button>
+              <button class="btn btn-secondary btn-sm dl-ins-pdf" data-id="${item.id}">⬇ PDF</button>
               <button class="btn btn-danger btn-sm del-ins" data-id="${item.id}">Delete</button>
             </div>
           </td>
         </tr>
       `;
-    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No inspection records found.</td></tr>`;
+    }).join('') : `
+      <tr><td colspan="6" style="text-align:center; padding:2.5rem;">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">📋</div>
+        <div style="font-weight:700; color:var(--text-dark); margin-bottom:0.25rem;">No inspection records yet</div>
+        <div style="font-size:0.8rem; color:var(--text-muted);">Use the form above to save your first field inspection report.</div>
+      </td></tr>`;
+
+    tbody.querySelectorAll('.view-ins-btn').forEach(btn => {
+      btn.onclick = () => viewInspection(btn.getAttribute('data-id'));
+    });
 
     tbody.querySelectorAll('.dl-ins-pdf').forEach(btn => {
       btn.onclick = () => downloadInspectionPDF(btn.getAttribute('data-id'));
@@ -12897,6 +13427,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       };
     });
+  }
+
+  function viewInspection(id) {
+    const list = window.BucklerDB.get('inspections') || [];
+    const item = list.find(x => x.id === id);
+    if (!item) return;
+
+    const clients = window.BucklerDB.get('clients') || [];
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const getRefName = (refId) => {
+      if (!refId) return 'Unknown';
+      const [type, rid] = refId.split(':');
+      if (type === 'client') { const c = clients.find(x => x.id === rid); return c ? `🏢 ${c.name}` : `Client #${rid}`; }
+      const d = deals.find(x => x.id === rid); return d ? `🔍 ${d.name}` : `Prospect #${rid}`;
+    };
+
+    const pestColor = item.pestActivity === 'None' ? '#059669' : item.pestActivity === 'Low' ? '#D97706' : item.pestActivity === 'Medium' ? '#EA580C' : '#DC2626';
+    const areaChips = (item.areasInspected || []).map(a =>
+      `<span style="background:#EFF6FF;color:#1D4ED8;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.75rem;font-weight:600;display:inline-block;margin:2px;">${a}</span>`
+    ).join('');
+
+    const html = `
+      <div style="font-family:system-ui,sans-serif;">
+        <div style="background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 100%);padding:1.25rem 1.5rem;border-radius:8px;margin-bottom:1.25rem;">
+          <div style="font-size:0.7rem;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.3rem;">Field Inspection Report</div>
+          <div style="font-size:1.25rem;font-weight:800;color:#fff;margin-bottom:0.5rem;">${getRefName(item.clientRef)}</div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+            <span style="font-size:0.8rem;color:#CBD5E1;">📅 ${item.date}</span>
+            <span style="font-size:0.8rem;color:#CBD5E1;">👤 ${item.inspector}</span>
+            <span style="background:rgba(255,255,255,0.15);color:#fff;padding:0.15rem 0.7rem;border-radius:20px;font-size:0.78rem;font-weight:700;">Pest: <span style="color:${pestColor === '#059669' ? '#86EFAC' : pestColor === '#D97706' ? '#FCD34D' : '#FCA5A5'}">${item.pestActivity}</span></span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+          <div style="background:#F8FAFC;border:1px solid var(--border-color);border-radius:8px;padding:0.9rem;">
+            <div style="font-size:0.7rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">Pest Activity Level</div>
+            <div style="font-size:1.2rem;font-weight:800;color:${pestColor};">${item.pestActivity || '—'}</div>
+          </div>
+          <div style="background:#F8FAFC;border:1px solid var(--border-color);border-radius:8px;padding:0.9rem;">
+            <div style="font-size:0.7rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">Hygiene Standard</div>
+            <div style="font-size:1.2rem;font-weight:800;color:${item.hygiene === 'Good' ? '#059669' : item.hygiene === 'Fair' ? '#D97706' : '#DC2626'};">${item.hygiene || '—'}</div>
+          </div>
+        </div>
+
+        <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:0.9rem;margin-bottom:1rem;">
+          <div style="font-size:0.7rem;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.6rem;">🔍 Areas Inspected</div>
+          ${areaChips || '<em style="font-size:0.8rem;color:var(--text-muted);">No specific areas recorded</em>'}
+        </div>
+
+        <div style="background:#F8FAFC;border:1px solid var(--border-color);border-radius:8px;padding:0.9rem;margin-bottom:1rem;">
+          <div style="font-size:0.7rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">📝 Observations / Defects</div>
+          <p style="font-size:0.85rem;color:var(--text-dark);line-height:1.6;margin:0;white-space:pre-wrap;">${item.observations || 'No observations recorded.'}</p>
+        </div>
+
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:0.9rem;margin-bottom:1rem;">
+          <div style="font-size:0.7rem;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">✅ Recommendations / Treatment Plan</div>
+          <p style="font-size:0.85rem;color:var(--text-dark);line-height:1.6;margin:0;white-space:pre-wrap;">${item.recommendations || 'No recommendations recorded.'}</p>
+        </div>
+
+        ${item.signature ? `
+        <div style="background:#F8FAFC;border:1px solid var(--border-color);border-radius:8px;padding:0.9rem;">
+          <div style="font-size:0.7rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">✍️ Inspector Signature</div>
+          <img src="${item.signature}" style="border:1px solid #E2E8F0;border-radius:4px;max-width:180px;background:#fff;padding:4px;" alt="Signature">
+        </div>` : ''}
+      </div>
+    `;
+
+    openModal(
+      `Inspection Report — ${getRefName(item.clientRef)}`,
+      html,
+      [{ label: '⬇ Download PDF', class: 'btn-primary', onClick: () => { downloadInspectionPDF(id); closeModal(); } }]
+    );
   }
 
   function downloadInspectionPDF(id) {
@@ -13041,9 +13643,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     tbody.innerHTML = list.length ? list.map(item => {
-      const riskBadge = item.riskLevel === 'Low' ? '<span class="badge-status badge-status-conducted">Low Risk</span>'
-                      : item.riskLevel === 'Medium' ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">Medium Risk</span>'
-                      : '<span class="badge-status badge-status-cancelled">High Risk</span>';
+      const riskLevel = item.riskLevel || 'Low';
+      const riskBadge = riskLevel === 'Low'
+        ? '<span class="badge-status badge-status-conducted">🟢 Low Risk</span>'
+        : riskLevel === 'Medium'
+        ? '<span class="badge-status badge-status-scheduled" style="background:#FFF3C7;color:#D97706;">🟡 Medium Risk</span>'
+        : '<span class="badge-status badge-status-cancelled">🔴 High Risk</span>';
+      const hazardsList = (item.hazards || []).join(', ') || '—';
 
       return `
         <tr>
@@ -13051,16 +13657,27 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${item.date}</td>
           <td>${item.assessor}</td>
           <td>${riskBadge}</td>
-          <td style="font-size:0.75rem; max-width:200px;">${(item.hazards || []).join(', ') || '-'}</td>
+          <td style="font-size:0.73rem; max-width:180px;">${hazardsList}</td>
           <td>
             <div class="table-cell-actions">
-              <button class="btn btn-secondary btn-sm dl-risk-pdf" data-id="${item.id}">Download PDF</button>
+              <button class="btn btn-secondary btn-sm view-risk-btn" data-id="${item.id}">👁 View</button>
+              <button class="btn btn-secondary btn-sm dl-risk-pdf" data-id="${item.id}">⬇ PDF</button>
               <button class="btn btn-danger btn-sm del-risk" data-id="${item.id}">Delete</button>
             </div>
           </td>
         </tr>
       `;
-    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No risk assessment records found.</td></tr>`;
+    }).join('') : `
+      <tr><td colspan="6" style="text-align:center; padding:2.5rem;">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">⚠️</div>
+        <div style="font-weight:700; color:var(--text-dark); margin-bottom:0.25rem;">No risk assessments yet</div>
+        <div style="font-size:0.8rem; color:var(--text-muted);">Use the form above to record your first pre-task site risk assessment.</div>
+      </td></tr>`;
+
+
+    tbody.querySelectorAll('.view-risk-btn').forEach(btn => {
+      btn.onclick = () => viewRiskAssessment(btn.getAttribute('data-id'));
+    });
 
     tbody.querySelectorAll('.dl-risk-pdf').forEach(btn => {
       btn.onclick = () => downloadRiskPDF(btn.getAttribute('data-id'));
@@ -13076,6 +13693,69 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       };
     });
+  }
+
+  function viewRiskAssessment(id) {
+    const list = window.BucklerDB.get('riskAssessments') || [];
+    const item = list.find(x => x.id === id);
+    if (!item) return;
+
+    const clients = window.BucklerDB.get('clients') || [];
+    const deals = window.BucklerDB.get('salesDeals') || [];
+    const getRefName = (refId) => {
+      if (!refId) return 'Unknown';
+      const [type, rid] = refId.split(':');
+      if (type === 'client') { const c = clients.find(x => x.id === rid); return c ? `🏢 ${c.name}` : `Client #${rid}`; }
+      const d = deals.find(x => x.id === rid); return d ? `🔍 ${d.name}` : `Prospect #${rid}`;
+    };
+
+    const riskLevel = item.riskLevel || 'Low';
+    const riskColor = riskLevel === 'High' ? '#DC2626' : riskLevel === 'Medium' ? '#D97706' : '#059669';
+    const riskBg = riskLevel === 'High' ? '#FEE2E2' : riskLevel === 'Medium' ? '#FEF3C7' : '#DCFCE7';
+
+    const hazardChips = (item.hazards || []).map(h =>
+      `<span style="background:#FEE2E2;color:#991B1B;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.75rem;font-weight:600;display:inline-block;margin:2px;">${h}</span>`
+    ).join('');
+
+    const ppeChips = (item.ppeRequired || []).map(p =>
+      `<span style="background:#EFF6FF;color:#1D4ED8;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.75rem;font-weight:600;display:inline-block;margin:2px;">${p}</span>`
+    ).join('');
+
+    const html = `
+      <div style="font-family:system-ui,sans-serif;">
+        <div style="background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 100%);padding:1.25rem 1.5rem;border-radius:8px;margin-bottom:1.25rem;">
+          <div style="font-size:0.7rem;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.3rem;">Site Risk Assessment Report</div>
+          <div style="font-size:1.25rem;font-weight:800;color:#fff;margin-bottom:0.5rem;">${getRefName(item.clientRef)}</div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+            <span style="font-size:0.8rem;color:#CBD5E1;">📅 ${item.date}</span>
+            <span style="font-size:0.8rem;color:#CBD5E1;">👤 ${item.assessor}</span>
+            <span style="background:${riskBg};color:${riskColor};padding:0.15rem 0.7rem;border-radius:20px;font-size:0.78rem;font-weight:700;">${riskLevel} Risk</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+          <div style="background:#FFF7F7;border:1px solid #FECACA;border-radius:8px;padding:0.9rem;">
+            <div style="font-size:0.7rem;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.6rem;">⚠️ Hazards Identified</div>
+            ${hazardChips || '<em style="color:var(--text-muted);font-size:0.8rem;">None checked</em>'}
+          </div>
+          <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:0.9rem;">
+            <div style="font-size:0.7rem;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.6rem;">🦺 PPE Required</div>
+            ${ppeChips || '<em style="color:var(--text-muted);font-size:0.8rem;">Standard workwear only</em>'}
+          </div>
+        </div>
+
+        <div style="background:#F8FAFC;border:1px solid var(--border-color);border-radius:8px;padding:0.9rem;">
+          <div style="font-size:0.7rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.6rem;">🛡️ Control Measures &amp; Action Plan</div>
+          <p style="font-size:0.85rem;color:var(--text-dark);line-height:1.6;margin:0;white-space:pre-wrap;">${item.controlMeasures || 'No specific controls documented.'}</p>
+        </div>
+      </div>
+    `;
+
+    openModal(
+      `Risk Assessment — ${getRefName(item.clientRef)}`,
+      html,
+      [{ label: '⬇ Download PDF', class: 'btn-primary', onClick: () => { downloadRiskPDF(id); closeModal(); } }]
+    );
   }
 
   function downloadRiskPDF(id) {
@@ -13133,7 +13813,7 @@ document.addEventListener('DOMContentLoaded', () => {
     drawRow('Client / Prospect', getRefName(item.clientRef));
     drawRow('Date Checked', item.date);
     drawRow('Assessor Name', item.assessor);
-    drawRow('Overall Risk Rating', item.riskLevel.toUpperCase());
+    drawRow('Overall Risk Rating', (item.riskLevel || 'N/A').toUpperCase());
 
     y += 5;
     doc.setFont('helvetica', 'bold');
@@ -13180,44 +13860,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('templates-table-body');
     if (!tbody) return;
 
+    const catStyles = {
+      Inspection: 'background:#EFF6FF;color:#1D4ED8;',
+      Safety:     'background:#FFF7ED;color:#C2410C;',
+      Audit:      'background:#F0FDF4;color:#15803D;',
+      Contract:   'background:#FDF4FF;color:#7E22CE;',
+      Other:      'background:#F8FAFC;color:#374151;'
+    };
+
     tbody.innerHTML = list.length ? list.map(item => {
+      const catStyle = catStyles[item.category] || catStyles.Other;
+      const ext = (item.filename || '').split('.').pop().toLowerCase();
+      const fileIcon = ext === 'pdf' ? '📄'
+        : ['doc', 'docx'].includes(ext) ? '📝'
+        : ['xls', 'xlsx'].includes(ext) ? '📊'
+        : ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? '🖼️'
+        : ['zip', 'rar'].includes(ext) ? '🗜️'
+        : '📁';
+      // Estimate size from base64 length (~0.75 byte/char)
+      const sizeMB = item.fileData ? ((item.fileData.length * 0.75) / (1024 * 1024)).toFixed(2) : null;
+
       return `
         <tr>
           <td><strong style="color:var(--text-dark);">${item.title}</strong></td>
-          <td><span style="background:#F1F5F9; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:700;">${item.category}</span></td>
-          <td>${item.description || '-'}</td>
-          <td><code>${item.filename}</code></td>
-          <td>${item.dateAdded}</td>
+          <td><span style="${catStyle}padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">${item.category}</span></td>
+          <td style="font-size:0.8rem;color:var(--text-medium);">${item.description || '—'}</td>
+          <td style="font-size:0.78rem;">${fileIcon} <code style="font-size:0.73rem;">${item.filename}</code>${sizeMB ? ` <span style="color:var(--text-muted);font-size:0.7rem;">(${sizeMB} MB)</span>` : ''}</td>
+          <td style="font-size:0.8rem;">${item.dateAdded}</td>
           <td>
             <div class="table-cell-actions">
-              <button class="btn btn-secondary btn-sm dl-tmpl-btn" data-id="${item.id}">Download</button>
+              <button class="btn btn-primary btn-sm dl-tmpl-btn" data-id="${item.id}">⬇ Download</button>
               <button class="btn btn-danger btn-sm del-tmpl-btn" data-id="${item.id}">Delete</button>
             </div>
           </td>
         </tr>
       `;
-    }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1.5rem;">No templates uploaded yet. Use the uploader above to add templates.</td></tr>`;
+    }).join('') : `
+      <tr><td colspan="6" style="text-align:center; padding:2.5rem;">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">📁</div>
+        <div style="font-weight:700; color:var(--text-dark); margin-bottom:0.25rem;">No templates yet</div>
+        <div style="font-size:0.8rem; color:var(--text-muted);">Use the upload form above to add your first template or form.</div>
+      </td></tr>`;
 
     tbody.querySelectorAll('.dl-tmpl-btn').forEach(btn => {
       btn.onclick = () => {
         const id = btn.getAttribute('data-id');
         const tmpl = (window.BucklerDB.get('formTemplates') || []).find(x => x.id === id);
-        if (!tmpl || !tmpl.fileData) return;
-
+        if (!tmpl || !tmpl.fileData) { showToast('File data not found for this template.', 'error'); return; }
         const link = document.createElement('a');
         link.href = tmpl.fileData;
         link.download = tmpl.filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast(`Downloading template: ${tmpl.filename} ✓`, 'success');
+        showToast(`Downloading: ${tmpl.filename} ✓`, 'success');
       };
     });
 
     tbody.querySelectorAll('.del-tmpl-btn').forEach(btn => {
       btn.onclick = () => {
         const id = btn.getAttribute('data-id');
-        if (confirm('Delete this template permanently?')) {
+        if (confirm('Delete this template permanently? This cannot be undone.')) {
           window.BucklerDB.delete('formTemplates', id);
           showToast('Template deleted ✓', 'success');
           renderSavedTemplates();
@@ -13414,6 +14117,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('btn-sign-out');
     if (!btn) return;
     btn.addEventListener('click', () => {
+      // FORCE check-out: if team leader is currently checked in, block logout!
+      if (state.currentUser && state.currentUser.role.toLowerCase() === 'team leader' && isTLCheckedIn()) {
+        showToast('⛔ You must Check-Out (End Day) before signing out or switching users.', 'error');
+        const widget = document.getElementById('tl-shift-widget');
+        if (widget) widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
       // Show password verify for each user to let them pick who logs in next
       const users = window.BucklerDB.get('users');
       const html = `

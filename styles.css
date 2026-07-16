@@ -690,11 +690,12 @@ main.content-area {
 }
 
 /* Data Tables */
-.table-wrapper {
+.table-wrapper, .table-responsive {
   overflow-x: auto;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background-color: var(--card-bg);
+  -webkit-overflow-scrolling: touch;
 }
 
 table.data-table {

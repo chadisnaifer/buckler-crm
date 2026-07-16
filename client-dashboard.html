@@ -831,8 +831,18 @@
         const serviceName = sch ? sch.service.split(',').map(x => x.trim().charAt(0).toUpperCase() + x.trim().slice(1)).join(', ') : 'N/A';
         const mats = log.itemsConsumed && log.itemsConsumed.length ? log.itemsConsumed.map(c => {
           const it = items.find(i => i.id === c.itemId);
-          return `${it ? it.name : c.itemId} (${c.qty})`;
+          const uom = it ? (it.unit || '') : '';
+          const loc = c.location ? ` - ${c.location}` : '';
+          return `${it ? it.name : c.itemId} (${c.qty}${uom ? ' ' + uom : ''}${loc})`;
         }).join(', ') : 'None';
+
+        const matsHTML = log.itemsConsumed && log.itemsConsumed.length ? log.itemsConsumed.map(c => {
+          const it = items.find(i => i.id === c.itemId);
+          const uom = it ? (it.unit || '') : '';
+          const loc = c.location ? ` - ${c.location}` : '';
+          const pic = it && it.picture ? `<img src="${it.picture}" style="width:18px; height:18px; border-radius:3px; object-fit:cover; margin-right:4px; vertical-align:middle;" />` : '';
+          return `<span style="display:inline-flex; align-items:center; background:#F1F5F9; border:1px solid var(--border-color); padding:2px 6px; border-radius:4px; font-size:0.75rem; margin-right:4px; margin-bottom:4px;" title="${it ? it.name : c.itemId}">${pic}${it ? it.name : c.itemId} (${c.qty}${uom ? ' ' + uom : ''}${loc})</span>`;
+        }).join('') : 'None';
 
         const singleReportUrl = `client-report.html?logId=${log.id}`;
 
@@ -843,7 +853,7 @@
             <td>${tlNames}</td>
             <td>${log.timeSpent}</td>
             <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${log.comments || ''}"><em>${log.comments || 'N/A'}</em></td>
-            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${mats}">${mats}</td>
+            <td style="max-width:280px; overflow:hidden;" title="${mats}">${matsHTML}</td>
             <td style="text-align:right;">
               <a href="${singleReportUrl}" target="_blank" class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem; border-radius:4px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
                 ${t('view_report')}

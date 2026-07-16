@@ -44,9 +44,11 @@ function verifyPassword(password, stored) {
 
 const JSON_COLUMNS = {
   clients: ['contractTypes', 'serviceVisits', 'contracts'],
-  operationLogs: ['itemsConsumed', 'photos'],
+  operationLogs: ['itemsConsumed', 'photos', 'baitStationsAudit', 'uvMachinesAudit'],
   messages: ['attachment'],
-  suppliers: ['suppliedItems']
+  suppliers: ['suppliedItems'],
+  inspections: ['areasInspected'],
+  riskAssessments: ['hazards', 'ppeRequired']
 };
 
 function formatRow(entity, row) {
@@ -102,6 +104,8 @@ async function initDatabase() {
     contractCurrency TEXT,
     monthlyVisits INTEGER,
     baitStationsCount INTEGER,
+    internalBaitStationsCount INTEGER,
+    externalBaitStationsCount INTEGER,
     uvMachinesCount INTEGER,
     parentId TEXT,
     contractTypes TEXT, -- JSON array
@@ -138,6 +142,14 @@ async function initDatabase() {
     timeOut TEXT,
     timeSpent TEXT,
     geoLocation TEXT,
+    geoLocationIn TEXT,
+    geoLocationOut TEXT,
+    baitStationsAudit TEXT, -- JSON array
+    uvMachinesAudit TEXT, -- JSON array
+    baitStickersReplaced INTEGER,
+    baitStickersCaptured INTEGER,
+    baitStickersFollowUp INTEGER,
+    uvStickersReplaced INTEGER,
     comments TEXT,
     commentsStatus TEXT,
     clientComments TEXT,
@@ -149,14 +161,14 @@ async function initDatabase() {
 
   await run(`CREATE TABLE IF NOT EXISTS commuteLog (
     id TEXT PRIMARY KEY,
-    userId TEXT,
-    date TEXT,
-    timeStarted TEXT,
-    timeEnded TEXT,
-    odometerStart REAL,
-    odometerEnd REAL,
+    scheduleId TEXT,
+    region TEXT,
+    teamLeaderId TEXT,
     startLocation TEXT,
     endLocation TEXT,
+    distanceKm REAL,
+    durationMins INTEGER,
+    fuelUsedLiters REAL,
     status TEXT
   )`);
 
@@ -196,7 +208,7 @@ async function initDatabase() {
 
   await run(`CREATE TABLE IF NOT EXISTS attendanceLog (
     id TEXT PRIMARY KEY,
-    userId TEXT,
+    teamLeaderId TEXT,
     date TEXT,
     checkIn TEXT,
     checkOut TEXT,
@@ -210,7 +222,11 @@ async function initDatabase() {
     model TEXT,
     type TEXT,
     assignedDriverId TEXT,
-    status TEXT
+    status TEXT,
+    region TEXT,
+    teamLeaderId TEXT,
+    registryNo TEXT,
+    registryDoc TEXT
   )`);
 
   await run(`CREATE TABLE IF NOT EXISTS sectors (
@@ -268,6 +284,280 @@ async function initDatabase() {
     status TEXT,
     notes TEXT
   )`);
+
+  await run(`CREATE TABLE IF NOT EXISTS inspections (
+    id TEXT PRIMARY KEY,
+    clientRef TEXT,
+    inspector TEXT,
+    date TEXT,
+    pestActivity TEXT,
+    hygiene TEXT,
+    areasInspected TEXT,
+    observations TEXT,
+    recommendations TEXT,
+    signature TEXT
+  )`);
+
+  await run(`CREATE TABLE IF NOT EXISTS riskAssessments (
+    id TEXT PRIMARY KEY,
+    clientRef TEXT,
+    assessor TEXT,
+    date TEXT,
+    riskLevel TEXT,
+    hazards TEXT,
+    ppeRequired TEXT,
+    controlMeasures TEXT
+  )`);
+
+  await run(`CREATE TABLE IF NOT EXISTS formTemplates (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    category TEXT,
+    description TEXT,
+    filename TEXT,
+    dateAdded TEXT,
+    fileData TEXT
+  )`);
+
+  // Run automatic database migrations to add any missing columns to existing tables
+  const TABLE_COLUMNS = {
+    users: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'username', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' },
+      { name: 'role', type: 'TEXT' },
+      { name: 'region', type: 'TEXT' },
+      { name: 'city', type: 'TEXT' },
+      { name: 'email', type: 'TEXT' },
+      { name: 'password_hash', type: 'TEXT' },
+      { name: 'vehicleType', type: 'TEXT' },
+      { name: 'vehicleModel', type: 'TEXT' },
+      { name: 'vehiclePlateNo', type: 'TEXT' }
+    ],
+    clients: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'clientCode', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' },
+      { name: 'contact', type: 'TEXT' },
+      { name: 'phone', type: 'TEXT' },
+      { name: 'email', type: 'TEXT' },
+      { name: 'region', type: 'TEXT' },
+      { name: 'city', type: 'TEXT' },
+      { name: 'address', type: 'TEXT' },
+      { name: 'lat', type: 'REAL' },
+      { name: 'lng', type: 'REAL' },
+      { name: 'sector', type: 'TEXT' },
+      { name: 'contractValue', type: 'REAL' },
+      { name: 'contractCurrency', type: 'TEXT' },
+      { name: 'monthlyVisits', type: 'INTEGER' },
+      { name: 'baitStationsCount', type: 'INTEGER' },
+      { name: 'internalBaitStationsCount', type: 'INTEGER' },
+      { name: 'externalBaitStationsCount', type: 'INTEGER' },
+      { name: 'uvMachinesCount', type: 'INTEGER' },
+      { name: 'parentId', type: 'TEXT' },
+      { name: 'contractTypes', type: 'TEXT' },
+      { name: 'serviceVisits', type: 'TEXT' },
+      { name: 'contracts', type: 'TEXT' }
+    ],
+    items: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'itemCode', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' },
+      { name: 'unit', type: 'TEXT' },
+      { name: 'stock', type: 'INTEGER' },
+      { name: 'category', type: 'TEXT' },
+      { name: 'picture', type: 'TEXT' }
+    ],
+    schedules: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'clientId', type: 'TEXT' },
+      { name: 'date', type: 'TEXT' },
+      { name: 'time', type: 'TEXT' },
+      { name: 'service', type: 'TEXT' },
+      { name: 'teamLeaderId', type: 'TEXT' },
+      { name: 'status', type: 'TEXT' },
+      { name: 'notes', type: 'TEXT' }
+    ],
+    operationLogs: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'scheduleId', type: 'TEXT' },
+      { name: 'dateConducted', type: 'TEXT' },
+      { name: 'timeIn', type: 'TEXT' },
+      { name: 'timeOut', type: 'TEXT' },
+      { name: 'timeSpent', type: 'TEXT' },
+      { name: 'geoLocation', type: 'TEXT' },
+      { name: 'geoLocationIn', type: 'TEXT' },
+      { name: 'geoLocationOut', type: 'TEXT' },
+      { name: 'baitStationsAudit', type: 'TEXT' },
+      { name: 'uvMachinesAudit', type: 'TEXT' },
+      { name: 'baitStickersReplaced', type: 'INTEGER' },
+      { name: 'baitStickersCaptured', type: 'INTEGER' },
+      { name: 'baitStickersFollowUp', type: 'INTEGER' },
+      { name: 'uvStickersReplaced', type: 'INTEGER' },
+      { name: 'comments', type: 'TEXT' },
+      { name: 'commentsStatus', type: 'TEXT' },
+      { name: 'clientComments', type: 'TEXT' },
+      { name: 'clientCommentsStatus', type: 'TEXT' },
+      { name: 'clientSignature', type: 'TEXT' },
+      { name: 'itemsConsumed', type: 'TEXT' },
+      { name: 'photos', type: 'TEXT' }
+    ],
+    commuteLog: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'scheduleId', type: 'TEXT' },
+      { name: 'region', type: 'TEXT' },
+      { name: 'teamLeaderId', type: 'TEXT' },
+      { name: 'startLocation', type: 'TEXT' },
+      { name: 'endLocation', type: 'TEXT' },
+      { name: 'distanceKm', type: 'REAL' },
+      { name: 'durationMins', type: 'INTEGER' },
+      { name: 'fuelUsedLiters', type: 'REAL' },
+      { name: 'status', type: 'TEXT' }
+    ],
+    complaints: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'clientId', type: 'TEXT' },
+      { name: 'region', type: 'TEXT' },
+      { name: 'city', type: 'TEXT' },
+      { name: 'complainantName', type: 'TEXT' },
+      { name: 'phone', type: 'TEXT' },
+      { name: 'severity', type: 'TEXT' },
+      { name: 'status', type: 'TEXT' },
+      { name: 'details', type: 'TEXT' },
+      { name: 'dateSubmitted', type: 'TEXT' },
+      { name: 'assignedStaffId', type: 'TEXT' },
+      { name: 'resolutionDetails', type: 'TEXT' }
+    ],
+    notifications: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'type', type: 'TEXT' },
+      { name: 'message', type: 'TEXT' },
+      { name: 'read', type: 'INTEGER' },
+      { name: 'timestamp', type: 'TEXT' },
+      { name: 'targetUserId', type: 'TEXT' }
+    ],
+    messages: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'senderId', type: 'TEXT' },
+      { name: 'receiverId', type: 'TEXT' },
+      { name: 'text', type: 'TEXT' },
+      { name: 'timestamp', type: 'TEXT' },
+      { name: 'read', type: 'INTEGER' },
+      { name: 'attachment', type: 'TEXT' }
+    ],
+    attendanceLog: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'teamLeaderId', type: 'TEXT' },
+      { name: 'date', type: 'TEXT' },
+      { name: 'checkIn', type: 'TEXT' },
+      { name: 'checkOut', type: 'TEXT' },
+      { name: 'lat', type: 'REAL' },
+      { name: 'lng', type: 'REAL' }
+    ],
+    vehicles: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'plateNo', type: 'TEXT' },
+      { name: 'model', type: 'TEXT' },
+      { name: 'type', type: 'TEXT' },
+      { name: 'assignedDriverId', type: 'TEXT' },
+      { name: 'status', type: 'TEXT' },
+      { name: 'region', type: 'TEXT' },
+      { name: 'teamLeaderId', type: 'TEXT' },
+      { name: 'registryNo', type: 'TEXT' },
+      { name: 'registryDoc', type: 'TEXT' }
+    ],
+    sectors: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' }
+    ],
+    sanitationNotes: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'notes', type: 'TEXT' }
+    ],
+    media: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' },
+      { name: 'category', type: 'TEXT' },
+      { name: 'type', type: 'TEXT' },
+      { name: 'size', type: 'INTEGER' },
+      { name: 'uploadDate', type: 'TEXT' },
+      { name: 'uploadedBy', type: 'TEXT' },
+      { name: 'data', type: 'TEXT' }
+    ],
+    mediaCategories: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' }
+    ],
+    suppliers: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' },
+      { name: 'category', type: 'TEXT' },
+      { name: 'contact', type: 'TEXT' },
+      { name: 'phone', type: 'TEXT' },
+      { name: 'email', type: 'TEXT' },
+      { name: 'address', type: 'TEXT' },
+      { name: 'suppliedItems', type: 'TEXT' }
+    ],
+    salesDeals: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'name', type: 'TEXT' },
+      { name: 'clientId', type: 'TEXT' },
+      { name: 'expectedValue', type: 'REAL' },
+      { name: 'currency', type: 'TEXT' },
+      { name: 'stage', type: 'TEXT' },
+      { name: 'dateClosed', type: 'TEXT' },
+      { name: 'notes', type: 'TEXT' }
+    ],
+    driverShifts: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'userId', type: 'TEXT' },
+      { name: 'date', type: 'TEXT' },
+      { name: 'status', type: 'TEXT' },
+      { name: 'notes', type: 'TEXT' }
+    ],
+    inspections: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'clientRef', type: 'TEXT' },
+      { name: 'inspector', type: 'TEXT' },
+      { name: 'date', type: 'TEXT' },
+      { name: 'pestActivity', type: 'TEXT' },
+      { name: 'hygiene', type: 'TEXT' },
+      { name: 'areasInspected', type: 'TEXT' },
+      { name: 'observations', type: 'TEXT' },
+      { name: 'recommendations', type: 'TEXT' },
+      { name: 'signature', type: 'TEXT' }
+    ],
+    riskAssessments: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'clientRef', type: 'TEXT' },
+      { name: 'assessor', type: 'TEXT' },
+      { name: 'date', type: 'TEXT' },
+      { name: 'riskLevel', type: 'TEXT' },
+      { name: 'hazards', type: 'TEXT' },
+      { name: 'ppeRequired', type: 'TEXT' },
+      { name: 'controlMeasures', type: 'TEXT' }
+    ],
+    formTemplates: [
+      { name: 'id', type: 'TEXT' },
+      { name: 'title', type: 'TEXT' },
+      { name: 'category', type: 'TEXT' },
+      { name: 'description', type: 'TEXT' },
+      { name: 'filename', type: 'TEXT' },
+      { name: 'dateAdded', type: 'TEXT' },
+      { name: 'fileData', type: 'TEXT' }
+    ]
+  };
+
+  for (const [table, cols] of Object.entries(TABLE_COLUMNS)) {
+    const existingCols = await all(`PRAGMA table_info(${table})`);
+    const existingNames = existingCols.map(c => c.name);
+    for (const col of cols) {
+      if (!existingNames.includes(col.name)) {
+        console.log(`[Migration] Adding missing column ${col.name} ${col.type} to table ${table}...`);
+        await run(`ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type}`);
+      }
+    }
+  }
 
   console.log('Database tables verified/created successfully.');
   
@@ -358,9 +648,9 @@ async function seedDatabase() {
       // 7. Seed Commute Logs
       if (data.commuteLog) {
         for (const l of data.commuteLog) {
-          await run(`INSERT INTO commuteLog (id, userId, date, timeStarted, timeEnded, odometerStart, odometerEnd, startLocation, endLocation, status)
+          await run(`INSERT INTO commuteLog (id, scheduleId, region, teamLeaderId, startLocation, endLocation, distanceKm, durationMins, fuelUsedLiters, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [l.id, l.userId, l.date, l.timeStarted || '', l.timeEnded || '', l.odometerStart || 0, l.odometerEnd || 0, l.startLocation || '', l.endLocation || '', l.status || '']);
+            [l.id, l.scheduleId, l.region || '', l.teamLeaderId, l.startLocation || '', l.endLocation || '', l.distanceKm || 0, l.durationMins || 0, l.fuelUsedLiters || 0, l.status || '']);
         }
       }
 
@@ -392,8 +682,8 @@ async function seedDatabase() {
       // 11. Seed Attendance Logs
       if (data.attendanceLog) {
         for (const l of data.attendanceLog) {
-          await run(`INSERT INTO attendanceLog (id, userId, date, checkIn, checkOut, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [l.id, l.userId, l.date, l.checkIn || '', l.checkOut || '', l.lat || 0, l.lng || 0]);
+          await run(`INSERT INTO attendanceLog (id, teamLeaderId, date, checkIn, checkOut, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [l.id, l.teamLeaderId, l.date, l.checkIn || '', l.checkOut || '', l.lat || 0, l.lng || 0]);
         }
       }
 
